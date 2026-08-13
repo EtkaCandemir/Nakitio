@@ -1,0 +1,146 @@
+"""
+Nakitio — Kullanıcıya Gösterilen Metinler
+
+Arayüzde görünen her cümle burada. Kodun içine gömülü metin kalmaz.
+
+Neden: bu metinler `Docs/skor-modeli-v2.md` §12'deki ton kurallarına
+tabidir ve gözden geçirilebilir olmaları gerekir. Kodun içine dağılmış
+hâldeyken ne toplu okunabilir, ne bir editör düzeltebilir, ne de
+ileride başka dile çevrilebilir.
+
+TON KURALLARI (ihlali blocker'dır):
+  · Skor bir ALAN hakkında konuşur, kullanıcı hakkında değil.
+  · "kötü", "başarısız", "yetersiz", "savruk", "disiplinsiz" YASAK.
+  · Düşük skor daima somut bir sonraki adımla birlikte verilir.
+  · Belirsizlik gizlenmez, açıkça söylenir.
+  · Kategori artışı enflasyondan arındırılmadan bildirilmez.
+"""
+
+from __future__ import annotations
+
+from typing import Dict
+
+METIN_VERSION = "1.0.0"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Gün 0 — hiç veri yok
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# Bu ekran ekstre modelinde KAÇINILMAZ ilk deneyimdir ve mockup'ların
+# hiçbirinde yoktu. Öncül baz 40'a çekildiği için gösterilen bant düşük
+# (34–58 gibi). Metnin işi bu düşüklüğü bir YARGI değil, bir DAVET
+# hâline getirmek: "seni tanımıyoruz" diyoruz, "kötüsün" demiyoruz.
+#
+# Belirsizliği bize yükleyen bu çerçeve aynı zamanda ürünün istediği
+# teşviki yaratır: gerçek skoru görmenin tek yolu ekstre yüklemek.
+
+GUN0 = {
+    "skor_ustu": "Henüz seni tanımıyoruz",
+    "skor_alti": "Bu aralık yalnızca 5 sorudan çıktı. "
+                 "Hiçbir finansal verini görmedik.",
+    "kart_baslik": "Gerçek skorunu gör",
+    "kart_govde": "İlk ekstreni yükle. Gelirin, giderin, borcun ve "
+                  "harcama düzenin hesaba katılınca skorun kişiselleşir "
+                  "— genelde de yükselir.",
+    "cta": "Ekstre Yükle",
+    "ikincil": "Nasıl ekstre indiririm?",
+    "guven_notu": "Bu bir tahmin, ölçüm değil.",
+}
+
+#: İlk ekstre yüklendikten hemen sonra gösterilen geçiş mesajı.
+#: Skorun neden sıçradığını açıklar — kullanıcı "iyileştim" sanmasın.
+ILK_EKSTRE_SONRASI = {
+    "baslik": "Skorun gerçek verilerinle güncellendi",
+    "govde": "Değişimin sebebi finansal durumunun düzelmesi değil; "
+             "artık seni ölçebiliyoruz. Buradan sonrası gerçekten sana bağlı.",
+}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Acil durum fonu — kademeli hedef
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# KARAR (12 Ağu 2026): skor 3 ay üzerinden hesaplanır, 6 ay skorun
+# DIŞINDA bir ileri seviye hedefidir.
+#
+# Gerekçe: kullanıcıya gösterilen hedefle skorun hedefi aynı olmalı.
+# Aksi hâlde gösterilen 3 aylık hedefe ulaşan kullanıcı o alt metrikte
+# tam puan alamaz ve kale direği kaymış gibi hisseder. Türkiye'nin
+# enflasyon ortamında 6 ay nakit tutmanın reel maliyeti de yüksek.
+
+GUVENCE = {
+    "baslik": "Acil Durum Fonu",
+    "aciklama": "İşini kaybettiğinde ya da beklenmedik bir gider "
+                "çıktığında borçlanmadan kaç ay dayanabileceğin.",
+    "kademe1_ad": "Güvenlik Ağı",
+    "kademe1_alt": "3 aylık zorunlu giderin. Skorun bu hedefe göre hesaplanır.",
+    "kademe2_ad": "Tam Güvence",
+    "kademe2_alt": "6 aylık zorunlu giderin. Skorunu etkilemez — "
+                   "ulaşırsan rozet kazanırsın.",
+    "kademe1_tamam": "Güvenlik ağını kurdun. İstersen Tam Güvence'ye "
+                     "devam edebilirsin.",
+    "kademe2_tamam": "Tam Güvence'ye ulaştın.",
+    "sifir": "Henüz acil durum fonun yok. Küçük bir tutarla başlamak "
+             "bile fark yaratır.",
+    "neden_3_ay": "6 ay uluslararası standart, ama düşük enflasyonlu "
+                  "ülkeler için üretildi. Türkiye'de nakit tutmanın "
+                  "maliyeti yüksek olduğu için ilk hedefi 3 ay tuttuk.",
+}
+
+
+def guvence_durum(ay: float, kademe1: float, kademe2: float) -> str:
+    """Fon süresine göre tek cümlelik durum metni."""
+    if ay <= 0:
+        return GUVENCE["sifir"]
+    if ay >= kademe2:
+        return GUVENCE["kademe2_tamam"]
+    if ay >= kademe1:
+        return GUVENCE["kademe1_tamam"]
+    return (f"Zorunlu giderinin {_ay(ay)} kadarını karşılıyor. "
+            f"Hedef {_ay(kademe1)}.")
+
+
+def _ay(x: float) -> str:
+    s = f"{x:.1f}".replace(".", ",").rstrip("0").rstrip(",")
+    return f"{s} ay"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Veri kapsamı
+# ─────────────────────────────────────────────────────────────────────────────
+
+KAPSAM = {
+    "eksik_tekil": "{aylar} ekstresi eksik. Yükleyince skorunun "
+                   "kesinliği artar.",
+    "eksik_coklu": "{aylar} ekstreleri eksik. Yükledikçe skorun netleşir.",
+    "tam": "Son 6 dönemin tamamı yüklü.",
+}
+
+BANT = {
+    "alt_not": "Veri arttıkça bu aralık daralacak.",
+    "aciklama": "Skorunu tek sayı yerine aralık olarak gösteriyoruz, "
+                "çünkü elimizdeki veri henüz kesin bir sonuç için yeterli değil.",
+}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Devam eden dönem
+# ─────────────────────────────────────────────────────────────────────────────
+
+DONEM = {
+    "kapanan_ust": "Kapanan dönem",
+    "devam_ust": "Devam eden dönem",
+    "devam_uyari": "Bu dönem henüz kapanmadı. Yalnızca elle eklediğin "
+                   "işlemleri içerir ve skorunu henüz etkilemez.",
+    "devam_bos": "Henüz işlem eklemedin.",
+    "kaynak": "{tarih} tarihli ekstreye göre",
+}
+
+
+def eksik_ay_metni(aylar: list, ay_adlari: Dict[int, str]) -> str:
+    if not aylar:
+        return ""
+    adlar = [ay_adlari[int(m.split("-")[1])] for m in aylar]
+    sablon = KAPSAM["eksik_tekil"] if len(adlar) == 1 else KAPSAM["eksik_coklu"]
+    return sablon.format(aylar=", ".join(adlar))

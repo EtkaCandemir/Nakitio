@@ -1,0 +1,1265 @@
+{
+  "meta": {
+    "surum": "1.0.0",
+    "skor_modeli": "2.0.0",
+    "veri_hatti": "1.0.0",
+    "ekstre_alimi": "1.0.0",
+    "kullanici": "Didem (kanonik demo profili)",
+    "not": "Tüm sayılar engine/fixture_didem.py'deki ham işlemlerden hesaplanmıştır. Elle değiştirilmemeli; ekran verisi değişecekse fixture değiştirilir ve bu dosya yeniden üretilir."
+  },
+  "durumlar": {
+    "gun0": {
+      "ana_sayfa": {
+        "skor_karti": {
+          "baslik": "Farkındalık Başlangıç Skoru",
+          "bant_olarak_sun": true,
+          "skor": 46,
+          "band": [
+            34,
+            58
+          ],
+          "goster": "34–58",
+          "seviye_goster": false,
+          "seviye": "Dikkat",
+          "mesaj": "Bazı alanlarda kontrol kaybı oluşabilir. Öncelikleri birlikte belirleyelim.",
+          "degisim": null,
+          "guven": 0.0,
+          "guven_etiketi": "Düşük",
+          "alt_not": "Veri arttıkça bu aralık daralacak.",
+          "bant_aciklama": "Skorunu tek sayı yerine aralık olarak gösteriyoruz, çünkü elimizdeki veri henüz kesin bir sonuç için yeterli değil.",
+          "gun0_ust": "Henüz seni tanımıyoruz",
+          "gun0_alt": "Bu aralık yalnızca 5 sorudan çıktı. Hiçbir finansal verini görmedik.",
+          "guven_notu": "Bu bir tahmin, ölçüm değil."
+        },
+        "donem": null,
+        "kapanan_ozet": null,
+        "kapsam": null,
+        "birincil_eylem": {
+          "tip": "ekstre_yukle",
+          "baslik": "Gerçek skorunu gör",
+          "alt": "İlk ekstreni yükle. Gelirin, giderin, borcun ve harcama düzenin hesaba katılınca skorun kişiselleşir — genelde de yükselir.",
+          "cta": "Ekstre Yükle",
+          "ikincil": "Nasıl ekstre indiririm?"
+        },
+        "farkindalik": null,
+        "harcama_dagilimi": null,
+        "guvence": null
+      },
+      "skor_raporu": {
+        "skor": 46,
+        "band": [
+          34,
+          58
+        ],
+        "seviye": "Dikkat",
+        "asama": "Farkındalık Başlangıç Skoru",
+        "guven": 0.0,
+        "veri_yeterliligi": "Düşük",
+        "hesaplama_notu": "0 günlük veriye göre hesaplandı",
+        "bilesenler": [
+          {
+            "bilesen": "Nakit Akışı",
+            "puan": 31.2,
+            "azami": 31.2,
+            "yuzde": 100.0,
+            "alt_metrikler": [
+              {
+                "ad": "Kısa vadeli likidite",
+                "deger": 100.0,
+                "detay": "90 gün"
+              }
+            ],
+            "uyarilar": []
+          },
+          {
+            "bilesen": "Borç Yükü",
+            "puan": 25.0,
+            "azami": 25.0,
+            "yuzde": 100.0,
+            "alt_metrikler": [
+              {
+                "ad": "Borç yok",
+                "deger": 100.0,
+                "detay": ""
+              }
+            ],
+            "uyarilar": []
+          },
+          {
+            "bilesen": "Tasarruf & Güvence",
+            "puan": 0.0,
+            "azami": 25.0,
+            "yuzde": 0.0,
+            "alt_metrikler": [
+              {
+                "ad": "Kasıtlı tasarruf oranı",
+                "deger": 0.0,
+                "detay": "%0.0"
+              },
+              {
+                "ad": "Acil durum fonu",
+                "deger": 0.0,
+                "detay": "0.0 ay"
+              },
+              {
+                "ad": "Tasarruf sürekliliği",
+                "deger": 0.0,
+                "detay": "0/6 ay"
+              }
+            ],
+            "uyarilar": []
+          },
+          {
+            "bilesen": "Harcama Disiplini",
+            "puan": 18.8,
+            "azami": 18.8,
+            "yuzde": 100.0,
+            "alt_metrikler": [
+              {
+                "ad": "İsteğe bağlı harcama payı",
+                "deger": 100.0,
+                "detay": "%0"
+              }
+            ],
+            "uyarilar": []
+          },
+          {
+            "bilesen": "Hedef Devamlılığı",
+            "durum": "devre dışı",
+            "neden": "hedef yok (ilk 60 gün muafiyeti)"
+          },
+          {
+            "bilesen": "Finansal Davranış",
+            "durum": "devre dışı",
+            "neden": "etiketleme kapsamı yetersiz (%0 < %25)"
+          }
+        ],
+        "en_zayif": "Tasarruf & Güvence",
+        "maddi_olaylar": []
+      },
+      "analiz": {
+        "genel_bakis": {
+          "skor": 46,
+          "tasarruf_orani": "%0,0",
+          "korunan_tutar": "₺0",
+          "guvence_suresi_ay": 0.0
+        },
+        "gelir_gider": {
+          "gelir": "₺0",
+          "gider": "₺0",
+          "zorunlu": "₺0",
+          "istege_bagli": "₺0",
+          "ana_gelir_payi": null,
+          "gelir_oynakligi": null
+        },
+        "kategoriler": null,
+        "davranis": null,
+        "riskler": [
+          {
+            "alan": "acil_fon",
+            "seviye": "yuksek",
+            "aciklama": "acil durum fonu 1 aydan az",
+            "deger": 0.0
+          },
+          {
+            "alan": "borc",
+            "seviye": "yuksek",
+            "aciklama": "borç ödeme oranı yüksek",
+            "deger": 100.0
+          }
+        ],
+        "borc": {
+          "anapara": "₺0",
+          "dsr": "%100,0",
+          "taksit_aylik": "₺0",
+          "taksit_kalan": "₺0",
+          "kart_kullanimi": null
+        }
+      },
+      "plan": {
+        "skor_simdi": 46,
+        "skor_plan_sonrasi": 46,
+        "toplam_etki": 0,
+        "ufuk_ay": 3,
+        "adimlar": [],
+        "sunum_uyarisi": "Projeksiyon; kesinlik dili kullanılmaz."
+      },
+      "triyaj": {
+        "kartlar": [],
+        "durum": "veri yok"
+      },
+      "hedefler": {
+        "hedefler": [],
+        "durum": "hedef yok"
+      }
+    },
+    "ilk_ekstre": {
+      "ana_sayfa": {
+        "skor_karti": {
+          "baslik": "Geçiş Skoru",
+          "bant_olarak_sun": true,
+          "skor": 69,
+          "band": [
+            64,
+            74
+          ],
+          "goster": "64–74",
+          "seviye_goster": false,
+          "seviye": "Gelişiyor",
+          "mesaj": "İyi bir başlangıç var, düzenli devam etmek önemli.",
+          "degisim": null,
+          "guven": 0.59,
+          "guven_etiketi": "Orta",
+          "alt_not": "Veri arttıkça bu aralık daralacak.",
+          "bant_aciklama": "Skorunu tek sayı yerine aralık olarak gösteriyoruz, çünkü elimizdeki veri henüz kesin bir sonuç için yeterli değil.",
+          "gun0_ust": null,
+          "gun0_alt": null,
+          "guven_notu": null
+        },
+        "donem": {
+          "kapanan": {
+            "baslangic": "2026-07-01",
+            "bitis": "2026-07-30",
+            "etiket": "1 Tem – 30 Tem",
+            "kaynak_notu": "31 Temmuz 2026 tarihli ekstreye göre"
+          },
+          "devam_eden": {
+            "baslangic": "2026-07-31",
+            "bitis": "2026-08-08",
+            "etiket": "31 Tem'den beri",
+            "gun": 8,
+            "uyari": "Bu dönem henüz kapanmadı. Yalnızca elle eklediğin işlemleri içerir ve skorunu henüz etkilemez."
+          }
+        },
+        "kapanan_ozet": {
+          "gelir": "₺28.450",
+          "gelir_ham": 28450,
+          "gider": "₺19.780",
+          "gider_ham": 19780,
+          "korunan": "₺8.670",
+          "korunan_ham": 8670,
+          "tasarruf_orani": "%18,6",
+          "tasarruf_orani_ham": 18.6,
+          "acil_fon_ay": 0.7
+        },
+        "kapsam": {
+          "eksik_aylar": [
+            "2026-02",
+            "2026-03",
+            "2026-04",
+            "2026-05",
+            "2026-06"
+          ],
+          "uyari": "Şubat, Mart, Nisan, Mayıs, Haziran ekstreleri eksik. Yükledikçe skorun netleşir.",
+          "donem_sayisi": 1
+        },
+        "birincil_eylem": {
+          "tip": "ekstre_yukle",
+          "baslik": "Eksik dönem var",
+          "alt": "Şubat, Mart, Nisan, Mayıs, Haziran ekstreleri eksik. Yükledikçe skorun netleşir.",
+          "cta": "Ekstre Yükle"
+        },
+        "farkindalik": null,
+        "harcama_dagilimi": {
+          "zorunlu_pay": "%53",
+          "istege_bagli_pay": "%47",
+          "zorunlu_tutar": "₺10.516",
+          "istege_bagli_tutar": "₺9.264"
+        },
+        "guvence": {
+          "baslik": "Acil Durum Fonu",
+          "aciklama": "İşini kaybettiğinde ya da beklenmedik bir gider çıktığında borçlanmadan kaç ay dayanabileceğin.",
+          "mevcut_ay": 0.7,
+          "mevcut_tutar": "₺7.483",
+          "aylik_zorunlu_gider": "₺10.516",
+          "aktif_kademe": 1,
+          "durum_metni": "Zorunlu giderinin 0,7 ay kadarını karşılıyor. Hedef 3 ay.",
+          "kademeler": [
+            {
+              "no": 1,
+              "ad": "Güvenlik Ağı",
+              "alt": "3 aylık zorunlu giderin. Skorun bu hedefe göre hesaplanır.",
+              "ay": 3.0,
+              "hedef_tutar": "₺31.548",
+              "hedef_ham": 31548,
+              "ilerleme_yuzde": 24,
+              "kalan": "₺24.065",
+              "tamamlandi": false,
+              "skora_dahil": true
+            },
+            {
+              "no": 2,
+              "ad": "Tam Güvence",
+              "alt": "6 aylık zorunlu giderin. Skorunu etkilemez — ulaşırsan rozet kazanırsın.",
+              "ay": 6.0,
+              "hedef_tutar": "₺63.096",
+              "hedef_ham": 63096,
+              "ilerleme_yuzde": 12,
+              "kalan": "₺55.613",
+              "tamamlandi": false,
+              "skora_dahil": false
+            }
+          ],
+          "tahmini_sure_ay": 5,
+          "tahmini_sure_metni": "Bu hızla yaklaşık 5 ayda ulaşırsın.",
+          "neden_3_ay": "6 ay uluslararası standart, ama düşük enflasyonlu ülkeler için üretildi. Türkiye'de nakit tutmanın maliyeti yüksek olduğu için ilk hedefi 3 ay tuttuk."
+        }
+      },
+      "skor_raporu": {
+        "skor": 69,
+        "band": [
+          64,
+          74
+        ],
+        "seviye": "Gelişiyor",
+        "asama": "Geçiş Skoru",
+        "guven": 0.59,
+        "veri_yeterliligi": "Orta",
+        "hesaplama_notu": "30 günlük veriye göre hesaplandı",
+        "bilesenler": [
+          {
+            "bilesen": "Nakit Akışı",
+            "puan": 20.1,
+            "azami": 25.0,
+            "yuzde": 80.4,
+            "alt_metrikler": [
+              {
+                "ad": "Net nakit akışı marjı",
+                "deger": 93.7,
+                "detay": "m=+30.5%"
+              },
+              {
+                "ad": "Kısa vadeli likidite",
+                "deger": 55.4,
+                "detay": "19 gün"
+              },
+              {
+                "ad": "Gelir çeşitliliği",
+                "deger": 39.1,
+                "detay": "ana kaynak %84"
+              }
+            ],
+            "uyarilar": []
+          },
+          {
+            "bilesen": "Borç Yükü",
+            "puan": 17.1,
+            "azami": 20.0,
+            "yuzde": 85.3,
+            "alt_metrikler": [
+              {
+                "ad": "Aylık borç servisi / gelir",
+                "deger": 80.2,
+                "detay": "DSR=%17.9"
+              },
+              {
+                "ad": "Kart kullanım oranı",
+                "deger": 80.0,
+                "detay": "%34"
+              },
+              {
+                "ad": "Toplam taahhüt / yıllık gelir",
+                "deger": 97.8,
+                "detay": "%6"
+              }
+            ],
+            "uyarilar": []
+          },
+          {
+            "bilesen": "Tasarruf & Güvence",
+            "puan": 10.2,
+            "azami": 20.0,
+            "yuzde": 51.2,
+            "alt_metrikler": [
+              {
+                "ad": "Kasıtlı tasarruf oranı",
+                "deger": 84.5,
+                "detay": "%18.6"
+              },
+              {
+                "ad": "Acil durum fonu",
+                "deger": 42.2,
+                "detay": "0.7 ay"
+              },
+              {
+                "ad": "Tasarruf sürekliliği",
+                "deger": 16.7,
+                "detay": "1/6 ay"
+              }
+            ],
+            "uyarilar": []
+          },
+          {
+            "bilesen": "Harcama Disiplini",
+            "puan": 9.4,
+            "azami": 15.0,
+            "yuzde": 62.7,
+            "alt_metrikler": [
+              {
+                "ad": "Bütçe uyumu",
+                "deger": 77.5,
+                "detay": "aşım 3,290/14,600"
+              },
+              {
+                "ad": "Kategori limitlerine uyum",
+                "deger": 75.0,
+                "detay": "1/4 aşıldı"
+              },
+              {
+                "ad": "İsteğe bağlı harcama payı",
+                "deger": 32.9,
+                "detay": "%47"
+              }
+            ],
+            "uyarilar": []
+          },
+          {
+            "bilesen": "Hedef Devamlılığı",
+            "puan": 7.0,
+            "azami": 10.0,
+            "yuzde": 69.7,
+            "alt_metrikler": [
+              {
+                "ad": "Hedeflerin ilerleme durumu",
+                "deger": 60.7,
+                "detay": "%61"
+              },
+              {
+                "ad": "Katkı sürekliliği",
+                "deger": 66.7,
+                "detay": "%67"
+              },
+              {
+                "ad": "Hedef gerçekçiliği",
+                "deger": 95.2,
+                "detay": ""
+              }
+            ],
+            "uyarilar": []
+          },
+          {
+            "bilesen": "Finansal Davranış",
+            "puan": 7.0,
+            "azami": 10.0,
+            "yuzde": 70.5,
+            "alt_metrikler": [
+              {
+                "ad": "Plansız harcama oranı",
+                "deger": 80.4,
+                "detay": "%12"
+              },
+              {
+                "ad": "Duygusal harcama payı",
+                "deger": 71.9,
+                "detay": "%11"
+              },
+              {
+                "ad": "Gece harcama yoğunlaşması",
+                "deger": 42.1,
+                "detay": "%22"
+              },
+              {
+                "ad": "Harcama sonrası pişmanlık",
+                "deger": 79.7,
+                "detay": "%14"
+              }
+            ],
+            "uyarilar": []
+          }
+        ],
+        "en_zayif": "Tasarruf & Güvence",
+        "maddi_olaylar": []
+      },
+      "analiz": {
+        "genel_bakis": {
+          "skor": 69,
+          "tasarruf_orani": "%18,6",
+          "korunan_tutar": "₺8.670",
+          "guvence_suresi_ay": 0.7
+        },
+        "gelir_gider": {
+          "gelir": "₺28.450",
+          "gider": "₺19.780",
+          "zorunlu": "₺10.516",
+          "istege_bagli": "₺9.264",
+          "ana_gelir_payi": "%84",
+          "gelir_oynakligi": null
+        },
+        "kategoriler": null,
+        "davranis": {
+          "iddia_edilebilir": true,
+          "etiket_sayisi": 21,
+          "etiket_agirligi": 0.53,
+          "plansiz_oran": "%12",
+          "duygusal_pay": "%11",
+          "pismanlik": "%14",
+          "gece_yogunlasmasi": "%22",
+          "gece_olculemedi_notu": null
+        },
+        "riskler": [
+          {
+            "alan": "acil_fon",
+            "seviye": "yuksek",
+            "aciklama": "acil durum fonu 1 aydan az",
+            "deger": 0.7
+          }
+        ],
+        "borc": {
+          "anapara": "₺18.500",
+          "dsr": "%17,9",
+          "taksit_aylik": "₺900",
+          "taksit_kalan": "₺2.700",
+          "kart_kullanimi": "%34"
+        }
+      },
+      "plan": {
+        "skor_simdi": 69,
+        "skor_plan_sonrasi": 72,
+        "toplam_etki": 3,
+        "ufuk_ay": 3,
+        "adimlar": [
+          {
+            "aksiyon": "Kategori limiti koy",
+            "zorluk": 2,
+            "kumulatif_skor": 70,
+            "ek_etki": 1,
+            "parametreler": {
+              "aylik_tasarruf": 590.0
+            }
+          },
+          {
+            "aksiyon": "Acil durum fonuna düzenli katkı",
+            "zorluk": 2,
+            "kumulatif_skor": 71,
+            "ek_etki": 1,
+            "parametreler": {
+              "aylik_katki": 1730.0,
+              "ay": 3
+            }
+          },
+          {
+            "aksiyon": "Plansız harcamayı azalt",
+            "zorluk": 3,
+            "kumulatif_skor": 72,
+            "ek_etki": 1,
+            "parametreler": {
+              "hedef_oran": 0.05
+            }
+          }
+        ],
+        "sunum_uyarisi": "Projeksiyon; kesinlik dili kullanılmaz."
+      },
+      "triyaj": {
+        "baslik": "Bu harcamalar plansız mıydı?",
+        "alt": "Birkaç saniye — davranış analizin bunlarla kişiselleşiyor.",
+        "atlanabilir": true,
+        "kartlar": [
+          {
+            "txn_id": "t0279",
+            "merchant": "BOYNER",
+            "kategori": "Giyim",
+            "tutar": 900,
+            "tarih": "2026-07-20",
+            "tahmin_plansiz": 0.61,
+            "bilgi_degeri": 0.061,
+            "neden": "ilk kez görülen bir yer · bu kategoride alışılmışın üzerinde · taksitle alınmış"
+          },
+          {
+            "txn_id": "t0040",
+            "merchant": "NET ODEME SISTEMI",
+            "kategori": "Diğer",
+            "tutar": 919,
+            "tarih": "2026-07-14",
+            "tahmin_plansiz": 0.26,
+            "bilgi_degeri": 0.0419,
+            "neden": "bu kategoride alışılmışın üzerinde"
+          },
+          {
+            "txn_id": "t0032",
+            "merchant": "SHELL PETROL",
+            "kategori": "Ulaşım",
+            "tutar": 456,
+            "tarih": "2026-07-04",
+            "tahmin_plansiz": 0.44,
+            "bilgi_degeri": 0.0349,
+            "neden": "ilk kez görülen bir yer · hafta sonu"
+          },
+          {
+            "txn_id": "t0029",
+            "merchant": "NET ODEME SISTEMI",
+            "kategori": "Diğer",
+            "tutar": 505,
+            "tarih": "2026-07-04",
+            "tahmin_plansiz": 0.39,
+            "bilgi_degeri": 0.034,
+            "neden": "hafta sonu"
+          },
+          {
+            "txn_id": "t0021",
+            "merchant": "GETIR YEMEK",
+            "kategori": "Restoran & Kafe",
+            "tutar": 376,
+            "tarih": "2026-07-01",
+            "tahmin_plansiz": 0.6,
+            "bilgi_degeri": 0.0261,
+            "neden": "kategori eğilimine göre"
+          },
+          {
+            "txn_id": "t0041",
+            "merchant": "TURKCELL FATURA",
+            "kategori": "İnternet / Telefon",
+            "tutar": 700,
+            "tarih": "2026-07-19",
+            "tahmin_plansiz": 0.19,
+            "bilgi_degeri": 0.0237,
+            "neden": "ilk kez görülen bir yer · hafta sonu"
+          },
+          {
+            "txn_id": "t0038",
+            "merchant": "ISKI SU FATURA",
+            "kategori": "Faturalar",
+            "tutar": 844,
+            "tarih": "2026-07-16",
+            "tahmin_plansiz": 0.16,
+            "bilgi_degeri": 0.0237,
+            "neden": "aynı gün 3 isteğe bağlı harcama"
+          },
+          {
+            "txn_id": "t0016",
+            "merchant": "YEMEKSEPETI ONLINE",
+            "kategori": "Restoran & Kafe",
+            "tutar": 315,
+            "tarih": "2026-07-09",
+            "tahmin_plansiz": 0.63,
+            "bilgi_degeri": 0.0205,
+            "neden": "ilk kez görülen bir yer"
+          },
+          {
+            "txn_id": "t0034",
+            "merchant": "OZKAN GIDA SAN",
+            "kategori": "Diğer",
+            "tutar": 249,
+            "tarih": "2026-07-21",
+            "tahmin_plansiz": 0.47,
+            "bilgi_degeri": 0.0201,
+            "neden": "ilk kez görülen bir yer"
+          },
+          {
+            "txn_id": "t0033",
+            "merchant": "BITAKSI ODEME",
+            "kategori": "Ulaşım",
+            "tutar": 286,
+            "tarih": "2026-07-06",
+            "tahmin_plansiz": 0.29,
+            "bilgi_degeri": 0.0145,
+            "neden": "kategori eğilimine göre"
+          }
+        ],
+        "secenekler": [
+          "Plansızdı",
+          "Planlıydı"
+        ],
+        "opsiyonel_duygu": [
+          "Kendimi ödüllendirdim",
+          "Streslidim",
+          "Canım sıkıldı",
+          "Sosyal etki",
+          "Alışkanlık"
+        ]
+      },
+      "hedefler": {
+        "hedefler": [
+          {
+            "ad": "Acil Durum Fonu",
+            "hedef": "₺45.000",
+            "mevcut": "₺7.483",
+            "ilerleme": "%17",
+            "beklenen_ilerleme": "%31",
+            "durumda_mi": false,
+            "kalan_ay": 11
+          },
+          {
+            "ad": "Tatil Fonu",
+            "hedef": "₺15.000",
+            "mevcut": "₺4.100",
+            "ilerleme": "%27",
+            "beklenen_ilerleme": "%44",
+            "durumda_mi": false,
+            "kalan_ay": 5
+          },
+          {
+            "ad": "Borç Kapatma",
+            "hedef": "₺18.500",
+            "mevcut": "₺6.000",
+            "ilerleme": "%32",
+            "beklenen_ilerleme": "%42",
+            "durumda_mi": false,
+            "kalan_ay": 7
+          }
+        ],
+        "ontrack_oran": "%61"
+      }
+    },
+    "olgun": {
+      "ana_sayfa": {
+        "skor_karti": {
+          "baslik": "Finansal Sağlık Skoru",
+          "bant_olarak_sun": false,
+          "skor": 74,
+          "band": [
+            72,
+            76
+          ],
+          "goster": "74",
+          "seviye_goster": true,
+          "seviye": "Gelişiyor",
+          "mesaj": "İyi bir başlangıç var, düzenli devam etmek önemli.",
+          "degisim": 2,
+          "guven": 0.89,
+          "guven_etiketi": "Yüksek",
+          "alt_not": null,
+          "bant_aciklama": null,
+          "gun0_ust": null,
+          "gun0_alt": null,
+          "guven_notu": null
+        },
+        "donem": {
+          "kapanan": {
+            "baslangic": "2026-07-01",
+            "bitis": "2026-07-30",
+            "etiket": "1 Tem – 30 Tem",
+            "kaynak_notu": "31 Temmuz 2026 tarihli ekstreye göre"
+          },
+          "devam_eden": {
+            "baslangic": "2026-07-31",
+            "bitis": "2026-08-08",
+            "etiket": "31 Tem'den beri",
+            "gun": 8,
+            "uyari": "Bu dönem henüz kapanmadı. Yalnızca elle eklediğin işlemleri içerir ve skorunu henüz etkilemez."
+          }
+        },
+        "kapanan_ozet": {
+          "gelir": "₺27.890",
+          "gelir_ham": 27890,
+          "gider": "₺19.463",
+          "gider_ham": 19463,
+          "korunan": "₺8.426",
+          "korunan_ham": 8426,
+          "tasarruf_orani": "%19,0",
+          "tasarruf_orani_ham": 19.0,
+          "acil_fon_ay": 0.7
+        },
+        "kapsam": {
+          "eksik_aylar": [
+            "2026-02"
+          ],
+          "uyari": "Şubat ekstresi eksik. Yükleyince skorunun kesinliği artar.",
+          "donem_sayisi": 5
+        },
+        "birincil_eylem": {
+          "tip": "ekstre_yukle",
+          "baslik": "Eksik dönem var",
+          "alt": "Şubat ekstresi eksik. Yükleyince skorunun kesinliği artar.",
+          "cta": "Ekstre Yükle"
+        },
+        "farkindalik": {
+          "kategori": "Eğlence & Hobi",
+          "tutar": "₺955",
+          "nominal": "%76,5",
+          "reel": "%73,1",
+          "metin": "Eğlence & Hobi harcaman %76,5 arttı; enflasyondan arındırınca gerçek artış %73,1."
+        },
+        "harcama_dagilimi": {
+          "zorunlu_pay": "%59",
+          "istege_bagli_pay": "%41",
+          "zorunlu_tutar": "₺11.480",
+          "istege_bagli_tutar": "₺7.983"
+        },
+        "guvence": {
+          "baslik": "Acil Durum Fonu",
+          "aciklama": "İşini kaybettiğinde ya da beklenmedik bir gider çıktığında borçlanmadan kaç ay dayanabileceğin.",
+          "mevcut_ay": 0.7,
+          "mevcut_tutar": "₺7.483",
+          "aylik_zorunlu_gider": "₺11.480",
+          "aktif_kademe": 1,
+          "durum_metni": "Zorunlu giderinin 0,7 ay kadarını karşılıyor. Hedef 3 ay.",
+          "kademeler": [
+            {
+              "no": 1,
+              "ad": "Güvenlik Ağı",
+              "alt": "3 aylık zorunlu giderin. Skorun bu hedefe göre hesaplanır.",
+              "ay": 3.0,
+              "hedef_tutar": "₺34.440",
+              "hedef_ham": 34440,
+              "ilerleme_yuzde": 22,
+              "kalan": "₺26.957",
+              "tamamlandi": false,
+              "skora_dahil": true
+            },
+            {
+              "no": 2,
+              "ad": "Tam Güvence",
+              "alt": "6 aylık zorunlu giderin. Skorunu etkilemez — ulaşırsan rozet kazanırsın.",
+              "ay": 6.0,
+              "hedef_tutar": "₺68.879",
+              "hedef_ham": 68879,
+              "ilerleme_yuzde": 11,
+              "kalan": "₺61.396",
+              "tamamlandi": false,
+              "skora_dahil": false
+            }
+          ],
+          "tahmini_sure_ay": 5,
+          "tahmini_sure_metni": "Bu hızla yaklaşık 5 ayda ulaşırsın.",
+          "neden_3_ay": "6 ay uluslararası standart, ama düşük enflasyonlu ülkeler için üretildi. Türkiye'de nakit tutmanın maliyeti yüksek olduğu için ilk hedefi 3 ay tuttuk."
+        }
+      },
+      "skor_raporu": {
+        "skor": 74,
+        "band": [
+          72,
+          76
+        ],
+        "seviye": "Gelişiyor",
+        "asama": "Finansal Sağlık Skoru",
+        "guven": 0.89,
+        "veri_yeterliligi": "Yüksek",
+        "hesaplama_notu": "150 günlük veriye göre hesaplandı",
+        "bilesenler": [
+          {
+            "bilesen": "Nakit Akışı",
+            "puan": 20.7,
+            "azami": 25.0,
+            "yuzde": 82.7,
+            "alt_metrikler": [
+              {
+                "ad": "Net nakit akışı marjı",
+                "deger": 93.5,
+                "detay": "m=+30.2%"
+              },
+              {
+                "ad": "Gelir istikrarı (CV)",
+                "deger": 100.0,
+                "detay": "cv=0.05"
+              },
+              {
+                "ad": "Kısa vadeli likidite",
+                "deger": 56.1,
+                "detay": "20 gün"
+              },
+              {
+                "ad": "Gelir çeşitliliği",
+                "deger": 35.0,
+                "detay": "ana kaynak %86"
+              }
+            ],
+            "uyarilar": []
+          },
+          {
+            "bilesen": "Borç Yükü",
+            "puan": 16.7,
+            "azami": 20.0,
+            "yuzde": 83.6,
+            "alt_metrikler": [
+              {
+                "ad": "Aylık borç servisi / gelir",
+                "deger": 71.2,
+                "detay": "DSR=%21.5"
+              },
+              {
+                "ad": "Kart kullanım oranı",
+                "deger": 80.0,
+                "detay": "%34"
+              },
+              {
+                "ad": "Toplam taahhüt / yıllık gelir",
+                "deger": 95.6,
+                "detay": "%7"
+              },
+              {
+                "ad": "Borç trendi (3 ay)",
+                "deger": 100.0,
+                "detay": "-18.1%"
+              }
+            ],
+            "uyarilar": []
+          },
+          {
+            "bilesen": "Tasarruf & Güvence",
+            "puan": 14.4,
+            "azami": 20.0,
+            "yuzde": 71.9,
+            "alt_metrikler": [
+              {
+                "ad": "Kasıtlı tasarruf oranı",
+                "deger": 85.1,
+                "detay": "%19.0"
+              },
+              {
+                "ad": "Acil durum fonu",
+                "deger": 40.0,
+                "detay": "0.7 ay"
+              },
+              {
+                "ad": "Tasarruf sürekliliği",
+                "deger": 100.0,
+                "detay": "6/6 ay"
+              }
+            ],
+            "uyarilar": []
+          },
+          {
+            "bilesen": "Harcama Disiplini",
+            "puan": 10.6,
+            "azami": 15.0,
+            "yuzde": 70.9,
+            "alt_metrikler": [
+              {
+                "ad": "Bütçe uyumu",
+                "deger": 77.5,
+                "detay": "aşım 3,290/14,600"
+              },
+              {
+                "ad": "Kategori limitlerine uyum",
+                "deger": 75.0,
+                "detay": "1/4 aşıldı"
+              },
+              {
+                "ad": "İsteğe bağlı harcama payı",
+                "deger": 47.5,
+                "detay": "%41"
+              },
+              {
+                "ad": "Kategori oynaklığı",
+                "deger": 90.7,
+                "detay": "cv=0.20"
+              }
+            ],
+            "uyarilar": []
+          },
+          {
+            "bilesen": "Hedef Devamlılığı",
+            "puan": 6.9,
+            "azami": 10.0,
+            "yuzde": 69.1,
+            "alt_metrikler": [
+              {
+                "ad": "Hedeflerin ilerleme durumu",
+                "deger": 60.7,
+                "detay": "%61"
+              },
+              {
+                "ad": "Katkı sürekliliği",
+                "deger": 66.7,
+                "detay": "%67"
+              },
+              {
+                "ad": "Hedef gerçekçiliği",
+                "deger": 92.2,
+                "detay": ""
+              }
+            ],
+            "uyarilar": []
+          },
+          {
+            "bilesen": "Finansal Davranış",
+            "puan": 7.1,
+            "azami": 10.0,
+            "yuzde": 70.7,
+            "alt_metrikler": [
+              {
+                "ad": "Plansız harcama oranı",
+                "deger": 79.7,
+                "detay": "%12"
+              },
+              {
+                "ad": "Duygusal harcama payı",
+                "deger": 73.9,
+                "detay": "%10"
+              },
+              {
+                "ad": "Gece harcama yoğunlaşması",
+                "deger": 42.1,
+                "detay": "%22"
+              },
+              {
+                "ad": "Harcama sonrası pişmanlık",
+                "deger": 79.7,
+                "detay": "%14"
+              }
+            ],
+            "uyarilar": []
+          }
+        ],
+        "en_zayif": "Hedef Devamlılığı",
+        "maddi_olaylar": []
+      },
+      "analiz": {
+        "genel_bakis": {
+          "skor": 74,
+          "tasarruf_orani": "%19,0",
+          "korunan_tutar": "₺8.426",
+          "guvence_suresi_ay": 0.7
+        },
+        "gelir_gider": {
+          "gelir": "₺27.890",
+          "gider": "₺19.463",
+          "zorunlu": "₺11.480",
+          "istege_bagli": "₺7.983",
+          "ana_gelir_payi": "%86",
+          "gelir_oynakligi": 0.05
+        },
+        "kategoriler": [
+          {
+            "kategori": "Market",
+            "tutar": 5409,
+            "nominal_degisim_yuzde": 6.9,
+            "reel_degisim_yuzde": 3.8
+          },
+          {
+            "kategori": "Restoran & Kafe",
+            "tutar": 3984,
+            "nominal_degisim_yuzde": 5.3,
+            "reel_degisim_yuzde": 2.5
+          },
+          {
+            "kategori": "Diğer",
+            "tutar": 2828,
+            "nominal_degisim_yuzde": 67.8,
+            "reel_degisim_yuzde": 64.2
+          },
+          {
+            "kategori": "Ulaşım",
+            "tutar": 2159,
+            "nominal_degisim_yuzde": -23.9,
+            "reel_degisim_yuzde": -25.3
+          },
+          {
+            "kategori": "Giyim",
+            "tutar": 2090,
+            "nominal_degisim_yuzde": 148.1,
+            "reel_degisim_yuzde": 145.1
+          },
+          {
+            "kategori": "Faturalar",
+            "tutar": 1431,
+            "nominal_degisim_yuzde": -35.7,
+            "reel_degisim_yuzde": -37.2
+          }
+        ],
+        "davranis": {
+          "iddia_edilebilir": true,
+          "etiket_sayisi": 21,
+          "etiket_agirligi": 0.53,
+          "plansiz_oran": "%12",
+          "duygusal_pay": "%10",
+          "pismanlik": "%14",
+          "gece_yogunlasmasi": "%22",
+          "gece_olculemedi_notu": null
+        },
+        "riskler": [
+          {
+            "alan": "acil_fon",
+            "seviye": "yuksek",
+            "aciklama": "acil durum fonu 1 aydan az",
+            "deger": 0.7
+          }
+        ],
+        "borc": {
+          "anapara": "₺18.500",
+          "dsr": "%21,5",
+          "taksit_aylik": "₺1.800",
+          "taksit_kalan": "₺6.300",
+          "kart_kullanimi": "%34"
+        }
+      },
+      "plan": {
+        "skor_simdi": 74,
+        "skor_plan_sonrasi": 78,
+        "toplam_etki": 4,
+        "ufuk_ay": 3,
+        "adimlar": [
+          {
+            "aksiyon": "Acil durum fonuna düzenli katkı",
+            "zorluk": 2,
+            "kumulatif_skor": 76,
+            "ek_etki": 2,
+            "parametreler": {
+              "aylik_katki": 1690.0,
+              "ay": 3
+            }
+          },
+          {
+            "aksiyon": "Plansız harcamayı azalt",
+            "zorluk": 3,
+            "kumulatif_skor": 77,
+            "ek_etki": 1,
+            "parametreler": {
+              "hedef_oran": 0.05
+            }
+          },
+          {
+            "aksiyon": "Kategori limiti koy",
+            "zorluk": 2,
+            "kumulatif_skor": 78,
+            "ek_etki": 1,
+            "parametreler": {
+              "aylik_tasarruf": 580.0
+            }
+          }
+        ],
+        "sunum_uyarisi": "Projeksiyon; kesinlik dili kullanılmaz."
+      },
+      "triyaj": {
+        "baslik": "Bu harcamalar plansız mıydı?",
+        "alt": "Birkaç saniye — davranış analizin bunlarla kişiselleşiyor.",
+        "atlanabilir": true,
+        "kartlar": [
+          {
+            "txn_id": "t0279",
+            "merchant": "BOYNER",
+            "kategori": "Giyim",
+            "tutar": 900,
+            "tarih": "2026-07-20",
+            "tahmin_plansiz": 0.67,
+            "bilgi_degeri": 0.0521,
+            "neden": "ilk kez görülen bir yer · bu kategoride alışılmışın üzerinde · taksitle alınmış"
+          },
+          {
+            "txn_id": "t0040",
+            "merchant": "NET ODEME SISTEMI",
+            "kategori": "Diğer",
+            "tutar": 919,
+            "tarih": "2026-07-14",
+            "tahmin_plansiz": 0.31,
+            "bilgi_degeri": 0.0489,
+            "neden": "bu kategoride alışılmışın üzerinde"
+          },
+          {
+            "txn_id": "t0029",
+            "merchant": "NET ODEME SISTEMI",
+            "kategori": "Diğer",
+            "tutar": 505,
+            "tarih": "2026-07-04",
+            "tahmin_plansiz": 0.43,
+            "bilgi_degeri": 0.0378,
+            "neden": "hafta sonu"
+          },
+          {
+            "txn_id": "t0012",
+            "merchant": "BIM BIRLESIK MAGAZA",
+            "kategori": "Market",
+            "tutar": 727,
+            "tarih": "2026-07-02",
+            "tahmin_plansiz": 0.29,
+            "bilgi_degeri": 0.0364,
+            "neden": "kategori eğilimine göre"
+          },
+          {
+            "txn_id": "t0026",
+            "merchant": "DOMINO PIZZA",
+            "kategori": "Restoran & Kafe",
+            "tutar": 414,
+            "tarih": "2026-07-26",
+            "tahmin_plansiz": 0.61,
+            "bilgi_degeri": 0.0284,
+            "neden": "hafta sonu"
+          },
+          {
+            "txn_id": "t0032",
+            "merchant": "SHELL PETROL",
+            "kategori": "Ulaşım",
+            "tutar": 456,
+            "tarih": "2026-07-04",
+            "tahmin_plansiz": 0.32,
+            "bilgi_degeri": 0.0256,
+            "neden": "hafta sonu"
+          },
+          {
+            "txn_id": "t0021",
+            "merchant": "GETIR YEMEK",
+            "kategori": "Restoran & Kafe",
+            "tutar": 376,
+            "tarih": "2026-07-01",
+            "tahmin_plansiz": 0.61,
+            "bilgi_degeri": 0.0255,
+            "neden": "kategori eğilimine göre"
+          },
+          {
+            "txn_id": "t0034",
+            "merchant": "OZKAN GIDA SAN",
+            "kategori": "Diğer",
+            "tutar": 249,
+            "tarih": "2026-07-21",
+            "tahmin_plansiz": 0.47,
+            "bilgi_degeri": 0.0201,
+            "neden": "ilk kez görülen bir yer"
+          },
+          {
+            "txn_id": "t0030",
+            "merchant": "ISTANBULKART DOLUM",
+            "kategori": "Ulaşım",
+            "tutar": 493,
+            "tarih": "2026-07-23",
+            "tahmin_plansiz": 0.15,
+            "bilgi_degeri": 0.0131,
+            "neden": "bu kategoride alışılmışın üzerinde"
+          },
+          {
+            "txn_id": "t0039",
+            "merchant": "ISKI SU FATURA",
+            "kategori": "Faturalar",
+            "tutar": 587,
+            "tarih": "2026-07-17",
+            "tahmin_plansiz": 0.08,
+            "bilgi_degeri": 0.0085,
+            "neden": "kategori eğilimine göre"
+          }
+        ],
+        "secenekler": [
+          "Plansızdı",
+          "Planlıydı"
+        ],
+        "opsiyonel_duygu": [
+          "Kendimi ödüllendirdim",
+          "Streslidim",
+          "Canım sıkıldı",
+          "Sosyal etki",
+          "Alışkanlık"
+        ]
+      },
+      "hedefler": {
+        "hedefler": [
+          {
+            "ad": "Acil Durum Fonu",
+            "hedef": "₺45.000",
+            "mevcut": "₺7.483",
+            "ilerleme": "%17",
+            "beklenen_ilerleme": "%31",
+            "durumda_mi": false,
+            "kalan_ay": 11
+          },
+          {
+            "ad": "Tatil Fonu",
+            "hedef": "₺15.000",
+            "mevcut": "₺4.100",
+            "ilerleme": "%27",
+            "beklenen_ilerleme": "%44",
+            "durumda_mi": false,
+            "kalan_ay": 5
+          },
+          {
+            "ad": "Borç Kapatma",
+            "hedef": "₺18.500",
+            "mevcut": "₺6.000",
+            "ilerleme": "%32",
+            "beklenen_ilerleme": "%42",
+            "durumda_mi": false,
+            "kalan_ay": 7
+          }
+        ],
+        "ontrack_oran": "%61"
+      }
+    }
+  }
+}

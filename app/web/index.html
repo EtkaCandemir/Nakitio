@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Nakitio — Prototip</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<div class="phone">
+  <header class="topbar">
+    <div class="avatar">D</div>
+    <div class="topbar-mid">
+      <div class="brand">nakitio</div>
+      <div class="state-pills" id="statePills">
+        <button data-state="gun0">Gün 0</button>
+        <button data-state="ilk_ekstre">İlk ekstre</button>
+        <button data-state="olgun" class="on">Olgun</button>
+      </div>
+    </div>
+    <div class="bell">🔔</div>
+  </header>
+
+  <main id="view"></main>
+
+  <nav class="tabbar">
+    <button data-tab="home" class="on"><span>🏠</span>Ana Sayfa</button>
+    <button data-tab="analysis"><span>📊</span>Analiz</button>
+    <button class="fab" id="fab">+</button>
+    <button data-tab="plan"><span>🎯</span>Planlar</button>
+    <button data-tab="coach"><span>🤖</span>Koç</button>
+  </nav>
+</div>
+
+<div class="sheet-wrap" id="sheetWrap" hidden>
+  <div class="sheet-bg" data-close></div>
+  <div class="sheet" id="sheet"></div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="/app.js"></script>
+</body>
+</html>

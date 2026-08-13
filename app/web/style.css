@@ -1,0 +1,187 @@
+/* Nakitio prototip — mor birincil, yeşil semantik (Docs/ekran-mimarisi-v1.md §2) */
+
+:root{
+  --mor:#6D28D9; --mor-2:#5B21B6; --mor-acik:#EDE9FE; --mor-metin:#4C1D95;
+  --yesil:#16A34A; --yesil-bg:#DCFCE7;
+  --kirmizi:#DC2626; --kirmizi-bg:#FEE2E2;
+  --amber:#D97706; --amber-bg:#FEF3C7;
+  --zemin:#F5F5F7; --kart:#fff; --metin:#18181B; --soluk:#71717A;
+  --cizgi:#E4E4E7; --r:18px; --golge:0 1px 3px rgba(24,24,27,.06),0 6px 20px rgba(24,24,27,.05);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+/* `hidden` özniteliği, display tanımlayan kurallar tarafından ezilir.
+   .sheet-wrap `display:flex` taşıdığı için sheet kapanmıyordu. */
+[hidden]{display:none!important}
+body{
+  font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,system-ui,sans-serif;
+  background:#27272A;color:var(--metin);display:flex;justify-content:center;
+  min-height:100vh;
+}
+.phone{
+  width:100%;max-width:412px;background:var(--zemin);min-height:100vh;
+  display:flex;flex-direction:column;position:relative;overflow:hidden;
+}
+
+/* ── üst bar ─────────────────────────────────────────────────────────── */
+.topbar{
+  display:flex;align-items:center;gap:12px;padding:14px 16px 10px;
+  background:var(--kart);border-bottom:1px solid var(--cizgi);
+  position:sticky;top:0;z-index:20;
+}
+.avatar{
+  width:36px;height:36px;border-radius:50%;background:var(--mor-acik);
+  color:var(--mor-2);display:grid;place-items:center;font-weight:700;flex:0 0 auto;
+}
+.topbar-mid{flex:1;min-width:0}
+.brand{font-weight:800;color:var(--mor);letter-spacing:-.4px;font-size:17px}
+.state-pills{display:flex;gap:5px;margin-top:5px}
+.state-pills button{
+  font:600 10px/1 inherit;padding:5px 8px;border-radius:99px;border:1px solid var(--cizgi);
+  background:var(--kart);color:var(--soluk);cursor:pointer;
+}
+.state-pills button.on{background:var(--mor);border-color:var(--mor);color:#fff}
+.bell{font-size:18px;opacity:.7}
+
+/* ── ana alan ────────────────────────────────────────────────────────── */
+main{flex:1;overflow-y:auto;padding:14px 14px 96px;display:flex;flex-direction:column;gap:12px}
+.card{background:var(--kart);border-radius:var(--r);padding:16px;box-shadow:var(--golge)}
+.card.flat{box-shadow:none;border:1px solid var(--cizgi)}
+h2.sec{font-size:12px;font-weight:700;color:var(--soluk);letter-spacing:.6px;
+  text-transform:uppercase;margin:6px 2px -2px}
+.muted{color:var(--soluk)}
+.tiny{font-size:12px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.stack{display:flex;flex-direction:column;gap:10px}
+
+/* ── skor kartı ──────────────────────────────────────────────────────── */
+.score{
+  background:linear-gradient(150deg,var(--mor) 0%,var(--mor-2) 60%,#4C1D95 100%);
+  color:#fff;border-radius:22px;padding:18px;box-shadow:0 8px 26px rgba(91,33,182,.28);
+}
+.score .lbl{font-size:12px;opacity:.85;font-weight:600}
+.score .big{font-size:46px;font-weight:800;letter-spacing:-2px;line-height:1.05;margin-top:2px}
+.score .big small{font-size:17px;font-weight:600;opacity:.7;letter-spacing:0}
+.score .chip{
+  display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.18);
+  padding:4px 10px;border-radius:99px;font-size:12px;font-weight:600;margin-top:8px
+}
+.score .note{font-size:12px;opacity:.85;margin-top:9px;line-height:1.45}
+.score .meta{
+  display:flex;gap:14px;margin-top:14px;padding-top:12px;
+  border-top:1px solid rgba(255,255,255,.16);font-size:11px;opacity:.9
+}
+
+/* ── dönem bölgeleri ─────────────────────────────────────────────────── */
+.zone-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:2px}
+.zone-head b{font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--soluk)}
+.zone-head span{font-size:12px;color:var(--soluk)}
+.partial{border:1px dashed #C4B5FD;background:#FBFAFF}
+.trio{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.trio div{background:var(--zemin);border-radius:12px;padding:10px 8px;text-align:center}
+.trio .k{font-size:10px;color:var(--soluk);font-weight:600}
+.trio .v{font-size:15px;font-weight:700;margin-top:3px;letter-spacing:-.3px}
+
+/* ── uyarı / cta ─────────────────────────────────────────────────────── */
+.alert{display:flex;gap:10px;align-items:flex-start;background:var(--amber-bg);
+  border-radius:var(--r);padding:13px 14px;font-size:13px;line-height:1.45}
+.insight{display:flex;gap:10px;align-items:flex-start;background:#FFFBEB;
+  border:1px solid #FDE68A;border-radius:var(--r);padding:13px 14px;font-size:13px;line-height:1.45}
+.cta{
+  width:100%;border:0;border-radius:14px;padding:14px;font:700 15px/1 inherit;
+  background:var(--mor);color:#fff;cursor:pointer;margin-top:12px
+}
+.cta.ghost{background:var(--mor-acik);color:var(--mor-2)}
+.cta.sm{padding:11px;font-size:13px;margin-top:8px}
+
+/* ── bileşen listesi ─────────────────────────────────────────────────── */
+.pillar{display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid var(--cizgi)}
+.pillar:last-child{border-bottom:0}
+.pillar .nm{flex:1;font-size:13.5px;font-weight:600}
+.pillar .pt{font-size:13px;font-weight:700;white-space:nowrap}
+.bar{height:6px;border-radius:99px;background:var(--cizgi);overflow:hidden;margin-top:5px}
+.bar i{display:block;height:100%;border-radius:99px;background:var(--mor)}
+.bar.g i{background:var(--yesil)} .bar.a i{background:var(--amber)} .bar.r i{background:var(--kirmizi)}
+
+/* ── etiketler ───────────────────────────────────────────────────────── */
+.tag{display:inline-block;padding:3px 9px;border-radius:99px;font-size:11px;font-weight:700}
+.tag.g{background:var(--yesil-bg);color:#166534}
+.tag.a{background:var(--amber-bg);color:#92400E}
+.tag.r{background:var(--kirmizi-bg);color:#991B1B}
+.tag.m{background:var(--mor-acik);color:var(--mor-metin)}
+
+/* ── triyaj ──────────────────────────────────────────────────────────── */
+.triage-card{border:1px solid var(--cizgi);border-radius:16px;padding:14px;background:var(--kart)}
+.triage-card .amt{font-size:20px;font-weight:800;letter-spacing:-.5px}
+.triage-card .why{font-size:12px;color:var(--soluk);margin-top:7px;line-height:1.45}
+.tbtns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.tbtns button{border:1px solid var(--cizgi);background:var(--kart);border-radius:12px;
+  padding:12px;font:700 13px/1 inherit;cursor:pointer}
+.tbtns button.no{border-color:#FCA5A5;color:#B91C1C;background:#FEF2F2}
+.tbtns button.yes{border-color:#86EFAC;color:#15803D;background:#F0FDF4}
+
+/* ── koç ─────────────────────────────────────────────────────────────── */
+.qchips{display:flex;flex-wrap:wrap;gap:7px}
+.qchips button{border:1px solid var(--cizgi);background:var(--kart);border-radius:99px;
+  padding:9px 13px;font:600 12.5px/1 inherit;cursor:pointer}
+.bubble{background:var(--mor-acik);border-radius:16px;padding:14px;font-size:14px;line-height:1.55}
+.verify{border-radius:14px;padding:12px;font-size:12px;line-height:1.5;margin-top:10px}
+.verify.ok{background:var(--yesil-bg);color:#14532D}
+.verify.no{background:var(--kirmizi-bg);color:#7F1D1D}
+.ledger{font:11px/1.7 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--soluk);
+  background:var(--zemin);border-radius:12px;padding:11px;margin-top:9px;max-height:170px;overflow:auto}
+
+/* ── liste ───────────────────────────────────────────────────────────── */
+.li{display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid var(--cizgi)}
+.li:last-child{border-bottom:0}
+.li .nm{flex:1;font-size:13.5px}
+.li .nm small{display:block;color:var(--soluk);font-size:11.5px;margin-top:1px}
+.li .v{font-weight:700;font-size:13.5px;white-space:nowrap}
+
+/* ── alt bar ─────────────────────────────────────────────────────────── */
+.tabbar{
+  position:absolute;left:0;right:0;bottom:0;display:flex;align-items:center;
+  background:var(--kart);border-top:1px solid var(--cizgi);padding:7px 6px 10px;z-index:20
+}
+.tabbar button{
+  flex:1;border:0;background:none;cursor:pointer;font:600 10px/1.3 inherit;
+  color:var(--soluk);display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 0
+}
+.tabbar button span{font-size:19px;filter:grayscale(1);opacity:.55}
+.tabbar button.on{color:var(--mor)} .tabbar button.on span{filter:none;opacity:1}
+.fab{
+  flex:0 0 auto!important;width:54px;height:54px;border-radius:50%;
+  background:var(--mor)!important;color:#fff!important;font-size:28px!important;
+  font-weight:300!important;margin:-22px 8px 0;box-shadow:0 6px 18px rgba(109,40,217,.42);
+  display:grid!important;place-items:center;line-height:1!important;
+}
+
+/* ── sheet ───────────────────────────────────────────────────────────── */
+.sheet-wrap{position:fixed;inset:0;z-index:50;display:flex;align-items:flex-end;
+  justify-content:center}
+.sheet-bg{position:absolute;inset:0;background:rgba(24,24,27,.45)}
+.sheet{position:relative;width:100%;max-width:412px;background:var(--kart);
+  border-radius:22px 22px 0 0;padding:18px 16px 26px;max-height:86vh;overflow-y:auto}
+.sheet h3{font-size:17px;margin-bottom:4px}
+.sheet .sub{font-size:13px;color:var(--soluk);margin-bottom:14px}
+.opt{width:100%;display:flex;gap:12px;align-items:center;border:1px solid var(--cizgi);
+  background:var(--kart);border-radius:14px;padding:14px;margin-bottom:9px;cursor:pointer;
+  font:inherit;text-align:left}
+.opt b{display:block;font-size:14px} .opt small{color:var(--soluk);font-size:12px}
+.field{margin-bottom:11px}
+.field label{display:block;font-size:12px;font-weight:600;color:var(--soluk);margin-bottom:5px}
+.field input,.field select{width:100%;border:1px solid var(--cizgi);border-radius:12px;
+  padding:12px;font:15px inherit;background:var(--kart)}
+.seg{display:flex;gap:7px}
+.seg button{flex:1;border:1px solid var(--cizgi);background:var(--kart);border-radius:11px;
+  padding:11px;font:600 13px/1 inherit;cursor:pointer}
+.seg button.on{background:var(--mor);border-color:var(--mor);color:#fff}
+
+/* ── toast ───────────────────────────────────────────────────────────── */
+.toast{position:fixed;bottom:96px;left:50%;transform:translateX(-50%);z-index:60;
+  background:#18181B;color:#fff;padding:11px 17px;border-radius:99px;font-size:13px;
+  font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.3);max-width:340px;text-align:center}
+
+.empty{text-align:center;padding:26px 18px}
+.empty .ico{font-size:38px;margin-bottom:10px}
+.empty h3{font-size:16px;margin-bottom:6px}
+.empty p{font-size:13.5px;color:var(--soluk);line-height:1.55}
