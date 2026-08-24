@@ -519,12 +519,15 @@ STATES = {"gun0": state_gun0, "ilk_ekstre": state_ilk_ekstre, "olgun": state_olg
 
 
 def build_all() -> Dict[str, Any]:
-    from normalize import PIPELINE_VERSION
+    from normalize import CATEGORY_VERSION, PIPELINE_VERSION
     return {
         "meta": {
             "surum": SCREEN_DATA_VERSION,
             "skor_modeli": MODEL_VERSION,
             "veri_hatti": PIPELINE_VERSION,
+            # Kategorizasyon hattın geri kalanından hızlı evrilir ve
+            # tek başına herkesin skorunu değiştirebilir; ayrı saklanır.
+            "kategorizasyon": CATEGORY_VERSION,
             "ekstre_alimi": INGEST_VERSION,
             "kullanici": "Didem (kanonik demo profili)",
             "not": "Tüm sayılar engine/fixture_didem.py'deki ham işlemlerden "

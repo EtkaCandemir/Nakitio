@@ -16,10 +16,12 @@ from __future__ import annotations
 import math
 import re
 import statistics
+import unicodedata
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from typing import Dict, List, Optional, Tuple
 
+import markalar
 from data_model import (
     Account, AccountType, BehaviorTag, Budget, CATEGORIES, Category,
     CategorySource, CPISeries, DEFAULT_CATEGORY, EMOTIONAL_TAGS,
@@ -29,6 +31,30 @@ from data_model import (
 from score_engine import Features
 
 PIPELINE_VERSION = "1.0.0"
+
+#: KATEGORİZASYON SÜRÜMÜ — `PIPELINE_VERSION`'dan AYRI tutulur.
+#:
+#: Neden ayrı: N9 hattın geri kalanından çok daha hızlı evrilir. Sözlüğe
+#: bir marka eklemek N1–N8'i etkilemez ama HERKESİN skorunu değiştirir —
+#: "Diğer"e düşen bir harcama kategorize olunca `e_essential` değişir, o da
+#: `ef_months` ve `disc_share` üzerinden P3/P4'ü oynatır.
+#:
+#: Bir skor kaydı ÜÇÜNÜ birden saklamalıdır: MODEL_VERSION,
+#: PIPELINE_VERSION, CATEGORY_VERSION. Aksi hâlde "skorum neden değişti"
+#: sorusuna cevap veremeyiz ve modeli güvenle değiştiremeyiz.
+CATEGORY_VERSION = "1.1.0"
+
+#: `CATEGORY_VERSION`'ın karşılık geldiği İÇERİK PARMAK İZİ.
+#:
+#: ELLE BUMPLANAN SÜRÜM KAÇINILMAZ OLARAK KAYAR. Biri sözlüğe marka ekler,
+#: sürümü bumplamayı unutur — ve o andan itibaren sürüm YALAN söyler.
+#: Yalan söyleyen bir sürüm, olmayandan kötüdür: skor farkını uzlaştırırken
+#: ona güvenirsin.
+#:
+#: `t_category_version_fingerprint` bu değeri hesaplanana karşı denetler.
+#: Kategorizasyonu etkileyen bir şey değiştiyse test kırılır ve sürümü
+#: bumplamanı söyler. Bu, `docs_sync` felsefesinin koda uygulanmasıdır.
+CATEGORY_FINGERPRINT = "61701cd0eccf212d"
 
 WINDOW_DAYS = 30
 N_WINDOWS = 6          # W0..W5 — 6 pencerelik geçmiş tutulur
@@ -71,29 +97,97 @@ def windows(as_of: date, n: int = N_WINDOWS) -> List[Window]:
 # beslemesi olacaktır. Buradaki kural tablosu sözleşmeyi ve kalite
 # ölçümünü göstermek içindir; kapsamı kasıtlı olarak sınırlıdır.
 
+# L2 — JENERİK TÜRKÇE TÜR SÖZCÜKLERİ
+#
+# Buradaki desenler MARKA DEĞİL, TÜR yakalar. Marka tanıma `markalar.py`
+# sözlüğünde (L1) ve ondan ÖNCE çalışır.
+#
+# Neden ayrı iki katman: gerçek bir kart ekstresinde ölçüldü — satırların
+# yalnızca ~%25'i tanınmış bir zincirdi, gerisi yerel işletmeydi
+# ("BUYUKKAYALAR MARKET", "TUNALI KOFTECISI", "METIN GIDA LTD.STI.").
+# Tek şubeli bir dükkânı sözlüğe yazmak değersizdir; ama Türkçe işletme
+# adları TÜRÜNÜ neredeyse her zaman adın içinde söyler. Bu katman onu okur
+# ve sözlüğün ulaşamadığı uzun kuyruğu kapatır.
+#
+# `\b` sınırları şart: "ET" sınırsız yazılırsa "PETROL", "MARKET",
+# "TİCARET" hepsini yakalar.
+#
+# Desenler ASCII BÜYÜK HARFtir — `_rule_blob` metni öyle üretir.
+
 MERCHANT_RULES: List[Tuple[str, str]] = [
-    (r"MIGROS|A101|BIM|ŞOK|SOK MARKET|CARREFOUR|MACROCENTER|GETIR(?! YEMEK)", "market"),
-    (r"STARBUCKS|KAHVE|COFFEE|YEMEKSEPETI|GETIR YEMEK|TRENDYOL YEMEK|DOMINO|BURGER|RESTORAN|LOKANTA|CAFE", "restoran"),
-    (r"SHELL|OPET|PETROL OFISI|BP |TOTAL|ISTANBULKART|IETT|METRO ISTANBUL|UBER|BITAKSI|MARTI", "ulasim"),
-    (r"TURKCELL|VODAFONE|TURK TELEKOM|SUPERONLINE|TTNET", "iletisim"),
-    (r"IGDAS|BEDAS|ISKI|ENERJISA|AYEDAS|ASKI|BASKENT GAZ|ELEKTRIK|DOGALGAZ|SU FATURA", "faturalar"),
-    (r"NETFLIX|SPOTIFY|YOUTUBE PREMIUM|DISNEY|BLUTV|EXXEN|AMAZON PRIME|ICLOUD|GOOGLE ONE", "abonelik"),
-    (r"ZARA|LC WAIKIKI|LCW|DEFACTO|KOTON|MAVI|H&M|BERSHKA|PULL&BEAR|BOYNER", "giyim"),
-    (r"TEKNOSA|VATAN BILGISAYAR|MEDIAMARKT|APPLE STORE|SAMSUNG", "elektronik"),
-    (r"ECZANE|HASTANE|MEDICAL|POLIKLINIK|LABORATUVAR|DENT", "saglik"),
-    (r"KIRA ODEMESI|KIRA TRANSFER", "kira"),
-    (r"AIDAT|SITE YONETIM|APARTMAN", "aidat"),
-    (r"SIGORTA|ANADOLU SIG|AXA|ALLIANZ|KASKO|DASK", "sigorta"),
-    (r"MAC FIT|MACFIT|SPORTS INTERNATIONAL|FITNESS|GYM", "spor"),
-    (r"SINEMA|CINEMAXIMUM|TIYATRO|BILETIX|PASSO|KONSER|STEAM|PLAYSTATION", "eglence"),
-    (r"THY|TURKISH AIRLINES|PEGASUS|BOOKING|OTEL|HOTEL|TATIL", "tatil"),
-    (r"OKUL|UNIVERSITE|KURS|UDEMY|KOLEJ", "egitim"),
-    (r"MILLI PIYANGO|IDDAA|NESINE|BILYONER", "sans_oyunu"),
-    (r"TEKEL|ALKOL|VINOLUS", "alkol_tutun"),
-    (r"WATSONS|GRATIS|ROSSMANN|KUAFOR|BERBER", "kisisel"),
-    (r"IKEA|KOCTAS|BAUHAUS|ENGLISH HOME|MADAME COCO", "ev"),
-    (r"VERGI|MTV|GELIR IDARESI|E-DEVLET", "vergi"),
+    # ── Gıda perakendesi ────────────────────────────────────────────────
+    # Fırın/unlu mamuller buraya girer: ekmek temel besindir (0,85).
+    (r"\bGIDA\b|\bMARKET\b|\bBAKKAL\b|\bMANAV\b|\bKASAP\b|\bSARKUTERI\b"
+     r"|\bKURUYEMIS|\bUNLU MAM|\bFIRIN\b|\bPASTANE\b|\bEKMEK\b|\bSUT\b"
+     r"|\bTOPTAN\b|\bBAHARAT\b", "market"),
+
+    # ── Hazır yemek ve tatlı ────────────────────────────────────────────
+    # Tatlıcı/helvacı/şekerci BURADA, market'te değil. Ayrım "dükkân mı
+    # lokanta mı" değil, "temel besin mi keyif mi" ekseninde yapılır —
+    # çünkü `essential_weight` skorun kullandığı eksen budur ve baklava
+    # %85 zorunlu bir harcama değildir.
+    (r"\bLOKANTA\b|\bKOFTE|\bKEBAP|\bPIDE\b|\bDONER\b|\bMANGAL\b"
+     r"|\bOCAKBASI\b|\bBAKLAVA|\bTATLI|\bHELVA|\bSEKERCI|\bSEKERLEME\b"
+     r"|\bBOREK|\bPOGACA\b|\bSIMIT\b|\bDONDURMA|\bCIKOLATA|\bYEMEK\b"
+     r"|\bSANDVIC|\bBUFE\b|\bCAY EVI\b|\bKANTIN\b|\bOTOMAT\b"
+     r"|\bKAHVE\b|\bCOFFE|\bCAFE\b|\bRESTORAN\b|\bMESHUR\b.*\bET\b"
+     r"|\bUSTA\b", "restoran"),
+
+    # ── Ulaşım ──────────────────────────────────────────────────────────
+    (r"\bAKARYAKIT\b|\bBENZIN|\bMOTORIN\b|\bPETROL\b|\bSCOOTER\b"
+     r"|\bOTOPARK\b|\bPARKOMAT\b|\bTASIMACILIK\b|\bOTOGAR\b|\bTAKSI\b"
+     r"|\bOTO YIKAMA\b|\bLASTIK\b|\bOTO SERVIS\b", "ulasim"),
+
+    # ── Giyim ───────────────────────────────────────────────────────────
+    (r"\bGIYIM\b|\bTEKSTIL\b|\bKONFEKSIYON\b|\bAYAKKABI\b|\bTRIKO\b"
+     r"|\bKUNDURA\b|\bCANTA\b|\bBUTIK\b", "giyim"),
+
+    # ── Ev / yaşam ──────────────────────────────────────────────────────
+    (r"\bMOBILYA\b|\bZUCCACIYE\b|\bHIRDAVAT\b|\bNALBUR\b|\bYAPI MARKET\b"
+     r"|\bBEYAZ ESYA\b|\bPERDE\b|\bHALI\b|\bAVIZE\b|\bMEFRUSAT\b", "ev"),
+
+    # ── Sağlık ──────────────────────────────────────────────────────────
+    # "ECZANE" Türkçe iyelik ekiyle de gelir: ECZANESİ, ECZANEDEN.
+    # Sondaki `\b` bilerek YOK ki ek alan biçimler de eşleşsin.
+    (r"\bECZANE|\bHASTANE|\bMEDICAL\b|\bPOLIKLINIK|\bLABORATUVAR"
+     r"|\bDIS ?HEKIM|\bTIP ?MERKEZ|\bOPTIK\b", "saglik"),
+
+    # ── Kişisel bakım ───────────────────────────────────────────────────
+    (r"\bKUAFOR\b|\bBERBER\b|\bGUZELLIK\b|\bKOZMETIK\b|\bPARFUM"
+     r"|\bSPA\b|\bMASAJ\b", "kisisel"),
+
+    # ── Konut ve düzenli yükümlülükler ──────────────────────────────────
+    (r"\bKIRA ODEMESI\b|\bKIRA TRANSFER\b", "kira"),
+    (r"\bAIDAT\b|\bSITE YONETIM\b|\bAPARTMAN\b", "aidat"),
+    (r"\bELEKTRIK\b|\bDOGALGAZ\b|\bSU FATURA\b|\bFATURA ODEME\b", "faturalar"),
+    (r"\bSIGORTA\b|\bKASKO\b|\bDASK\b|\bPOLICE\b", "sigorta"),
+
+    # ── Resmî ödemeler ──────────────────────────────────────────────────
+    (r"\bVERGI\b|\bMTV\b|\bGELIR IDARESI\b|\bE-?DEVLET\b|\bTAPU\b"
+     r"|\bKADASTRO\b|\bDONER SERMAYE\b|\bNOTER\b|\bHARC\b|\bBELEDIYE\b"
+     r"|\bSGK\b|\bTRAFIK CEZASI\b", "vergi"),
+
+    # ── Eğitim / spor / eğlence ─────────────────────────────────────────
+    (r"\bOKUL\b|\bUNIVERSITE\b|\bKURS\b|\bKOLEJ\b|\bDERSHANE\b"
+     r"|\bANAOKUL", "egitim"),
+    (r"\bFITNESS\b|\bSPOR ?SALON|\bGYM\b|\bPILATES\b|\bYUZME\b", "spor"),
+    (r"\bSINEMA\b|\bTIYATRO\b|\bKONSER\b|\bMUZE\b|\bOYUN ?SALON", "eglence"),
+    (r"\bTEKEL\b|\bALKOL\b|\bTUTUN\b", "alkol_tutun"),
+    (r"\bOTEL\b|\bHOTEL\b|\bTATIL\b|\bPANSIYON\b|\bTUR ?ACENTE", "tatil"),
+
+    # ── Diğer ───────────────────────────────────────────────────────────
+    (r"\bVETERINER\b|\bPETSHOP\b|\bPET ?SHOP\b", "diger"),
 ]
+
+#: Ödeme aracıları — kendileri bir harcama kategorisi DEĞİLDİR.
+#:
+#: "IYZICO/AMAZON.COM.TR" satırında kategoriyi belirleyen şey Iyzico değil,
+#: arkasındaki işyeridir. Aracı adı soyulmazsa bu satırlar toptan "diğer"e
+#: düşer; gerçek bir ekstrede yalnız Iyzico üzerinden geçen tutar 12.322 TL
+#: idi ve "Diğer" bir kategori değil, kategorize edilememişlerin kovasıdır.
+PAYMENT_INTERMEDIARIES = ("IYZICO", "HEPSIPAY", "PAYTR", "PARATIKA",
+                          "SIPAY", "PAYU", "CRAFTGATE", "IPARA", "MOKA")
+
 
 MCC_RULES: Dict[str, str] = {
     "5411": "market", "5812": "restoran", "5814": "restoran",
@@ -103,18 +197,146 @@ MCC_RULES: Dict[str, str] = {
 }
 
 
-def categorize(txns: List[Transaction], user_overrides: Dict[str, str] = None) -> Dict[str, int]:
-    """Öncelik: kullanıcı düzeltmesi > kural > MCC > varsayılan."""
+def _fold_upper(s: str) -> str:
+    """ASCII katlama + büyük harf. Desen eşleştirmesinin ortak zemini.
+
+    Türkçe'de `.upper()` YETMEZ: "İ".upper() yine "İ"dir, "I" olmaz. Bu
+    yüzden ASCII yazılmış bir desen aksanlı metinle sessizce eşleşmez —
+    "ALIŞVERİŞ FAİZİ" satırı `ALISVERIS FAIZI` desenini kaçırır ve faiz
+    harcama sanılır.
+
+    Bu hata bu depoda ÜÇ ayrı katmanda ortaya çıktı: ekstre ayrıştırmada
+    (`statement_ingest._fold`), kategorizasyonda ve tür sınıflandırmada.
+    Kural tablolarındaki "MAAS|MAAŞ" gibi çift yazımlar da aynı eksikliğin
+    izidir — katlama yapılınca gereksizleşirler.
+    """
+    s = unicodedata.normalize("NFKD", s)
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    return s.replace("ı", "i").replace("İ", "I").upper()
+
+
+def _rule_blob(merchant: Optional[str], desc: Optional[str]) -> str:
+    """Kural eşleştirmesi için normalleştirilmiş metin.
+
+    İKİ İŞ YAPAR:
+
+    1. ASCII KATLAMA. Kural tablosu aksansız yazılıdır ("PETROL OFISI")
+       ama banka aksanlı yazabilir ("PETROL OFİSİ A.Ş."). Yalnız `.upper()`
+       yapmak yetmez: "İ".upper() yine "İ"dir, "I" olmaz — eşleşme sessizce
+       kaçar. Gerçek bir ekstrede sigorta ve akaryakıt satırları tam olarak
+       bu yüzden "diğer"e düşüyordu.
+
+       `statement_ingest._fold` ile aynı felsefe, aynı gerekçe: burada da
+       Türkçe'ye özgü `I → ı` eşlemesi KULLANILMAZ, ASCII'ye düşürülür.
+
+    2. ARACI SOYMA. "IYZICO/AMAZON.COM.TR" satırında kategoriyi belirleyen
+       şey aracı değil, arkasındaki işyeridir.
+    """
+    blob = _fold_upper(f"{merchant or ''} {desc or ''}")
+
+    # "IYZICO/AMAZON.COM.TR" → "AMAZON.COM.TR" (aracı önekini at)
+    #
+    # Ayırıcı, ARACININ KENDİSİNDEN sonraki '/' olmalı — ilk '/' değil.
+    # "İADE/ IYZICO/AMAZON.COM.TR" satırında ilk '/' iade işaretinden
+    # sonradır; oradan bölmek aracıyı metinde bırakır ve soymayı işlevsiz
+    # kılar. Aracının konumundan sonrasına bakmak bu tuzağı kapatır.
+    for araci in PAYMENT_INTERMEDIARIES:
+        i = blob.find(araci)
+        if i < 0:
+            continue
+        j = blob.find("/", i + len(araci))
+        if j >= 0:
+            arka = blob[j + 1:].strip()
+            if arka:
+                return arka
+        break
+    return blob
+
+
+def categorize(txns: List[Transaction],
+               user_overrides: Dict[str, str] = None,
+               merchant_overrides: Dict[str, str] = None) -> Dict[str, int]:
+    """N9 — kategorizasyon. Katmanlı, en özelden en genele.
+
+        L0  işlem düzeltmesi   `user_overrides[txn_id]`   → bu TEK işlem
+        L0' işyeri hafızası    `merchant_overrides[mid]`  → o işyerinin HEPSİ
+        L1  faiz/ücret         desen                      → tüketim değil
+        L2  marka sözlüğü      `markalar.py`              → zincirler
+        L3  tür sözcüğü        `MERCHANT_RULES`           → yerel işletmeler
+        L4  MCC                kart kodu                  → ekstrede genelde YOK
+        L5  ÇEKİMSER           `diger` + `CategorySource.NONE`
+
+    ÇEKİMSERLİK bir başarısızlık değil, bir cevaptır. `diger`'in
+    `essential_weight`'i `None`'dır; hesap katmanı ona sabit bir ağırlık
+    uydurmaz, oranı bilinen harcamadan tahmin eder.
+
+    `merchant_id` HER dalda atanır ve hafızanın anahtarıdır. Marka
+    tanınıyorsa kanonik anahtar kullanılır ("a101"), böylece bir düzeltme
+    o zincirin tüm şubelerini kapsar.
+    """
     user_overrides = user_overrides or {}
-    stats = {"user": 0, "rule": 0, "mcc": 0, "default": 0}
+    merchant_overrides = merchant_overrides or {}
+    stats = {"user": 0, "hafiza": 0, "faiz_ucret": 0, "marka": 0, "rule": 0,
+             "mcc": 0, "default": 0}
 
     for t in txns:
+        # ── L0 — tek işleme özel düzeltme, her şeyi ezer ────────────────
         if t.id in user_overrides:
             t.category, t.category_source = user_overrides[t.id], CategorySource.USER
+            t.merchant_id = _merchant_key(t.merchant_raw or t.description_raw)
+            t.category_layer = "islem_duzeltmesi"
             stats["user"] += 1
             continue
 
-        blob = f"{t.merchant_raw or ''} {t.description_raw or ''}".upper()
+        blob = _rule_blob(t.merchant_raw, t.description_raw)
+
+        # ── L1 — faiz/ücret: İŞYERİ harcaması değil ─────────────────────
+        #
+        # DİKKAT: `t.kind`'a bakılMAZ. Şartnamedeki hat sırası N9'u tür
+        # sınıflandırmadan ÖNCE çalıştırır (`Docs/veri-katmani-v1.md` §4),
+        # dolayısıyla burada `kind` henüz atanmamıştır. Desen iki yerde de
+        # bağımsız kontrol edilir; sıraya bağımlılık sessiz hata üretirdi.
+        if t.try_amount < 0 and (re.search(INTEREST_PATTERNS, blob)
+                                 or re.search(FEE_PATTERNS, blob)):
+            t.category, t.category_source = "faiz_ucret", CategorySource.RULE
+            t.merchant_id = "faiz_ucret"
+            t.category_layer = "faiz_ucret"
+            stats["faiz_ucret"] += 1
+            continue
+
+        # ── KİMLİK önce, kategori sonra ─────────────────────────────────
+        # Hafıza `merchant_id`'ye bağlıdır, dolayısıyla kimlik kategoriden
+        # ÖNCE belirlenmek zorunda. Marka tanınıyorsa kanonik anahtar
+        # kullanılır: "9922-5650-A101 C" ve "9946-E325-A101 TUNAL" aynı
+        # 'a101' anahtarına düşer, yoksa mağaza kodu sızar ve aynı zincirin
+        # iki şubesi iki ayrı işyeri sanılır — bir düzeltme diğerini
+        # kapsamazdı.
+        marka = markalar.bul(blob)
+        t.merchant_id = (marka.anahtar if marka is not None
+                         else _merchant_key(t.merchant_raw or t.description_raw))
+
+        # ── L0' — İŞYERİ HAFIZASI ───────────────────────────────────────
+        # Kullanıcı bir kez düzeltti; o işyerinin GEÇMİŞ ve GELECEK tüm
+        # işlemleri düzelir. Marka sözlüğünden de üstündür: kullanıcı
+        # kendi bağlamını bizden iyi bilir (aynı zincirden iş yemeği
+        # alıyor olabilir).
+        if t.merchant_id in merchant_overrides:
+            t.category = merchant_overrides[t.merchant_id]
+            t.category_source = CategorySource.USER
+            t.category_layer = "isyeri_hafizasi"
+            stats["hafiza"] += 1
+            continue
+
+        # ── L2 — marka sözlüğü ──────────────────────────────────────────
+        # Jenerik kalıplardan ÖNCE, çünkü daha özeldir: "MEDIAMARKT"
+        # elektronikçidir, jenerik `\bMARKET\b` kalıbına düşmemeli.
+        if marka is not None:
+            t.category, t.category_source = marka.kategori, CategorySource.RULE
+            t.category_layer = "marka"
+            stats["marka"] += 1
+            continue
+
+        # ── L3 — jenerik Türkçe tür sözcükleri ──────────────────────────
         hit = None
         for pattern, cat in MERCHANT_RULES:
             if re.search(pattern, blob):
@@ -122,17 +344,225 @@ def categorize(txns: List[Transaction], user_overrides: Dict[str, str] = None) -
                 break
         if hit:
             t.category, t.category_source = hit, CategorySource.RULE
-            t.merchant_id = _merchant_key(t.merchant_raw or t.description_raw)
+            t.category_layer = "tur_sozcugu"
             stats["rule"] += 1
         elif t.mcc and t.mcc in MCC_RULES:
+            # L4 — MCC. Kart EKSTRESİNDE genelde YOKTUR; yalnızca açık
+            # bankacılık akışında gelir. Ekstre modelinde bu katman
+            # pratikte ölüdür, yük L2+L3'tedir.
             t.category, t.category_source = MCC_RULES[t.mcc], CategorySource.MCC
-            t.merchant_id = _merchant_key(t.merchant_raw or t.description_raw)
+            t.category_layer = "mcc"
             stats["mcc"] += 1
         else:
+            # L5 — ÇEKİMSER
             t.category, t.category_source = DEFAULT_CATEGORY, CategorySource.NONE
-            t.merchant_id = _merchant_key(t.merchant_raw or t.description_raw)
+            t.category_layer = "cekimser"
             stats["default"] += 1
     return stats
+
+
+def _fold_upper(s: str) -> str:
+    """ASCII katlama + büyük harf. Desen eşleştirmesinin ortak zemini.
+
+    Türkçe'de `.upper()` YETMEZ: "İ".upper() yine "İ"dir, "I" olmaz. Bu
+    yüzden ASCII yazılmış bir desen aksanlı metinle sessizce eşleşmez —
+    "ALIŞVERİŞ FAİZİ" satırı `ALISVERIS FAIZI` desenini kaçırır ve faiz
+    harcama sanılır.
+
+    Bu hata bu depoda ÜÇ ayrı katmanda ortaya çıktı: ekstre ayrıştırmada
+    (`statement_ingest._fold`), kategorizasyonda ve tür sınıflandırmada.
+    Kural tablolarındaki "MAAS|MAAŞ" gibi çift yazımlar da aynı eksikliğin
+    izidir — katlama yapılınca gereksizleşirler.
+    """
+    s = unicodedata.normalize("NFKD", s)
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    return s.replace("ı", "i").replace("İ", "I").upper()
+
+
+def _rule_blob(merchant: Optional[str], desc: Optional[str]) -> str:
+    """Kural eşleştirmesi için normalleştirilmiş metin.
+
+    İKİ İŞ YAPAR:
+
+    1. ASCII KATLAMA. Kural tablosu aksansız yazılıdır ("PETROL OFISI")
+       ama banka aksanlı yazabilir ("PETROL OFİSİ A.Ş."). Yalnız `.upper()`
+       yapmak yetmez: "İ".upper() yine "İ"dir, "I" olmaz — eşleşme sessizce
+       kaçar. Gerçek bir ekstrede sigorta ve akaryakıt satırları tam olarak
+       bu yüzden "diğer"e düşüyordu.
+
+       `statement_ingest._fold` ile aynı felsefe, aynı gerekçe: burada da
+       Türkçe'ye özgü `I → ı` eşlemesi KULLANILMAZ, ASCII'ye düşürülür.
+
+    2. ARACI SOYMA. "IYZICO/AMAZON.COM.TR" satırında kategoriyi belirleyen
+       şey aracı değil, arkasındaki işyeridir.
+    """
+    blob = _fold_upper(f"{merchant or ''} {desc or ''}")
+
+    # "IYZICO/AMAZON.COM.TR" → "AMAZON.COM.TR" (aracı önekini at)
+    #
+    # Ayırıcı, ARACININ KENDİSİNDEN sonraki '/' olmalı — ilk '/' değil.
+    # "İADE/ IYZICO/AMAZON.COM.TR" satırında ilk '/' iade işaretinden
+    # sonradır; oradan bölmek aracıyı metinde bırakır ve soymayı işlevsiz
+    # kılar. Aracının konumundan sonrasına bakmak bu tuzağı kapatır.
+    for araci in PAYMENT_INTERMEDIARIES:
+        i = blob.find(araci)
+        if i < 0:
+            continue
+        j = blob.find("/", i + len(araci))
+        if j >= 0:
+            arka = blob[j + 1:].strip()
+            if arka:
+                return arka
+        break
+    return blob
+
+
+def category_fingerprint() -> str:
+    """Kategorizasyonu etkileyen HER ŞEYİN içerik özeti.
+
+    Kapsananlar — biri değişirse kullanıcıların kategorileri (ve dolaylı
+    olarak skorları) değişir:
+
+      · taksonomi        `CATEGORIES` — anahtar, etiket, essential_weight
+      · marka sözlüğü    `markalar.MARKALAR` — desen ve kategori
+      · tür sözcükleri   `MERCHANT_RULES`
+      · MCC eşlemesi     `MCC_RULES`
+      · özel desenler    faiz/ücret, kıymetli maden, ödeme aracıları
+
+    Sıraya duyarlıdır ve olması gerekir: kural sırası sonucu değiştirir
+    ("TRENDYOL YEMEK" önce gelirse restoran, sonra gelirse pazaryeri).
+    """
+    import hashlib
+
+    parcalar: List[str] = []
+    for c in CATEGORIES.values():
+        parcalar.append(f"kat|{c.key}|{c.label}|{c.essential_weight}|{c.cpi_group}")
+    for m in markalar.MARKALAR:
+        parcalar.append(f"marka|{m.anahtar}|{m.desen}|{m.kategori}")
+    for desen, kat in MERCHANT_RULES:
+        parcalar.append(f"kural|{desen}|{kat}")
+    for kod, kat in sorted(MCC_RULES.items()):
+        parcalar.append(f"mcc|{kod}|{kat}")
+    parcalar.append(f"faiz|{INTEREST_PATTERNS}")
+    parcalar.append(f"ucret|{FEE_PATTERNS}")
+    parcalar.append(f"maden|{KIYMETLI_MADEN_PATTERNS}")
+    parcalar.append(f"araci|{'|'.join(PAYMENT_INTERMEDIARIES)}")
+
+    ham = "\n".join(parcalar).encode("utf-8")
+    return hashlib.sha256(ham).hexdigest()[:16]
+
+
+def category_telemetry(ledger, window) -> Dict[str, object]:
+    """Katman bazında TUTAR ağırlıklı kapsam — üretim telemetrisi.
+
+    Adet kırılımı yanıltıcıdır: 12 tane 30 TL'lik scooter işlemi, tek bir
+    12.000 TL'lik taksitten daha çok "kapsam" gibi görünür. Oysa
+    `e_essential`'i belirleyen TUTARdır. Yatırım kararı ("hangi katmana
+    emek verelim") bu kırılımla verilmelidir.
+
+    `bilinmeyen_agirlik_payi` en kritik rakamdır: `essential_weight`'i
+    `None` olan harcamanın payı — yani tahmin edicinin ne kadarını
+    ekstrapolasyonla ürettiği. Yükseldikçe `ef_months` ve `disc_share`
+    daha az ölçüm, daha çok tahmin olur.
+    """
+    from collections import defaultdict
+
+    katman_tutar: Dict[str, float] = defaultdict(float)
+    toplam = bilinmeyen_agirlik = 0.0
+    for tutar, kategori, t in ledger.expenses_accrual(window):
+        toplam += tutar
+        katman = (t.category_layer if t is not None else "amortisman") or "bilinmiyor"
+        katman_tutar[katman] += tutar
+        w = CATEGORIES.get(kategori, CATEGORIES[DEFAULT_CATEGORY]).essential_weight
+        if w is None:
+            bilinmeyen_agirlik += tutar
+
+    p = (lambda v: round(v / toplam, 4)) if toplam > 0 else (lambda v: 0.0)
+    return {
+        "category_version": CATEGORY_VERSION,
+        "toplam_tutar": round(toplam, 2),
+        "katman_tutar": {k: round(v, 2) for k, v in
+                         sorted(katman_tutar.items(), key=lambda x: -x[1])},
+        "katman_pay": {k: p(v) for k, v in
+                       sorted(katman_tutar.items(), key=lambda x: -x[1])},
+        "cekimser_payi": p(katman_tutar.get("cekimser", 0.0)),
+        "bilinmeyen_agirlik_payi": p(bilinmeyen_agirlik),
+    }
+
+
+def select_category_triage(ledger, window, k: int = 8) -> List[Dict]:
+    """Kategorisi çözülemeyen İŞYERLERİNİ tutara göre sıralar.
+
+    İMPULS TRİYAJINDAN YAPISAL OLARAK FARKLIDIR
+    --------------------------------------------
+    `behavior_infer.select_for_triage` soruyu İŞLEME sorar, çünkü
+    "bu plansız mıydı" her işlem için ayrı cevaplanır — aynı marketten
+    yapılan iki alışverişten biri plansız olabilir.
+
+    Kategori öyle değil: bir işyeri ne satıyorsa onu satar. Bu yüzden soru
+    İŞYERİNE sorulur ve cevap `RawData.category_overrides` üzerinden o
+    işyerinin GEÇMİŞ ve GELECEK tüm işlemlerine yayılır. Bir soru = bir
+    işyeri = potansiyel olarak onlarca işlem.
+
+    Bu, soru başına bilgi kazancını impuls triyajından çok daha yüksek
+    yapar ve kullanıcıya sorulacak soru sayısını düşürür.
+
+    SEÇİM ÖLÇÜTÜ
+    ------------
+    Belirsizlik burada olasılık değil ikilidir — ya biliyoruz ya
+    bilmiyoruz. Dolayısıyla sıralama saf TUTARdır: en çok parayı
+    aydınlatan soru önce sorulur.
+
+    İki tür aday vardır:
+      · ÇEKİMSER kalınanlar (`CategorySource.NONE`) — hiç eşleşmedi
+      · İÇERİĞİ bilinmeyenler (pazaryeri) — işyeri belli, ne alındığı değil
+
+    Faiz/ücret aday DEĞİLDİR: bir işyeri harcaması olmadığı için sorulacak
+    bir şey yoktur.
+    """
+    from collections import defaultdict
+
+    zaten = set(ledger.raw.category_overrides or {})
+    grup: Dict[str, Dict] = defaultdict(
+        lambda: {"tutar": 0.0, "adet": 0, "ornek": "", "neden": ""})
+
+    for tutar, kategori, t in ledger.expenses_accrual(window):
+        if t is None or kategori == "faiz_ucret":
+            continue
+        mid = t.merchant_id or ""
+        if not mid or mid in zaten:
+            continue
+
+        cekimser = t.category_source == CategorySource.NONE
+        icerik_bilinmez = (kategori in CATEGORIES
+                           and CATEGORIES[kategori].essential_weight is None
+                           and not cekimser)
+        if not (cekimser or icerik_bilinmez):
+            continue
+
+        g = grup[mid]
+        g["tutar"] += tutar
+        g["adet"] += 1
+        if not g["ornek"]:
+            g["ornek"] = (t.merchant_raw or t.description_raw or "").strip()
+        g["neden"] = ("bu işyerini tanımıyoruz" if cekimser
+                      else "pazaryeri — ne alındığı ekstrede yazmıyor")
+
+    toplam = sum(g["tutar"] for g in grup.values()) or 1.0
+    out = [{"merchant_id": mid, "ornek": g["ornek"], "tutar": round(g["tutar"], 2),
+            "adet": g["adet"], "pay": round(g["tutar"] / toplam, 4),
+            "neden": g["neden"]}
+           for mid, g in grup.items()]
+    out.sort(key=lambda x: -x["tutar"])
+    return out[:k]
+
+
+#: Türk ticaret unvanı ekleri — işyerini AYIRT ETMEZLER, gürültüdür.
+#: "METIN GIDA LTD.STI." ile "METIN GIDA" aynı işyeridir. Banka bunları
+#: bazen 20 karakterde keser ("DETSAN KIMYA SANAYI VE TI"), o yüzden
+#: desenler kısmî yazımı da yakalar.
+TICARI_UNVAN = (r"\b(A\.?S\.?|LTD|STI|SIRKET|TIC(ARET)?|SAN(AYI)?|ANONIM|ANONI"
+                r"|KOLL|KOMANDIT|SUBE|SB|MAGAZA|POS|ISYERI)\b\.?")
 
 
 def _merchant_key(s: Optional[str]) -> str:
@@ -142,12 +572,23 @@ def _merchant_key(s: Optional[str]) -> str:
     """
     if not s:
         return ""
-    s = s.upper()
-    s = re.sub(r"[*#]\d+", " ", s)
-    s = re.sub(r"\b\d{4,}\b", " ", s)
-    s = re.sub(r"\b(A\.?S\.?|LTD|STI|TIC|SAN|IST|ANKARA|IZMIR|SUBE|POS)\b", " ", s)
-    s = re.sub(r"[^A-ZÇĞİÖŞÜ ]", " ", s)
-    return " ".join(s.split()[:2]).lower()
+
+    blob = _rule_blob(s, "")          # aracı soyma + ASCII katlama
+
+    # Marka tanınıyorsa kanonik anahtar. Şube/mağaza kodundan bağımsız
+    # olduğu için aynı zincirin her şubesi TEK işyeri sayılır.
+    marka = markalar.bul(blob)
+    if marka is not None:
+        return marka.anahtar
+
+    # Tanınmayan işyeri: gürültüyü ayıkla, anlamlı ilk iki kelimeyi al.
+    b = re.sub(r"/\s*[A-Z]+\s*$", " ", blob)        # şehir soneki: "/ANKARA"
+    b = re.sub(r"[*#]\d+", " ", b)                   # POS referansı: "*4471"
+    b = re.sub(r"\b[A-Z]{0,2}\d{2,}[A-Z]?\b", " ", b)  # mağaza kodu: "O831", "E325"
+    b = re.sub(r"\b\d+\b", " ", b)                  # çıplak sayılar
+    b = re.sub(TICARI_UNVAN, " ", b)                 # "A.Ş.", "LTD.ŞTİ.", "TİC."
+    b = re.sub(r"[^A-Z ]", " ", b)
+    return " ".join(b.split()[:2]).lower()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -159,16 +600,67 @@ CARD_PAY_PATTERNS = r"KREDI KARTI ODEME|KART BORC|KKB ODEME|EKSTRE ODEME"
 LOAN_PAY_PATTERNS = r"KREDI TAKSIT|IHTIYAC KREDISI|KONUT KREDISI|TASIT KREDISI|KREDI ODEME"
 REFUND_PATTERNS = r"IADE|IPTAL|REFUND|CHARGEBACK"
 
+#: Faiz ve banka ücretleri — TÜKETİM DEĞİL, borcun/hesabın maliyeti.
+#:
+#: Doğru sınıflandırmanın iki somut sonucu var:
+#:   · `behavior_infer` yalnızca `PURCHASE` bakar → faiz artık "plansız
+#:     harcama" havuzuna girmez. 6.693 TL'lik kart faizini impuls analizine
+#:     sokmak, davranış ölçümünü anlamsız kılar.
+#:   · `EXPENSE_KINDS` FEE/INTEREST'i içerir → nakit akışında KALIR, ki
+#:     doğrusu budur: para gerçekten çıkıyor.
+#:
+#: BSMV (Banka ve Sigorta Muameleleri Vergisi) ve KKDF (Kaynak Kullanımını
+#: Destekleme Fonu) Türkiye'ye özgüdür ve kart ekstresinde ayrı satır gelir.
+#: KIYMETLİ MADEN / DÖVİZ ALIMI — tüketim değil BİRİKİMdir.
+#:
+#: Türkiye'de hanehalkı altını bir birikim aracı olarak alır. Kuyumcudan
+#: yapılan alım "harcama" sayılırsa hem gider şişer hem tasarruf oranı
+#: eksik ölçülür — kullanıcı gerçekte biriktirirken savruk görünür.
+#:
+#: ⚠ ÇIPLAK "ALTIN" DESENİ YASAK. Gerçek bir ekstrede "ALTIN" üç kez
+#: geçiyordu ve HİÇBİRİ altın alımı değildi: "ALTINDAĞ" (Ankara ilçesi) ve
+#: "altındaki" (sıradan kelime). Bu yüzden yalnızca güçlü bağlamlar
+#: kabul edilir; `\bALTIN\b` bile riskli olduğu için ("Altın Cafe")
+#: satış/alım bağlamı aranır.
+KIYMETLI_MADEN_PATTERNS = (
+    r"\bKUYUMCU|\bKUYUM\b|\bSARRAF|\bZIYNET|\bGRAM ?ALTIN"
+    r"|CUMHURIYET ?ALTIN|\bRESAT\b|\bALTIN ?(SATIS|ALIM|BORSA|GRAM)"
+    r"|\bDOVIZ ?(BUROSU|ALIM|SATIS)|\bEXCHANGE\b|\bDARPHANE\b")
+
+INTEREST_PATTERNS = (r"ALISVERIS FAIZI|NAKIT ?(CEKIM)? ?FAIZI|GECIKME FAIZI"
+                     r"|AKDI FAIZ|\bFAIZ\b|TEMERRUT")
+FEE_PATTERNS = (r"\bBSMV\b|\bKKDF\b|\bODTF\b|KART ?(AIDAT|UCRET)"
+                r"|YILLIK ?UCRET|ISLEM ?UCRETI|EKSTRE ?UCRETI|HESAP ?ISLETIM"
+                r"|\bKOMISYON\b|DAMGA ?VERGISI")
+
 
 def classify_kinds(raw: RawData) -> Dict[str, int]:
     stats: Dict[str, int] = {}
     for t in raw.transactions:
         acc = raw.account(t.account_id)
         atype = acc.type if acc else AccountType.CHECKING
-        blob = f"{t.merchant_raw or ''} {t.description_raw or ''}".upper()
+        # Katlanmış metin — aksanlı yazım ASCII desenle eşleşsin diye.
+        blob = _fold_upper(f"{t.merchant_raw or ''} {t.description_raw or ''}")
 
         if re.search(REFUND_PATTERNS, blob) and t.try_amount > 0:
             t.kind = TxnKind.REFUND
+        # Faiz/ücret, hesap türünden ÖNCE bakılır: kart hesabında her çıkış
+        # varsayılan olarak PURCHASE sayılır ve faiz de öyle sınıflanırdı.
+        elif t.try_amount < 0 and re.search(INTEREST_PATTERNS, blob):
+            t.kind = TxnKind.INTEREST
+        elif t.try_amount < 0 and re.search(FEE_PATTERNS, blob):
+            t.kind = TxnKind.FEE
+        # Kıymetli maden/döviz alımı — YALNIZCA likit hesaptan.
+        #
+        # FİNANSMAN KOŞULU KRİTİKTİR: kredi kartıyla alınan altın tasarruf
+        # DEĞİLDİR, yıllık %51 faizle borçlanıp varlık biriktirmektir.
+        # Tasarruf sayarsak P3 yükselirken P2'deki gerçek kötüleşme
+        # görünmez olur — model kendi kendini kandırır. `LIQUID_TYPES`
+        # koşulu kart dalından ÖNCE gelir ama kartı yakalamaz, çünkü
+        # kredi kartı likit hesap değildir.
+        elif (t.try_amount < 0 and atype in LIQUID_TYPES
+              and re.search(KIYMETLI_MADEN_PATTERNS, blob)):
+            t.kind = TxnKind.SAVINGS_CONTRIB
         elif atype == AccountType.CREDIT_CARD:
             # Kart hesabında: çıkış = harcama, giriş = borç ödemesi
             t.kind = TxnKind.PURCHASE if t.try_amount < 0 else TxnKind.CARD_PAYMENT
@@ -604,21 +1096,31 @@ class Ledger:
             if not w.contains(t.ts.date()):
                 continue
             acc = self.raw.account(t.account_id)
-            if not acc or acc.type not in SAVINGS_TYPES:
+            if acc and acc.type in SAVINGS_TYPES:
+                if t.kind == TxnKind.SAVINGS_CONTRIB:
+                    net += t.inflow
+                elif t.kind == TxnKind.SAVINGS_WITHDRAW:
+                    net -= t.outflow
                 continue
-            if t.kind == TxnKind.SAVINGS_CONTRIB:
-                net += t.inflow
-            elif t.kind == TxnKind.SAVINGS_WITHDRAW:
-                net -= t.outflow
+            # Birikim HESABI olmayan yerden de birikim yapılabilir:
+            # likit hesaptan kuyumcuya yapılan altın alımı. `classify_kinds`
+            # bunu SAVINGS_CONTRIB işaretler ama hesap türü CHECKING'dir,
+            # dolayısıyla yukarıdaki hesap-türü süzgeci onu kaçırırdı.
+            if t.kind == TxnKind.SAVINGS_CONTRIB and t.try_amount < 0:
+                net += t.outflow
         return net
 
 
 def normalize(raw: RawData, as_of: date,
               user_overrides: Dict[str, str] = None) -> Ledger:
     """N1–N9 hattını sırayla çalıştırır. Sıra önemlidir."""
-    diag: Dict[str, object] = {"pipeline_version": PIPELINE_VERSION}
+    diag: Dict[str, object] = {"pipeline_version": PIPELINE_VERSION,
+                               "category_version": CATEGORY_VERSION}
 
-    diag["categorize"] = categorize(raw.transactions, user_overrides)   # N9
+    # İşyeri hafızası ham veriyle birlikte gelir; parametreyle geçirilmez.
+    # Kullanıcının kalıcı bilgisidir, çağrı bağlamının değil.
+    diag["categorize"] = categorize(raw.transactions, user_overrides,
+                                    raw.category_overrides)              # N9
     diag["classify"] = classify_kinds(raw)
     diag["transfers"] = match_internal_transfers(raw)                   # N1
     diag["card"] = resolve_card_payments(raw)                           # N2
@@ -657,6 +1159,46 @@ def _cv(xs: List[float]) -> Optional[float]:
     return statistics.pstdev(xs) / m
 
 
+def _essential_tahmini(rows, toplam: float) -> float:
+    """Zorunlu gideri, ağırlığı BİLİNEN harcamadan TAHMİN EDEREK hesaplar.
+
+    Bazı kategorilerin `essential_weight`'i `None`'dır: pazaryeri ("işyerini
+    biliyoruz, ne alındığını bilmiyoruz") ve "diğer" (hiç eşleşmedi). Bunlar
+    için üç yol vardı ve ikisi yanlıştı:
+
+      1. Ortalama bir ağırlık uydur (eski davranış: 0,40).
+         → Bilmediğimiz şey hakkında iddiada bulunur. Gerçek bir kart
+           ekstresinde harcamanın %37'si bu şekilde tahmin ediliyordu.
+
+      2. Toplamdan tamamen düş.
+         → DAHA KÖTÜ, çünkü `e_essential` bir PAYDADIR: `ef_months =
+           ef_liquid / e_essential`. Payda küçülünce acil fon daha uzun
+           dayanıyor GÖRÜNÜR. Ölçüldü: aynı ekstrede ef_months 0,74 yerine
+           1,30 çıkıyordu — bilmemek %76 ödül kazandırıyordu.
+
+      3. Bilinen kısımdaki zorunluluk oranını toplama genişlet.  ← SEÇİLEN
+         → Kapsam düştükçe tahmin belirsizleşir ama YANLI kalmaz.
+
+    Bu, deponun davranış katmanında zaten kullandığı desenin aynısıdır
+    (`Docs/DECISIONS.md` D6): `oran = (plansız_etiketli / etiketli) ×
+    isteğe_bağlı_pay`. Gerekçe de aynı: payda olarak doğrudan toplamı almak,
+    kapsam düştükçe sistematik olarak eksik ölçer.
+
+    Hiç bilinen harcama yoksa 0,0 döner. Bu güvenlidir: `Features.ef_months`
+    o durumda `e_total`'a düşer, yani mümkün olan en muhafazakâr paydaya.
+    """
+    bilinen_tutar = bilinen_ess = 0.0
+    for a, c, _ in rows:
+        w = CATEGORIES.get(c, CATEGORIES[DEFAULT_CATEGORY]).essential_weight
+        if w is None:
+            continue
+        bilinen_tutar += a
+        bilinen_ess += a * w
+    if bilinen_tutar <= 0:
+        return 0.0
+    return (bilinen_ess / bilinen_tutar) * toplam
+
+
 def derive_features(ledger: Ledger) -> Features:
     """Normalize edilmiş defterden `Features` üretir.
 
@@ -688,9 +1230,9 @@ def derive_features(ledger: Ledger) -> Features:
     exp_w, ess_w = [], []
     for w in W:
         rows = ledger.expenses_cash(w)
-        exp_w.append(sum(a for a, _, _ in rows))
-        ess_w.append(sum(a * CATEGORIES.get(c, CATEGORIES[DEFAULT_CATEGORY]).essential_weight
-                         for a, c, _ in rows))
+        toplam = sum(a for a, _, _ in rows)
+        exp_w.append(toplam)
+        ess_w.append(_essential_tahmini(rows, toplam))
     e_total = _median(exp_w[:3])
     e_essential = _median(ess_w[:3])
 

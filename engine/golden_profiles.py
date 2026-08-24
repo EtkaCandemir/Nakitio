@@ -327,6 +327,18 @@ P("nur", "Toplu işlem silme tespit edildi — güven düşürüldü", "72-82",
   onboarding=ONB["iyi"], prev_score=78)
 
 
+#: Kod yolu KAPSAMI için sonradan eklenen profiller — gerçekçi bir kullanıcıyı
+#: temsil etmezler, duyarlılık analizinin "ölçülemedi" dediği parametreleri
+#: tetiklemek için vardır. `Docs/skor-modeli-v2.md` §10 yalnızca senaryo
+#: profillerini listeler; ayrımın tek kaynağı burasıdır.
+KAPSAM_PROFILLERI = ("emre", "hakan", "sibel", "tolga", "nur")
+
+
+def senaryo_profilleri():
+    """Kapsam profilleri hariç, gerçekçi senaryoyu temsil eden profiller."""
+    return {k: v for k, v in PROFILES.items() if k not in KAPSAM_PROFILLERI}
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 
 def run_table():
@@ -355,6 +367,32 @@ def run_detail(key: str):
         print(f"\n  yumuşatma: {r.smoothing}")
 
 
+#: Süreklilik testinin taradığı günler — gün-30 uçurumunun iki yanı sık örneklenir.
+SUREKLILIK_GUNLERI = (10, 15, 20, 25, 28, 30, 31, 35, 40, 60, 90)
+
+
+def veri_sureklilik():
+    """[(gün, ScoreResult)] — gün 30 uçurumunun kalktığının ölçümü.
+
+    `run_continuity()` bunu yazdırır, `docs_sync.py` aynı listeden
+    `Docs/skor-modeli-v2.md` §5'teki tabloyu üretir. Hesap TEK yerde
+    durmalı: iki kopya olsaydı biri diğerinden sessizce ayrışırdı — bu
+    dosyanın düzeltmek için var olduğu sapmanın ta kendisi.
+    """
+    import dataclasses
+    base, _, _ = PROFILES["merve"]
+    out = []
+    for d in SUREKLILIK_GUNLERI:
+        f = dataclasses.replace(
+            base, days_of_data=d,
+            # veri kalitesi de günle birlikte doğal olarak artar
+            categorized_ratio=min(0.95, 0.55 + d * 0.004),
+            beh_coverage=min(0.80, 0.15 + d * 0.008),
+        )
+        out.append((d, compute_score(f)))
+    return out
+
+
 def run_continuity():
     """Gün 30 uçurumunun kalktığını kanıtlar.
 
@@ -363,18 +401,9 @@ def run_continuity():
     """
     print("\n\nSÜREKLİLİK TESTİ — gün 20 → 40 (v1'deki gün-30 uçurumu)")
     print("=" * 76)
-    base, _, _ = PROFILES["merve"]
     print(f"{'gün':>4} {'C':>6} {'ham':>7} {'öncül':>7} {'karma':>7} {'skor':>6}  aşama")
     print("-" * 76)
-    import dataclasses
-    for d in (10, 15, 20, 25, 28, 30, 31, 35, 40, 60, 90):
-        f = dataclasses.replace(
-            base, days_of_data=d,
-            # veri kalitesi de günle birlikte doğal olarak artar
-            categorized_ratio=min(0.95, 0.55 + d * 0.004),
-            beh_coverage=min(0.80, 0.15 + d * 0.008),
-        )
-        r = compute_score(f)
+    for d, r in veri_sureklilik():
         print(f"{d:>4} {r.confidence:>6.2f} {r.raw_score:>7.1f} "
               f"{r.prior_score:>7.1f} {r.blended_score:>7.1f} {r.score:>6}  "
               f"{r.stage_label}")
@@ -382,15 +411,16 @@ def run_continuity():
     print("Not: skor kademeli ilerliyor, gün 30/31 arasında sıçrama YOK.")
 
 
-def run_simulation():
-    """AI koçun 'bu planı uygularsan X olur' vaadinin kaynağı."""
-    print("\n\nSİMÜLASYON — Didem için AI aksiyon planı")
-    print("=" * 76)
+def veri_simulasyon():
+    """(baz, [(etiket, ScoreResult)], katkı_satırları) — Didem'in aksiyon planı.
+
+    `run_simulation()` ve `docs_sync.py` bunu ortak kullanır; bkz.
+    `veri_sureklilik()` üzerindeki gerekçe.
+    """
     f, _, _ = PROFILES["didem"]
     # Baz da simulate() ile alınır: simülasyon çıktıları yumuşatmasız
     # olduğu için karşılaştırmanın aynı ölçekte olması gerekir.
     base = simulate(f)
-    print(f"Mevcut durum: {base.score}/100  ({base.level})\n")
 
     steps = [
         ("Restoran limiti (aylık -600 TL gider)",
@@ -408,25 +438,42 @@ def run_simulation():
               ef_liquid=f.ef_liquid + 4_500, s_consistency_months=6,
               imp_rate=0.15, night_conc=0.07, regret_rate=0.18)),
     ]
-    prev = base
-    for label, ch in steps:
-        r = simulate(f, **ch)
+    adimlar = [(etiket, simulate(f, **ch)) for etiket, ch in steps]
+    son = adimlar[-1][1] if adimlar else base
+    return base, adimlar, attribute(base, son)
+
+
+def run_simulation():
+    """AI koçun 'bu planı uygularsan X olur' vaadinin kaynağı."""
+    print("\n\nSİMÜLASYON — Didem için AI aksiyon planı")
+    print("=" * 76)
+    base, adimlar, katki = veri_simulasyon()
+    print(f"Mevcut durum: {base.score}/100  ({base.level})\n")
+
+    for label, r in adimlar:
         print(f"{label:<45} → {r.score}/100  ({r.score - base.score:+d})")
-        prev = r
+    prev = adimlar[-1][1] if adimlar else base
 
     print("\n3 ay sonunda beklenen skor:", prev.score,
           f"({prev.level})  — bandı: {prev.band[0]}-{prev.band[1]}")
     print("\nKatkı ayrıştırma (mevcut → plan sonu):")
-    for row in attribute(base, prev):
+    for row in katki:
         arrow = ""
         if row["from"] is not None and row["to"] is not None:
             arrow = f"   {row['from']} → {row['to']}"
         print(f"  {row['delta']:+6.2f}  {row['label']}{arrow}")
 
 
-def run_edge_cases():
-    print("\n\nSINIR DURUMLARI")
-    print("=" * 76)
+def veri_sinir_durumlari():
+    """[(etiket, ScoreResult, [devre_dışı_bileşen])] — §11'in ölçülmüş hâli."""
+    out = []
+    for label, f in _sinir_vakalari():
+        r = compute_score(f)
+        out.append((label, r, [p.label for p in r.pillars if not p.enabled]))
+    return out
+
+
+def _sinir_vakalari():
     cases = [
         ("Sıfır gelir (işsiz)", Features(
             user_id="e1", days_of_data=120, i_net=0, e_total=8_000,
@@ -460,23 +507,40 @@ def run_edge_cases():
             categorized_ratio=0.9, accounts_declared=3, accounts_linked=1,
             integrity_flag=True, onboarding=ONB["iyi"])),
     ]
-    for label, f in cases:
-        r = compute_score(f)
-        dis = [p.label for p in r.pillars if not p.enabled]
+    return cases
+
+
+def run_edge_cases():
+    print("\n\nSINIR DURUMLARI")
+    print("=" * 76)
+    for label, r, dis in veri_sinir_durumlari():
         print(f"{label:<32} skor={r.score:>3} band={r.band[0]}-{r.band[1]:<3} "
               f"C={r.confidence:.2f}  {r.level}"
               + (f"   [devre dışı: {', '.join(dis)}]" if dis else ""))
 
 
-def run_material_event():
-    print("\n\nMADDİ OLAY TESTİ — gecikmeye düşen kullanıcı")
-    print("=" * 76)
+def veri_maddi_olay():
+    """(normal, kötüleşme, iyileşme) — yumuşatmanın asimetrisinin ölçümü.
+
+    Kötüleşme maddi olay üretir ve ±8 sınırını AŞAĞI yönde kaldırır;
+    aynı büyüklükteki iyi haber sınıra tabi kalır.
+    """
     import dataclasses
     f, _, _ = PROFILES["didem"]
     ok = compute_score(f)
     bad = compute_score(dataclasses.replace(
         f, days_past_due=15, min_payment_only_months=2,
         card_balance=21_000, prev_score=ok.score))
+    good = compute_score(dataclasses.replace(
+        f, s_deliberate=f.s_deliberate + 9_000, ef_liquid=f.ef_liquid + 60_000,
+        s_consistency_months=6, prev_score=ok.score))
+    return ok, bad, good
+
+
+def run_material_event():
+    print("\n\nMADDİ OLAY TESTİ — gecikmeye düşen kullanıcı")
+    print("=" * 76)
+    ok, bad, good = veri_maddi_olay()
     print(f"Normal ay          : {ok.score}")
     print(f"Gecikmeye düştü    : {bad.score}  (Δ {bad.score - ok.score:+d})")
     print(f"  maddi olaylar    : {bad.material_events}")
@@ -485,9 +549,6 @@ def run_material_event():
     print("  → ±8 puan sınırı aşağı yönde BYPASS edildi: kötü haber gecikmez.")
 
     print("\n  Karşı test — aynı büyüklükte İYİ haber:")
-    good = compute_score(dataclasses.replace(
-        f, s_deliberate=f.s_deliberate + 9_000, ef_liquid=f.ef_liquid + 60_000,
-        s_consistency_months=6, prev_score=ok.score))
     print(f"  Ani büyük iyileşme : {good.score}  (Δ {good.score - ok.score:+d}) "
           f"cap_uygulandı={good.smoothing['cap_applied']}")
     print("  → Yukarı yönde sınır KORUNUR. Skor tek ayda satın alınamaz.")

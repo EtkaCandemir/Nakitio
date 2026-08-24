@@ -76,6 +76,44 @@ Asgari Ödeme Tutarı: 1.700,00
 """
 
 
+#: VakıfBank "Kredi Kartı Hesap Özeti (TL)" düzeni.
+#:
+#: İçeriği SENTETİKtir — gerçek bir ekstrenin YAPISI çıkarılıp uydurma
+#: tutar ve işyerleriyle yeniden kurulmuştur; kişisel veri içermez.
+#: Ama gerçek dosyadaki dört tuzağın DÖRDÜ de bilerek korunmuştur:
+#:
+#:   1. EN ondalık biçim — "1,234.56" (virgül BİNLİK, nokta ONDALIK).
+#:      `decimal="tr"` ile okunursa 1,23 çıkar: 1000 kat hata, sessiz.
+#:   2. Sonda WORLDPUAN sütunu — çıplak tam sayı, tutar sanılabilir.
+#:   3. KALAN TAKSİT sütunu — "3x1,200.00" ya da "Son Taksit".
+#:      Açıklamada yalnız SIRA var ("4. Taksit"), toplam adet burada.
+#:   4. "ÖNCEKİ DÖNEM ... BAKİYENİZ" satırı işlem düzenindedir ama
+#:      işlem DEĞİLDİR; elenmezse devir bakiyesi kadar hayalî harcama doğar.
+VAKIF_CARD_PDF = """\
+Kredi Kartı Hesap Özeti (TL)
+HESAP BİLGİLERİNİZ
+Dönem Borcunuz : 48,320.50 TL
+Asgari Ödeme Tutarı : 19,328.20 TL
+Son Ödeme Tarihi : 23.07.2026
+Kart No : 5521********9660
+Limitiniz : 90,000.00 TL
+Hesap Kesim Tarihi : 13.07.2026
+İŞLEM TARİHİ AÇIKLAMA TUTAR (TL) KALAN TAKSİT WORLDPUAN
+13.06.2026 ÖNCEKİ DÖNEM HESAP ÖZETİ BAKİYENİZ 40,000.00
+15.01.2026 BEYAZ ESYA MAGAZASI 6. Taksit 1,200.00 3x1,200.00
+20.06.2026 MARKET ALISVERISI 850.25 255
+21.06.2026 AKARYAKIT ISTASYONU 2,000.00 600
+22.06.2026 ONLINE MAGAZA 4. Taksit 750.00 Son Taksit
+25.06.2026 ÖDEMENİZ İÇİN TEŞEKKÜRLER +12,000.00
+28.06.2026 KITAPCI 320.00 96 *
+01.07.2026 İADE/ ONLINE MAGAZA +450.00
+13.07.2026 ALIŞVERİŞ FAİZİ (Oran:4.25) 1,700.25
+HESAP ÖZETİ
+Önceki Hesap Bakiyesi 40,000.00
+Dönem Borcunuz 48,320.50
+"""
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Ayrıştırma
 # ─────────────────────────────────────────────────────────────────────────────
@@ -136,6 +174,81 @@ def t_installment_detection():
           (bo.installment_index, bo.installment_count) == (1, 4))
     normal = next(r for r in st.rows if "STARBUCKS" in r.description)
     check("taksit: normal satırda taksit yok", normal.installment_count is None)
+
+
+def t_parse_vakifbank_card():
+    """VakıfBank düzeni — gerçek ekstreyle doğrulanan dört tuzak."""
+    st = parse_statement(VAKIF_CARD_PDF, "tr_vakifbank_card_pdf")
+
+    # ── Tuzak 1: EN ondalık biçim ──────────────────────────────────────
+    # Gerçek dosyada jenerik profil asgari ödemeyi 117.260,00 yerine
+    # 117,26 okumuştu. Yanlış ondalık biçimi UYARI ÜRETMEZ; makul
+    # görünen ama üç basamak yanlış bir sayı döndürür.
+    check("vakıf: dönem borcu EN biçimle okundu",
+          st.closing_balance == 48_320.50, f"{st.closing_balance}")
+    check("vakıf: asgari ödeme EN biçimle okundu",
+          st.minimum_payment == 19_328.20, f"{st.minimum_payment}")
+    check("vakıf: asgari ödeme 1000 kat küçülmedi",
+          st.minimum_payment > 1_000)
+
+    check("vakıf: kesim tarihi", st.period_end == date(2026, 7, 13))
+    check("vakıf: son ödeme tarihi", st.due_date == date(2026, 7, 23))
+    check("vakıf: kart no maskeli okundu",
+          (st.account_ref or "").endswith("9660"))
+
+    # ── Tuzak 4: devir bakiyesi işlem sayılmamalı ──────────────────────
+    check("vakıf: devir bakiyesi elendi", st.excluded == 1, f"{st.excluded}")
+    check("vakıf: devir bakiyesi işleme girmedi",
+          not any("BAKİYENİZ" in r.description for r in st.rows))
+    check("vakıf: 40.000 TL'lik hayalî harcama yok",
+          not any(abs(r.amount) == 40_000.0 for r in st.rows))
+
+    by = {r.description.split()[0]: r for r in st.rows}
+
+    # ── Tuzak 2: sondaki WORLDPUAN tutar sanılmamalı ───────────────────
+    check("vakıf: worldpuan tutar olarak okunmadı",
+          by["MARKET"].amount == -850.25, f"{by['MARKET'].amount}")
+    check("vakıf: sondaki yıldız satırı bozmadı",
+          by["KITAPCI"].amount == -320.00, f"{by['KITAPCI'].amount}")
+
+    # İşaret: harcama çıkış (negatif), ödeme ve iade giriş (pozitif).
+    check("vakıf: ödeme satırı pozitif",
+          by["ÖDEMENİZ"].amount == 12_000.00, f"{by['ÖDEMENİZ'].amount}")
+    check("vakıf: iade satırı pozitif",
+          any(r.amount == 450.00 and "İADE" in r.description for r in st.rows))
+
+
+def t_vakifbank_installment_columns():
+    """'6. Taksit' + ayrı kalan sütunu → toplam adet türetilir."""
+    st = parse_statement(VAKIF_CARD_PDF, "tr_vakifbank_card_pdf")
+    by = {r.description.split()[0]: r for r in st.rows}
+
+    # ── Tuzak 3 ────────────────────────────────────────────────────────
+    # Açıklama yalnız SIRAyı söyler; kaç taksit KALDIĞI ayrı sütundadır.
+    # toplam = sıra + kalan. Varsayılan INSTALLMENT_RE ("TAKSIT 3/12")
+    # bu düzeni göremez; gerçek ekstrede 16 taksitli satırın 16'sı da
+    # tanınmıyor ve kalan taahhüt görünmez kalıyordu.
+    check("vakıf: '6. Taksit' + '3x' → 6/9",
+          (by["BEYAZ"].installment_index, by["BEYAZ"].installment_count) == (6, 9),
+          f"{by['BEYAZ'].installment_index}/{by['BEYAZ'].installment_count}")
+    check("vakıf: 'Son Taksit' → sıra = toplam",
+          (by["ONLINE"].installment_index, by["ONLINE"].installment_count) == (4, 4),
+          f"{by['ONLINE'].installment_index}/{by['ONLINE'].installment_count}")
+    check("vakıf: taksitsiz satırda plan yok",
+          by["MARKET"].installment_count is None)
+
+    # Kalan taahhüt COMMIT oranının girdisidir — Borç Yükü'nün dörtte biri.
+    kalan = sum((r.installment_count - r.installment_index) * abs(r.amount)
+                for r in st.rows if r.installment_count)
+    check("vakıf: kalan taahhüt türetildi", kalan == 3_600.0, f"{kalan}")
+
+
+def t_vakifbank_generic_profile_fails_loudly():
+    """Jenerik kart profili bu dosyada SESSİZ kalmamalı."""
+    st = parse_statement(VAKIF_CARD_PDF, "tr_generic_card_pdf")
+    check("vakıf: jenerik profil hiç satır bulamaz", len(st.rows) == 0)
+    check("vakıf: jenerik profil uyarı üretir",
+          any("eşleşmedi" in w for w in st.warnings))
 
 
 def t_bad_profile_warns():
@@ -468,7 +581,9 @@ def t_end_to_end_from_statements():
 
 
 TESTS = [t_amount_parsing, t_parse_account_csv, t_parse_debit_credit,
-         t_parse_card_pdf, t_installment_detection, t_bad_profile_warns,
+         t_parse_card_pdf, t_installment_detection,
+         t_parse_vakifbank_card, t_vakifbank_installment_columns,
+         t_vakifbank_generic_profile_fails_loudly, t_bad_profile_warns,
          t_import_and_dedup, t_overlapping_periods,
          t_card_import_gives_debt_snapshot, t_fingerprint_sensitivity,
          t_coverage_and_gaps, t_effective_as_of, t_password_required,

@@ -15,12 +15,15 @@ import sys
 from datetime import date, datetime, timedelta
 
 from data_model import (
-    Account, AccountType, BehaviorTag, Budget, CATEGORIES, CPISeries,
+    Account, AccountType, BehaviorTag, Budget, CATEGORIES, CategorySource,
+    CPISeries,
     Goal, IncomeDeclaration, Liability, RawData, Transaction, TxnKind,
 )
 from normalize import (
     Ledger, build_features, normalize, real_value, windows,
-    _merchant_key, active_windows,
+    _merchant_key, active_windows, select_category_triage,
+    category_fingerprint, category_telemetry,
+    CATEGORY_VERSION, CATEGORY_FINGERPRINT,
 )
 
 FAILS: list = []
@@ -311,6 +314,381 @@ def t_n9_categorization():
           raw2.transactions[0].category == "hediye")
 
 
+def t_n9_turkish_folding():
+    """Aksanlı işyeri adı aksansız kuralla eşleşmeli."""
+    # Kural tablosu "PETROL OFISI" yazar; banka "PETROL OFİSİ" yazar.
+    # Yalnız .upper() yapmak YETMEZ: "İ".upper() yine "İ"dir, "I" olmaz.
+    # Gerçek bir kart ekstresinde akaryakıt ve sigorta satırları tam
+    # olarak bu yüzden "diğer"e düşüyordu.
+    raw = RD([CH], [
+        T("ch", 20, 40_000, "ACME", "MAAS ODEMESI"),
+        T("ch", 10, -900, "PETROL OFİSİ A.Ş./ESKİŞEHİR", "POS"),
+        T("ch", 9, -1_895, "HEPİYİ SİGORTA ANONİ", "POS"),
+    ])
+    normalize(raw, AS_OF)
+    by = {t.merchant_raw: t for t in raw.transactions}
+    check("N9: aksanlı 'PETROL OFİSİ' eşleşti",
+          by["PETROL OFİSİ A.Ş./ESKİŞEHİR"].category == "ulasim",
+          by["PETROL OFİSİ A.Ş./ESKİŞEHİR"].category)
+    check("N9: aksanlı 'SİGORTA' eşleşti",
+          by["HEPİYİ SİGORTA ANONİ"].category == "sigorta",
+          by["HEPİYİ SİGORTA ANONİ"].category)
+
+
+def t_n9_payment_intermediary_unwrapped():
+    """Aracı soyulur; kategori arkadaki işyerinden gelir."""
+    # "IYZICO/AMAZON.COM.TR" satırında kategoriyi Iyzico değil Amazon
+    # belirler. Soyulmazsa bu satırlar toptan "diğer"e düşer ve "diğer"
+    # bir kategori değil çöp kutusudur — hem disc_share'i hem farkındalık
+    # kartını bozar.
+    raw = RD([CH], [
+        T("ch", 20, 40_000, "ACME", "MAAS ODEMESI"),
+        T("ch", 10, -250, "IYZICO/YEMEKSEPETI", "POS"),
+        T("ch", 9, -400, "HEPSIPAY /TEKNOSA", "POS"),
+        T("ch", 8, -100, "IYZICO", "POS"),          # arkasında işyeri yok
+    ])
+    normalize(raw, AS_OF)
+    by = {t.merchant_raw: t for t in raw.transactions}
+    check("N9: IYZICO/YEMEKSEPETI → restoran",
+          by["IYZICO/YEMEKSEPETI"].category == "restoran",
+          by["IYZICO/YEMEKSEPETI"].category)
+    check("N9: HEPSIPAY /TEKNOSA → elektronik",
+          by["HEPSIPAY /TEKNOSA"].category == "elektronik",
+          by["HEPSIPAY /TEKNOSA"].category)
+    check("N9: çıplak aracı 'diğer' kalır",
+          by["IYZICO"].category == "diger")
+
+
+def t_n9_generic_turkish_patterns():
+    """Yerel işletme türünü adından söyler; jenerik kalıplar onu yakalar."""
+    # Zincir adı ezberlemek Türkiye'de yetmiyor: gerçek bir ekstrede
+    # satırların yalnızca %21'i marka kurallarıyla eşleşti. Türkçe
+    # işletme adları türü neredeyse her zaman içinde barındırır.
+    raw = RD([CH], [T("ch", 20, 40_000, "ACME", "MAAS ODEMESI")] + [
+        T("ch", 10 - i, -300, ad, "POS") for i, ad in enumerate([
+            "METIN GIDA LTD.STI.", "BUYUKKAYALAR MARKET", "TUNALI KOFTECISI",
+            "BAKLAVACI KARDESLER", "BASKENTLILER AKARYAKIT", "S/HOP SCOOTER",
+            "TUNALI GIYIM IMALAT", "MELISA MOBILYA",
+        ])])
+    normalize(raw, AS_OF)
+    by = {t.merchant_raw: t.category for t in raw.transactions}
+    for ad, beklenen in (("METIN GIDA LTD.STI.", "market"),
+                         ("BUYUKKAYALAR MARKET", "market"),
+                         ("TUNALI KOFTECISI", "restoran"),
+                         ("BAKLAVACI KARDESLER", "restoran"),
+                         ("BASKENTLILER AKARYAKIT", "ulasim"),
+                         ("S/HOP SCOOTER", "ulasim"),
+                         ("TUNALI GIYIM IMALAT", "giyim"),
+                         ("MELISA MOBILYA", "ev")):
+        check(f"N9: jenerik kalıp '{ad.split()[-1]}' → {beklenen}",
+              by[ad] == beklenen, f"{ad} → {by[ad]}")
+
+    # Marka kuralı jenerik kalıptan ÖNCE gelmeli: "MEDIAMARKT" içinde
+    # "MARKT" var ama elektronikçidir; jenerik "\bMARKET\b" onu yakalamaz.
+    raw2 = RD([CH], [T("ch", 20, 40_000, "ACME", "MAAS"),
+                     T("ch", 10, -5_000, "MEDIAMARKT ANKARA", "POS")])
+    normalize(raw2, AS_OF)
+    check("N9: marka kuralı jenerik kalıbı yener",
+          raw2.transactions[1].category == "elektronik",
+          raw2.transactions[1].category)
+
+
+def t_marka_sozlugu_kisa_desen_tuzagi():
+    """Kısa marka desenleri Türkçe kısaltmalarla çakışmamalı."""
+    # ASCII katlamada "ŞOK" → "SOK" olur; ama "SOK" Türkçe'de SOKAK
+    # kısaltmasıdır. Çıplak `\bSOK\b` deseni "POLATLI ZAFER SOK" adresini
+    # market sanıyordu — gerçek bir ekstrede ölçümle yakalandı ve tam da
+    # bu yüzden essential_weight metriği var: sessiz, makul görünen hata.
+    raw = RD([CH], [
+        T("ch", 20, 40_000, "ACME", "MAAS ODEMESI"),
+        T("ch", 10, -500, "POLATLI ZAFER SOK", "POS"),
+        T("ch", 9, -800, "SOK MARKET BAHCELIEVLER", "POS"),
+        T("ch", 8, -700, "MOBILYA DOLAP DUNYASI", "POS"),
+    ])
+    normalize(raw, AS_OF)
+    by = {t.merchant_raw: t.category for t in raw.transactions}
+    check("marka: 'SOK' sokak kısaltması market sayılmaz",
+          by["POLATLI ZAFER SOK"] == "diger", by["POLATLI ZAFER SOK"])
+    check("marka: 'SOK MARKET' market sayılır",
+          by["SOK MARKET BAHCELIEVLER"] == "market",
+          by["SOK MARKET BAHCELIEVLER"])
+    check("marka: 'DOLAP' mobilya, pazaryeri değil",
+          by["MOBILYA DOLAP DUNYASI"] == "ev", by["MOBILYA DOLAP DUNYASI"])
+
+
+def t_marka_kanonik_kimlik():
+    """Aynı zincirin farklı şubeleri TEK işyeri sayılmalı."""
+    # `merchant_id` yinelenen ödeme tespiti (N4), iade eşleştirme (N7) ve
+    # kullanıcı düzeltmelerinin kalıcılığının temelidir. Marka tanınmazsa
+    # mağaza kodu anahtara sızar: "9922-5650-A101 C" → 'a c',
+    # "9946-E325-A101 TUNAL" → 'e a' — aynı zincir iki ayrı işyeri olur.
+    check("kimlik: A101 mağaza kodundan bağımsız",
+          _merchant_key("9922 - 5650 - A101 C")
+          == _merchant_key("9946-E325-A101 TUNAL") == "a101")
+    check("kimlik: BİM şubeden bağımsız",
+          _merchant_key("BIM O831 GORDION POL")
+          == _merchant_key("BIM T288 YENIMAHALLE") == "bim")
+    check("kimlik: ticari unvan gürültüsü elenir",
+          _merchant_key("METIN GIDA LTD.STI.") == _merchant_key("METIN GIDA"))
+    check("kimlik: aksanlı yazım aynı anahtara düşer",
+          _merchant_key("PETROL OFİSİ A.Ş.") == _merchant_key("PETROL OFISI AS"))
+    # Farklı zincirler AYRI kalmalı — aşırı birleştirme de hatadır.
+    check("kimlik: farklı zincirler ayrı",
+          _merchant_key("OPET ANKARA") != _merchant_key("SHELL ANKARA"))
+
+
+def t_faiz_ucret_tuketim_sayilmaz():
+    """Faiz/ücret harcama kategorisi almamalı ve impuls havuzuna girmemeli."""
+    # Kart faizi bir "plansız alışveriş" değildir. Yanlış sınıflanırsa
+    # gerçek bir ekstrede 6.693 TL'lik faiz, davranış analizinde impuls
+    # harcaması gibi görünür ve P6'yı anlamsız kılar.
+    #
+    # Ama nakit akışından ÇIKARILMAZ: para gerçekten çıkıyor.
+    raw = RD([CH, _cc()], [
+        T("ch", 25, 40_000, "ACME", "MAAS ODEMESI"),
+        T("cc", 10, -6_693, "ALIŞVERİŞ FAİZİ (Oran:4.25)", ""),
+        T("cc", 10, -1_004, "BSMV", ""),
+        T("cc", 10, -1_004, "KKDF", ""),
+        T("cc", 9, -500, "MIGROS ANKARA", "POS"),
+    ])
+    led = normalize(raw, AS_OF)
+    by = {t.description_raw or t.merchant_raw: t for t in raw.transactions}
+    faiz = by["ALIŞVERİŞ FAİZİ (Oran:4.25)"]
+    check("faiz: kind = interest", faiz.kind == TxnKind.INTEREST, faiz.kind.value)
+    check("faiz: kategori faiz_ucret", faiz.category == "faiz_ucret", faiz.category)
+    check("faiz: BSMV kind = fee", by["BSMV"].kind == TxnKind.FEE)
+    check("faiz: zorunluluk ağırlığı BİLİNMEZ",
+          CATEGORIES["faiz_ucret"].essential_weight is None)
+
+    # Nakit akışında kalır: 6.693 + 1.004 + 1.004 + 500
+    w = windows(AS_OF, 1)[0]
+    check("faiz: nakit akışında KALIR",
+          abs(expense_total(led, w) - 9_201) < 1,
+          f"gider={expense_total(led, w):,.0f}")
+
+
+def t_turkce_katlama_tur_siniflandirmada():
+    """Aksanlı yazım ASCII desenle eşleşmeli — tür sınıflandırmada da."""
+    # Bu hata depoda ÜÇ katmanda ayrı ayrı çıktı: ekstre ayrıştırma,
+    # kategorizasyon, tür sınıflandırma. `.upper()` Türkçe'de yetmez:
+    # "İ".upper() yine "İ"dir. "ALIŞVERİŞ FAİZİ" satırı `ALISVERIS FAIZI`
+    # desenini kaçırıyor ve faiz harcama sanılıyordu.
+    raw = RD([CH], [
+        T("ch", 20, 40_000, "ACME", "MAAŞ ÖDEMESİ"),      # aksanlı gelir
+        T("ch", 10, -900, "PETROL OFİSİ A.Ş.", "POS"),
+    ])
+    led = normalize(raw, AS_OF)
+    by = {t.merchant_raw: t for t in raw.transactions}
+    check("katlama: aksanlı 'MAAŞ' gelir tanındı",
+          by["ACME"].kind == TxnKind.INCOME, by["ACME"].kind.value)
+    check("katlama: aksanlı 'PETROL OFİSİ' ulaşım",
+          by["PETROL OFİSİ A.Ş."].category == "ulasim")
+
+
+def t_isyeri_hafizasi_kalicidir():
+    """Bir düzeltme, o işyerinin TÜM işlemlerine uygulanmalı."""
+    # `Docs/veri-katmani-v1.md` §10.5'in "üretim öncesi" diye işaretlediği
+    # eksik: düzeltme işlem id'siyle anahtarlıydı, yani kullanıcı aynı
+    # dükkânı her ay yeniden düzeltmek zorundaydı.
+    #
+    # Kanonik `merchant_id` sayesinde düzeltme zincirin TÜM şubelerini de
+    # kapsar — mağaza kodu anahtara sızsaydı kapsamazdı.
+    txns = [T("cc", 20, -300, "AYYILDIZ/ESKİŞEHİR", "POS"),
+            T("cc", 15, -400, "AYYILDIZ/ESKİŞEHİR", "POS"),
+            T("cc", 10, -500, "BIM O831 GORDION POL", "POS"),
+            T("cc", 5, -600, "BIM T288 YENIMAHALLE", "POS")]
+    raw = RD([CH, _cc()], [T("ch", 25, 40_000, "ACME", "MAAS")] + txns)
+    normalize(raw, AS_OF)
+    mid = txns[0].merchant_id
+    check("hafıza: tanınmayan işyeri çekimser kalır",
+          txns[0].category == "diger"
+          and txns[0].category_source == CategorySource.NONE)
+
+    # Kullanıcı bir kez düzeltir
+    txns2 = [T("cc", 20, -300, "AYYILDIZ/ESKİŞEHİR", "POS"),
+             T("cc", 15, -400, "AYYILDIZ/ESKİŞEHİR", "POS"),
+             T("cc", 10, -500, "BIM O831 GORDION POL", "POS"),
+             T("cc", 5, -600, "BIM T288 YENIMAHALLE", "POS")]
+    raw2 = RD([CH, _cc()], [T("ch", 25, 40_000, "ACME", "MAAS")] + txns2,
+              category_overrides={mid: "giyim", "bim": "restoran"})
+    normalize(raw2, AS_OF)
+    check("hafıza: düzeltme aynı işyerinin HER işlemine yayıldı",
+          all(t.category == "giyim" for t in txns2[:2]),
+          [t.category for t in txns2[:2]])
+    check("hafıza: kaynak USER olarak işaretlendi",
+          txns2[0].category_source == CategorySource.USER)
+    check("hafıza: zincirin FARKLI şubeleri tek düzeltmeyle kapsandı",
+          all(t.category == "restoran" for t in txns2[2:]),
+          [t.category for t in txns2[2:]])
+
+
+def t_hafiza_marka_sozlugunu_ezer():
+    """Kullanıcı bilgisi marka varsayılanından üstündür."""
+    # Aynı zincirden düzenli iş yemeği alan biri "BİM → restoran" diyebilir
+    # ve haklıdır. Sözlük genel doğruyu bilir, kullanıcı kendi bağlamını.
+    txns = [T("cc", 10, -500, "BIM T288 YENIMAHALLE", "POS")]
+    raw = RD([CH, _cc()], [T("ch", 25, 40_000, "ACME", "MAAS")] + txns,
+             category_overrides={"bim": "restoran"})
+    normalize(raw, AS_OF)
+    check("hafıza: marka sözlüğünü ezer", txns[0].category == "restoran",
+          txns[0].category)
+
+    # Ama TEK İŞLEME özel düzeltme hafızayı da ezer — en özel kazanır.
+    txns2 = [T("cc", 10, -500, "BIM T288 YENIMAHALLE", "POS")]
+    raw2 = RD([CH, _cc()], [T("ch", 25, 40_000, "ACME", "MAAS")] + txns2,
+              category_overrides={"bim": "restoran"})
+    normalize(raw2, AS_OF, user_overrides={txns2[0].id: "hediye"})
+    check("hafıza: işlem düzeltmesi hafızayı ezer",
+          txns2[0].category == "hediye", txns2[0].category)
+
+
+def t_kategori_triyaji_isyeri_bazli():
+    """Kategori sorusu işleme değil İŞYERİNE sorulmalı."""
+    # İmpuls triyajı işlem bazlıdır ("bu plansız mıydı" her işlemde ayrı
+    # cevaplanır). Kategori öyle değil: bir işyeri ne satıyorsa onu satar.
+    # İşyeri bazlı sormak, bir soruyla onlarca işlemi çözer — gerçek bir
+    # ekstrede 8 soru 30.410 TL'yi aydınlatıyordu.
+    txns = ([T("cc", 20 - i, -400, "BILINMEYEN AAA", "POS") for i in range(5)]
+            + [T("cc", 10, -3_000, "BILINMEYEN BBB", "POS")]
+            + [T("cc", 9, -800, "TRENDYOL.COM", "POS")]
+            + [T("cc", 8, -500, "MIGROS ANKARA", "POS")])
+    raw = RD([CH, _cc()], [T("ch", 25, 40_000, "ACME", "MAAS")] + txns)
+    led = normalize(raw, AS_OF)
+    q = select_category_triage(led, windows(AS_OF, 1)[0], k=5)
+    by = {x["merchant_id"]: x for x in q}
+
+    check("triyaj: tanınan işyeri sorulmaz", "migros" not in by)
+    check("triyaj: 5 işlem TEK soruya toplandı",
+          any(x["adet"] == 5 for x in q), [(x['merchant_id'], x['adet']) for x in q])
+    check("triyaj: tutara göre sıralı",
+          q == sorted(q, key=lambda x: -x["tutar"]))
+    check("triyaj: pazaryeri de aday — işyeri belli, içerik değil",
+          "trendyol" in by and "pazaryeri" in by["trendyol"]["neden"])
+
+    # Zaten düzeltilmiş işyeri bir daha sorulmaz.
+    txns2 = [T("cc", 10, -3_000, "BILINMEYEN BBB", "POS")]
+    raw2 = RD([CH, _cc()], [T("ch", 25, 40_000, "ACME", "MAAS")] + txns2)
+    normalize(raw2, AS_OF)
+    mid = txns2[0].merchant_id
+    txns3 = [T("cc", 10, -3_000, "BILINMEYEN BBB", "POS")]
+    raw3 = RD([CH, _cc()], [T("ch", 25, 40_000, "ACME", "MAAS")] + txns3,
+              category_overrides={mid: "ev"})
+    led3 = normalize(raw3, AS_OF)
+    q3 = select_category_triage(led3, windows(AS_OF, 1)[0], k=5)
+    check("triyaj: cevaplanmış işyeri tekrar sorulmaz",
+          mid not in {x["merchant_id"] for x in q3})
+
+    # Faiz/ücret bir işyeri değildir; sorulacak bir şey yok.
+    txns4 = [T("cc", 10, -6_693, "ALIŞVERİŞ FAİZİ", "")]
+    raw4 = RD([CH, _cc()], [T("ch", 25, 40_000, "ACME", "MAAS")] + txns4)
+    led4 = normalize(raw4, AS_OF)
+    q4 = select_category_triage(led4, windows(AS_OF, 1)[0], k=5)
+    check("triyaj: faiz/ücret aday değil",
+          "faiz_ucret" not in {x["merchant_id"] for x in q4})
+
+
+def t_altin_doviz_birikimdir_ama_kartla_degil():
+    """Kuyumcudan alım tasarruftur — likit hesaptan yapıldıysa."""
+    # Türkiye'de hanehalkı altını birikim aracı olarak alır. "Harcama"
+    # sayılırsa hem gider şişer hem tasarruf eksik ölçülür: kullanıcı
+    # gerçekte biriktirirken savruk görünür.
+    raw = RD([CH, _cc()], [
+        T("ch", 25, 40_000, "ACME", "MAAS ODEMESI"),
+        T("ch", 20, -10_000, "HAS KUYUMCU/ANKARA", "POS"),
+        T("cc", 18, -10_000, "HAS KUYUMCU/ANKARA", "POS"),
+    ])
+    led = normalize(raw, AS_OF)
+    w = windows(AS_OF, 1)[0]
+    likit = next(t for t in raw.transactions if t.account_id == "ch"
+                 and "KUYUMCU" in (t.merchant_raw or ""))
+    kartli = next(t for t in raw.transactions if t.account_id == "cc")
+
+    check("altın: likit hesaptan alım birikim sayılır",
+          likit.kind == TxnKind.SAVINGS_CONTRIB, likit.kind.value)
+    # FİNANSMAN KOŞULU: %51 faizle borçlanıp altın almak tasarruf değildir.
+    # Tasarruf sayarsak P3 yükselirken P2'deki gerçek kötüleşme görünmez
+    # olur — model kendi kendini kandırır.
+    check("altın: KARTLA alım birikim SAYILMAZ",
+          kartli.kind == TxnKind.PURCHASE, kartli.kind.value)
+    check("altın: yalnızca likit finansman birikim akışına girer",
+          abs(led.savings_flow(w) - 10_000) < 1, f"{led.savings_flow(w):,.0f}")
+
+
+def t_altin_kelime_tuzagi():
+    """'ALTIN' içeren yer adları altın alımı sayılmamalı."""
+    # Gerçek bir ekstrede "ALTIN" üç kez geçiyordu ve hiçbiri altın alımı
+    # değildi: "ALTINDAĞ" (Ankara ilçesi) ve "altındaki" (sıradan kelime).
+    # Çıplak desen üçünü de yakalar ve HARCAMAYI TASARRUF sanar — yani
+    # skoru yukarı yönde şişiren, sessiz bir hata.
+    raw = RD([CH], [
+        T("ch", 25, 40_000, "ACME", "MAAS ODEMESI"),
+        T("ch", 20, -500, "ALTINDAĞ MARKET", "POS"),
+        T("ch", 19, -300, "ALTINDAKI CAFE", "POS"),
+        T("ch", 18, -800, "ALTINPARK AVM", "POS"),
+    ])
+    led = normalize(raw, AS_OF)
+    for t in raw.transactions[1:]:
+        check(f"altın tuzağı: {t.merchant_raw[:14]!r} birikim değil",
+              t.kind == TxnKind.PURCHASE, t.kind.value)
+    check("altın tuzağı: birikim akışı sıfır",
+          abs(led.savings_flow(windows(AS_OF, 1)[0])) < 1)
+
+
+def t_category_version_fingerprint():
+    """Kategorizasyon değiştiyse CATEGORY_VERSION bumplanmalı."""
+    # ELLE BUMPLANAN SÜRÜM KAÇINILMAZ OLARAK KAYAR. Biri sözlüğe marka
+    # ekler, sürümü bumplamayı unutur — ve o andan sonra sürüm YALAN
+    # söyler. Yalan söyleyen sürüm, olmayandan kötüdür: skor farkını
+    # uzlaştırırken ona güvenirsin.
+    #
+    # Bu test tam olarak bu oturumda dokümanlarda yaşanan sapmanın
+    # kod tarafındaki karşılığını engeller.
+    hesaplanan = category_fingerprint()
+    check("sürüm: parmak izi CATEGORY_VERSION ile uyumlu",
+          hesaplanan == CATEGORY_FINGERPRINT,
+          f"\n      hesaplanan : {hesaplanan}"
+          f"\n      beyan      : {CATEGORY_FINGERPRINT}"
+          f"\n      → Kategorizasyonu etkileyen bir şey değişmiş."
+          f"\n        CATEGORY_VERSION'ı bumpla ve CATEGORY_FINGERPRINT'i"
+          f"\n        '{hesaplanan}' yap.")
+
+    # Parmak izi gerçekten DUYARLI olmalı — değişikliği kaçırırsa işe yaramaz.
+    import markalar as _mk
+    orij = _mk.MARKALAR[:]
+    try:
+        _mk.MARKALAR.append(_mk.Marka("test_x", "Test", r"TESTX", "diger"))
+        check("sürüm: parmak izi sözlük değişimine duyarlı",
+              category_fingerprint() != CATEGORY_FINGERPRINT)
+    finally:
+        _mk.MARKALAR[:] = orij
+    check("sürüm: geri alınca parmak izi eski hâline döner",
+          category_fingerprint() == CATEGORY_FINGERPRINT)
+
+
+def t_kategori_telemetrisi_tutar_agirlikli():
+    """Telemetri adet değil TUTAR kırılımı vermeli."""
+    # Adet yanıltıcıdır: 12 tane 30 TL'lik scooter işlemi, tek bir
+    # 12.000 TL'lik taksitten daha çok "kapsam" gibi görünür. Oysa
+    # `e_essential`'i belirleyen tutardır — yatırım kararı ona bakmalı.
+    txns = ([T("cc", 20 - i, -30, "HOP SCOOTER/ANKARA", "POS") for i in range(12)]
+            + [T("cc", 5, -12_000, "BILINMEYEN BUYUK", "POS")])
+    raw = RD([CH, _cc()], [T("ch", 25, 40_000, "ACME", "MAAS")] + txns)
+    led = normalize(raw, AS_OF)
+    tel = category_telemetry(led, windows(AS_OF, 1)[0])
+
+    check("telemetri: sürüm raporlanıyor",
+          tel["category_version"] == CATEGORY_VERSION)
+    check("telemetri: 12 küçük işlem kapsamı ŞİŞİRMİYOR",
+          tel["katman_pay"].get("marka", 0) < 0.05,
+          f"marka payı={tel['katman_pay'].get('marka')}")
+    check("telemetri: tek büyük çekimser satır payı domine ediyor",
+          tel["cekimser_payi"] > 0.95, f"{tel['cekimser_payi']}")
+    # Ağırlığı bilinmeyen pay = tahmin edicinin ekstrapoladığı kısım.
+    check("telemetri: bilinmeyen ağırlık payı raporlanıyor",
+          tel["bilinmeyen_agirlik_payi"] > 0.95,
+          f"{tel['bilinmeyen_agirlik_payi']}")
+
+
 def t_merchant_key():
     check("merchant: gürültü temizlenir",
           _merchant_key("MIGROS TIC A.S IST *4471") == _merchant_key("MIGROS TIC SUBE 12"),
@@ -320,8 +698,15 @@ def t_merchant_key():
 # ── Zorunlu/isteğe bağlı ağırlıklandırma ─────────────────────────────────────
 
 def t_essential_weighting():
-    check("taksonomi: tüm ağırlıklar [0,1]",
-          all(0.0 <= c.essential_weight <= 1.0 for c in CATEGORIES.values()))
+    check("taksonomi: bilinen ağırlıklar [0,1]",
+          all(0.0 <= c.essential_weight <= 1.0 for c in CATEGORIES.values()
+              if c.essential_weight is not None))
+    # None = "bilinmiyor", 0.0 = "ölçtük, sıfır çıktı". Bu ayrım modelin
+    # `None ≠ 0` temel kuralının taksonomi düzeyindeki karşılığıdır.
+    check("taksonomi: pazaryeri ağırlığı BİLİNMİYOR",
+          CATEGORIES["pazaryeri"].essential_weight is None)
+    check("taksonomi: 'diğer' ağırlığı BİLİNMİYOR",
+          CATEGORIES["diger"].essential_weight is None)
     check("taksonomi: kira tam zorunlu", CATEGORIES["kira"].essential_weight == 1.0)
     check("taksonomi: eğlence tam isteğe bağlı",
           CATEGORIES["eglence"].essential_weight == 0.0)
@@ -339,6 +724,62 @@ def t_essential_weighting():
 
 
 # ── Eksik pencere cezası olmamalı (regresyon) ────────────────────────────────
+
+def t_essential_estimator_not_biased():
+    """Bilinmeyen kategori `ef_months`'u İYİMSER yönde saptırmamalı.
+
+    `e_essential` bir PAYDADIR: `ef_months = ef_liquid / e_essential`.
+    Bilinmeyen harcamayı toplamdan düşmek paydayı küçültür ve acil fon
+    daha uzun dayanıyor GÖSTERİR — yani veri eksikliği ödüle dönüşür.
+
+    Gerçek bir kart ekstresinde ölçüldü: harcamanın %37'si bilinemezken
+    naif çekimserlik ef_months'u 0,74 yerine 1,30 gösteriyordu (%76 ödül).
+
+    Doğru davranış: bilinen kısımdaki zorunluluk oranını toplama genişlet.
+    """
+    # Bilinen harcamanın tamamı zorunlu (kira) → oran 1,0.
+    # Bilinmeyen aynı büyüklükte → tahmin edici toplamı 1,0 ile ölçekler.
+    raw = RD([CH, SAV], [
+        T("ch", 20, 40_000, "ACME", "MAAS ODEMESI"),
+        T("ch", 15, -10_000, "KIRA ODEMESI", "EV SAHIBI"),      # 1,00 bilinir
+        T("ch", 14, -10_000, "BILINMEYEN ISYERI QQQ", "POS"),   # bilinmez
+    ])
+    feats, _ = build_features(raw, AS_OF)
+    check("tahmin edici: bilinmeyen toplama genişletildi",
+          abs(feats.e_essential - 20_000) < 1,
+          f"e_essential={feats.e_essential:,.0f} (beklenen 20.000; "
+          f"naif çekimserlikte 10.000 çıkardı)")
+
+    # Karşı yön: bilinen kısım tamamen isteğe bağlıysa oran 0 olmalı.
+    raw2 = RD([CH, SAV], [
+        T("ch", 20, 40_000, "ACME", "MAAS ODEMESI"),
+        T("ch", 15, -10_000, "CINEMAXIMUM", "POS"),             # 0,00 bilinir
+        T("ch", 14, -10_000, "BILINMEYEN ISYERI QQQ", "POS"),
+    ])
+    f2, _ = build_features(raw2, AS_OF)
+    check("tahmin edici: sıfır oran da genişletilir",
+          abs(f2.e_essential) < 1, f"e_essential={f2.e_essential:,.0f}")
+
+    # Hiç bilinen yoksa 0 döner → ef_months e_total'a düşer (en muhafazakâr).
+    raw3 = RD([CH, SAV], [
+        T("ch", 20, 40_000, "ACME", "MAAS ODEMESI"),
+        T("ch", 15, -10_000, "BILINMEYEN ISYERI QQQ", "POS"),
+    ])
+    f3, _ = build_features(raw3, AS_OF)
+    check("tahmin edici: hiç bilgi yoksa e_total'a düşer",
+          f3.e_essential == 0.0 and f3.ef_months == f3.ef_liquid / f3.e_total,
+          f"e_essential={f3.e_essential}, ef_months={f3.ef_months:.2f}")
+
+
+def t_pazaryeri_agirlik_uydurmaz():
+    """Pazaryeri satırı sabit bir zorunluluk ağırlığı TAŞIMAZ."""
+    # "İşyerini biliyoruz, ne alındığını bilmiyoruz." Trendyol'dan alınan
+    # şey giyim de olabilir elektronik de market de; sabit ağırlık vermek
+    # bilinmeyen hakkında iddiada bulunmaktır.
+    check("pazaryeri ağırlığı None", CATEGORIES["pazaryeri"].essential_weight is None)
+    check("pazaryeri 'diğer'den ayrı bir kategori",
+          "pazaryeri" in CATEGORIES and CATEGORIES["pazaryeri"].label == "Pazaryeri")
+
 
 def t_short_history_not_penalized():
     """5 aylık kullanıcı, 6. pencere boş diye cezalandırılmamalı.
@@ -403,8 +844,19 @@ TESTS = [t_n1_internal_transfer, t_n1_no_false_match,
          t_n2_linked_card_no_double_count, t_n2_unlinked_card_is_proxy,
          t_n3_installments, t_n3_followups_not_double_counted,
          t_n4_amortization, t_n5_inflation, t_n6_valuation_not_savings,
-         t_n7_refund, t_n8_outlier, t_n9_categorization, t_merchant_key,
-         t_essential_weighting, t_short_history_not_penalized,
+         t_n7_refund, t_n8_outlier, t_n9_categorization,
+         t_n9_turkish_folding, t_n9_payment_intermediary_unwrapped,
+         t_n9_generic_turkish_patterns, t_merchant_key,
+         t_essential_weighting, t_essential_estimator_not_biased,
+         t_pazaryeri_agirlik_uydurmaz, t_marka_sozlugu_kisa_desen_tuzagi,
+         t_marka_kanonik_kimlik, t_faiz_ucret_tuketim_sayilmaz,
+         t_turkce_katlama_tur_siniflandirmada,
+         t_isyeri_hafizasi_kalicidir, t_hafiza_marka_sozlugunu_ezer,
+         t_kategori_triyaji_isyeri_bazli,
+         t_altin_doviz_birikimdir_ama_kartla_degil, t_altin_kelime_tuzagi,
+         t_category_version_fingerprint,
+         t_kategori_telemetrisi_tutar_agirlikli,
+         t_short_history_not_penalized,
          t_end_to_end_determinism, t_end_to_end_sanity]
 
 

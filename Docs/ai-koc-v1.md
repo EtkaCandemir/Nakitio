@@ -2,7 +2,7 @@
 
 **Durum:** Uygulanmaya hazır teknik şartname
 **Referans implementasyon:** `engine/coach_tools.py`, `engine/coach_guard.py`, `engine/coach_prompt.py`
-**Eval seti:** `engine/coach_eval.py` (62 vaka + 8 akış testi)
+**Eval seti:** `engine/coach_eval.py` (65 vaka + 8 akış testi)
 **Bağlı olduğu:** `Docs/skor-modeli-v2.md`, `Docs/veri-katmani-v1.md`
 
 ---
@@ -133,10 +133,10 @@ Ayrıca kümülatif skoru **düşüren** adım plana alınmaz.
 
 ```
 build_action_plan
-  Kategori limiti koy                → 77  (+2)   aylık tasarruf 580 TL
-  Acil durum fonuna düzenli katkı    → 78  (+1)   aylık 1.690 TL, 3 ay
-  Plansız harcamayı azalt            → 78  (+0)   hedef oran %5
-  şimdi=75   plan sonrası=78   toplam=+3
+  Kategori limiti koy                → 75  (+2)   aylık tasarruf 640 TL
+  Acil durum fonuna düzenli katkı    → 77  (+2)   aylık 1.410 TL, 3 ay
+  Plansız harcamayı azalt            → 78  (+1)   hedef oran %15
+  şimdi=73   plan sonrası=78   toplam=+5
 
 get_top_categories
   Market            5.409 TL   nominal +%6,9   reel +%3,8
@@ -253,16 +253,16 @@ guarded_reply(ctx, generate, max_attempts=2)
 Tamamen deterministiktir ve yalnızca hesaplanmış sayıları kullanır.
 Düşük güvende bant dilini, düşük skorda somut adımı kendisi uygular.
 
-**Didem (C=0,98):**
-> Finansal Sağlık Skorun 74/100 — Gelişiyor. En çok gelişim alanı olan
+**Didem (C=0,91):**
+> Finansal Sağlık Skorun 73/100 — Gelişiyor. En çok gelişim alanı olan
 > başlık: Tasarruf & Güvence. Önerilen ilk adım: Kategori limiti koy.
-> Bu adımla skorun 77 seviyesine çıkabilir (tahmini). Detayları Finansal
+> Bu adımla skorun 75 seviyesine çıkabilir (tahmini). Detayları Finansal
 > Sağlık Raporu ekranından görebilirsin.
 
 **12 günlük kullanıcı (C=0,25):**
-> Farkındalık Başlangıç Skorun şu an 38–56 aralığında. Veri arttıkça bu
+> Farkındalık Başlangıç Skorun şu an 31–49 aralığında. Veri arttıkça bu
 > aralık daralacak. En çok gelişim alanı olan başlık: Tasarruf & Güvence.
-> Önerilen ilk adım: Acil durum fonuna düzenli katkı. Bu adımla skorun 49
+> Önerilen ilk adım: Acil durum fonuna düzenli katkı. Bu adımla skorun 42
 > seviyesine çıkabilir (tahmini). Detayları Finansal Sağlık Raporu
 > ekranından görebilirsin.
 
@@ -285,12 +285,12 @@ Regresyon: `coach_eval.t_context_block_has_no_numbers`.
 
 ## 7. Eval seti
 
-`python3 engine/coach_eval.py` — 62 vaka + 8 akış testi
+`python3 engine/coach_eval.py` — 65 vaka + 8 akış testi
 
 | Grup | Vaka | Neyi sınar |
 |---|---|---|
 | sayı | 16 | Doğru sayı geçer, uydurma sayı yakalanır, yuvarlama serbest |
-| spk | 8 | Enstrüman tavsiyesi yakalanır, bütçe yönlendirmesi geçer |
+| spk | 11 | Enstrüman tavsiyesi yakalanır, bütçe yönlendirmesi ve **reddetme** geçer |
 | kesinlik | 6 | Garanti/kesin vaat yakalanır, çekinceli projeksiyon geçer |
 | ton | 8 | Utandırıcı dil yakalanır, ölçüm odaklı dil geçer |
 | kimlik | 3 | İnsan/danışman iddiası yakalanır |
@@ -318,7 +318,7 @@ run_with_model(lambda system, context, question: my_llm(system, context, questio
 ```
 
 Aynı guard, gerçek model çıktısı üzerinde çalışır. **İkisi ayrı şeydir ve
-ayrı raporlanmalıdır:** 62 vaka guard'ı sınar, `run_with_model` modeli.
+ayrı raporlanmalıdır:** 65 vaka guard'ı sınar, `run_with_model` modeli.
 
 ---
 
@@ -333,7 +333,7 @@ ayrı raporlanmalıdır:** 62 vaka guard'ı sınar, `run_with_model` modeli.
    Yedeğe düşme oranı %5'i aşıyorsa prompt yetersizdir; ret oranı %1'in
    altındaysa guard fazla gevşek olabilir.
 
-3. **Ton eval'ini canlı modelle genişlet.** 62 vaka guard içindir;
+3. **Ton eval'ini canlı modelle genişlet.** 65 vaka guard içindir;
    modelin tonu için gerçek yanıtlar üzerinde ayrı bir insan
    değerlendirmesi gerekir.
 
@@ -357,7 +357,7 @@ ayrı raporlanmalıdır:** 62 vaka guard'ı sınar, `run_with_model` modeli.
 | `engine/coach_tools.py` | 8 araç, `NumberLedger`, aksiyon sözlüğü, plan kurucu |
 | `engine/coach_guard.py` | Sayı çıkarımı, doğrulama, içerik kuralları, yedek şablon |
 | `engine/coach_prompt.py` | Sistem prompt'u, ton örnekleri, bağlam bloğu |
-| `engine/coach_eval.py` | 62 vaka + 8 akış testi + canlı model bağlantısı |
+| `engine/coach_eval.py` | 65 vaka + 8 akış testi + canlı model bağlantısı |
 
 ```bash
 cd engine && python3 coach_eval.py

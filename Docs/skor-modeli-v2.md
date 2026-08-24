@@ -162,7 +162,7 @@ sonuç üretir.
 
 ```
 S_ham   = Σᵢ wᵢ_norm × pᵢ                 pᵢ ∈ [0,100]
-S_öncül = onboarding baz skoru            ∈ [40, 75]
+S_öncül = onboarding baz skoru            ∈ [28, 75]
 S_karma = C × S_ham + (1 − C) × S_öncül
 S_final = yumuşat(S_karma, S_önceki)      §8
 ```
@@ -184,15 +184,23 @@ v1'in üç ayrı formülü kaldırıldı. Aynı formül, farklı `C` değerlerin
 
 **Gün 30 uçurumunun kalktığının kanıtı** (`golden_profiles.py` süreklilik testi):
 
+<!-- OTOMATIK:sm-sureklilik -->
+*`golden_profiles.veri_sureklilik()`'ten üretildi.*
+
 | gün | C | ham | öncül | karma | skor | aşama |
 |---|---|---|---|---|---|---|
-| 10 | 0,26 | 59,4 | 49,0 | 51,7 | **52** | Farkındalık Başlangıç |
-| 20 | 0,57 | 58,4 | 49,0 | 54,4 | **54** | Geçiş |
-| 28 | 0,63 | 58,4 | 49,0 | 54,9 | **55** | Geçiş |
-| **30** | 0,64 | 58,4 | 49,0 | 55,0 | **55** | Geçiş |
-| **31** | 0,64 | 58,4 | 49,0 | 55,0 | **55** | Geçiş |
-| 40 | 0,68 | 58,4 | 49,0 | 55,4 | **55** | Finansal Sağlık |
-| 90 | 0,87 | 58,4 | 49,0 | 57,2 | **57** | Finansal Sağlık |
+| 10 | 0,23 | 60,0 | 39,0 | 43,9 | **44** | Farkındalık Başlangıç |
+| 15 | 0,38 | 58,9 | 39,0 | 46,5 | **47** | Geçiş |
+| 20 | 0,52 | 58,9 | 39,0 | 49,5 | **49** | Geçiş |
+| 25 | 0,57 | 58,9 | 39,0 | 50,4 | **50** | Geçiş |
+| 28 | 0,59 | 58,9 | 39,0 | 50,7 | **51** | Geçiş |
+| **30** | 0,59 | 58,9 | 39,0 | 50,8 | **51** | Geçiş |
+| **31** | 0,60 | 58,9 | 39,0 | 50,9 | **51** | Geçiş |
+| 35 | 0,62 | 58,9 | 39,0 | 51,3 | **51** | Geçiş |
+| 40 | 0,64 | 58,9 | 39,0 | 51,7 | **52** | Geçiş |
+| 60 | 0,72 | 58,9 | 39,0 | 53,4 | **53** | Finansal Sağlık |
+| 90 | 0,85 | 58,9 | 39,0 | 56,0 | **56** | Finansal Sağlık |
+<!-- /OTOMATIK:sm-sureklilik -->
 
 Karşılaştırma: v1'de aynı kullanıcı gün 30'da 87,5 alıp gün 31'de ~55'e
 düşüyordu — **tek gecede 32 puan**, hem de en çok emek vermiş kullanıcıda.
@@ -381,10 +389,24 @@ C × = 0,60  eğer bütünlük şüphesi varsa
 | Bileşen | Tanım |
 |---|---|
 | `c_geçmiş` | `min(1, veri_günü / 90)` |
-| `c_kapsam` | bağlı hesap / beyan edilen hesap. Manuel giriş `0,45 × kategorize_oran` tavanına tabidir |
+| `c_kapsam` | **kaynağa göre tavan** — aşağıdaki tablo |
 | `c_bütünlük` | kategorize edilmiş TL / toplam TL |
 | `c_doğrulama` | `1 − |beyan − gözlem| / beyan`; beyan yoksa 0,40 |
 | `c_bileşen` | aktif bileşen ağırlığı / toplam ağırlık |
+
+### `c_kapsam` üç kademelidir ve kademe bir TAVANDIR
+
+| Kaynak (`data_source`) | Hesap |
+|---|---|
+| `linked` (açık bankacılık) | `bağlı_hesap / beyan_edilen_hesap` — tavan yok |
+| `statement` (ekstre) | `0,85 × statement_coverage × kategorize_oran` |
+| `manual` | `0,45 × kategorize_oran` |
+
+İlk sürümde bu `max(bağlı_oran, kademe)` yazılmıştı — yani taban. Kaynağı
+"ekstre" olan bir kullanıcı, hesapları sistemde "bağlı" işaretli olduğu
+için `c_cover = 1,0` alıyordu: tek dönem yüklemiş biri, açık bankacılığa
+bağlı biriyle **aynı güveni** görüyordu. Artık kaynak neyse kapsamı o
+belirler.
 
 **Sert eşik kullanılmaz.** İlk sürümde "14 günden azsa C ≤ 0,15" kuralı
 vardı; bu, 14. günde C'nin 0,15'ten 0,58'e sıçramasına yol açtı — tam da
@@ -401,8 +423,13 @@ inceleme bayrağı çıkar.
 yarı_genişlik = max(2, 12 × (1 − C))
 ```
 
-`C = 0,25` → ±9 puan (`47`, band `38–56`).
-`C = 0,91` → ±2 puan (`74`, band `72–76`).
+<!-- OTOMATIK:sm-belirsizlik-bandi -->
+*`golden_profiles.py`'den üretildi.*
+
+`C = 0,25` → ±9 puan (`can`: **40**, band `31–49`)
+
+`C = 0,91` → ±2 puan (`didem`: **73**, band `71–75`)
+<!-- /OTOMATIK:sm-belirsizlik-bandi -->
 
 **UI kuralı:** `C < 0,65` iken skor **bant olarak** gösterilmelidir.
 Tek bir sayı, olmayan bir hassasiyet vaat eder.
@@ -459,11 +486,17 @@ kesilmesi · acil fonun 0,25 ayın altına inmesi.
 
 Kanıt (`golden_profiles.py` maddi olay testi):
 
+<!-- OTOMATIK:sm-maddi-olay -->
+*`golden_profiles.veri_maddi_olay()`'dan üretildi.*
+
 ```
-Normal ay            : 74
-Gecikmeye düştü      : 67   (Δ −7)   ← ±8 sınırı bypass edildi
-Ani büyük iyileşme   : 76   (Δ +2)   ← yukarı yön sınırlı kaldı
+Normal ay            : 73
+Gecikmeye düştü      : 67   (Δ −6)   ← ±8 sınırı bypass edildi
+Ani büyük iyileşme   : 75   (Δ +2)   ← yukarı yön sınırlı kaldı
 ```
+
+Tespit edilen maddi olay: gecikmiş ödeme.
+<!-- /OTOMATIK:sm-maddi-olay -->
 
 Asimetri hem dürüstlük hem anti-gaming gereğidir: skor tek ayda satın
 alınamaz, ama kriz gizlenmez.
@@ -487,62 +520,83 @@ alınamaz, ama kriz gizlenmez.
 
 `python3 engine/golden_profiles.py`
 
+İlk 10 senaryo profili (5 kapsam profiliyle birlikte **güncel ve otomatik
+üretilen** tam liste: `Docs/TESTING.md` §6):
+
+<!-- OTOMATIK:sm-golden-senaryo -->
+*`golden_profiles.py` çalıştırılarak üretildi. Kapsam profilleri dahil tam liste: `Docs/TESTING.md` §6.*
+
 | Profil | Skor | Band | Ham | Öncül | C | Seviye |
 |---|---|---|---|---|---|---|
-| **didem** — mockup kullanıcısı | **74** | 72–76 | 74,4 | 56 | 0,91 | Gelişiyor |
-| **mehmet** — kart sarmalı, gecikme, KMH | **35** | 33–37 | 28,3 | 40 | 0,89 | Riskli |
-| **zeynep** — serbest çalışan, düzensiz gelir | **79** | 77–81 | 78,6 | 75 | 0,97 | Dengeli |
-| **can** — 12 günlük yeni kullanıcı | **47** | 38–56 | 48,2 | 47 | 0,25 | Dikkat |
-| **elif** — güçlü profil | **90** | 88–92 | 94,5 | 75 | 0,99 | Güçlü |
-| **burak** — taksit yüklü | **61** | 59–63 | 58,6 | 56 | 0,98 | Gelişiyor |
-| **deniz** — düşük gelir, yüksek disiplin | **78** | 76–80 | 82,3 | 75 | 0,98 | Dengeli |
-| **selin** — yüksek gelir, sıfır tampon | **41** | 39–43 | 33,4 | 47 | 0,99 | Dikkat |
-| **ahmet** — emekli, borçsuz | **82** | 80–84 | 84,9 | 75 | 0,85 | Dengeli |
-| **merve** — gün 25, geçiş | **55** | 50–59 | 58,4 | 49 | 0,63 | Dikkat |
+| **didem** — Mockup kullanıcısı — maaşlı, dengeli, orta borç | **73** | 71–75 | 75,0 | 46,0 | 0,91 | Gelişiyor |
+| **mehmet** — Kart sarmalı — asgari ödeme, gecikme, KMH | **33** | 31–35 | 27,1 | 28,0 | 0,89 | Riskli |
+| **zeynep** — Serbest çalışan — yüksek gelir oynaklığı, borçsuz, iyi birikim | **82** | 80–84 | 82,6 | 74,0 | 0,97 | Dengeli |
+| **can** — 12 günlük yeni kullanıcı — veri yok denecek kadar az | **40** | 31–49 | 48,2 | 37,0 | 0,25 | Dikkat |
+| **elif** — Güçlü — yüksek tasarruf, 6+ ay güvence, borçsuz | **90** | 88–92 | 94,4 | 74,0 | 0,99 | Güçlü |
+| **burak** — Taksit yüklü — nakit akışı iyi görünüyor, taahhüt ağır | **61** | 59–63 | 59,1 | 46,0 | 0,98 | Gelişiyor |
+| **deniz** — Öğrenci — düşük gelir, yüksek disiplin, borçsuz | **78** | 76–80 | 83,7 | 74,0 | 0,84 | Dengeli |
+| **selin** — Yüksek gelir, sıfır tampon — gizli risk | **40** | 38–42 | 32,3 | 37,0 | 0,99 | Dikkat |
+| **ahmet** — Emekli — düşük gelir, borçsuz, enflasyona yeniliyor | **83** | 81–85 | 86,3 | 74,0 | 0,83 | Dengeli |
+| **merve** — Gün 25 — geçiş dönemi, kısmi veri | **51** | 46–56 | 58,9 | 39,0 | 0,59 | Dikkat |
+<!-- /OTOMATIK:sm-golden-senaryo -->
 
 Üç profil doğrudan modelin iddialarını sınar:
 
-- **deniz (78) > selin (41)** — 12.000 TL gelirli disiplinli öğrenci,
+- **deniz (78) > selin (40)** — 12.000 TL gelirli disiplinli öğrenci,
   85.000 TL gelirli savruk profesyonelden yüksek. Skor gelir seviyesini
   değil ilişkiyi ölçüyor. `t_fairness_income_neutral` bunu ayrıca
   ölçekten bağımsız olarak doğrular.
 - **burak (61)** — nakit akışı pozitif, aylık tablosu iyi görünüyor;
   ama 76.000 TL kalan taksit taahhüdü var. v1 bu kullanıcıyı "iyi"
   görürdü.
-- **can (47, band 38–56)** — 12 günlük kullanıcı. Skor öncüle neredeyse
+- **can (40, band 31–49)** — 12 günlük kullanıcı. Skor öncüle neredeyse
   eşit, band çok geniş, hiçbir bileşen veri yokluğu yüzünden 0 almadı.
 
 ### Didem'in kırılımı (mockup kullanıcısı)
 
-```
-Finansal Sağlık Skoru: 74/100  (Gelişiyor)
-  ham=74,4  öncül=56,0  karma=72,7  C=0,91  band=72-76
+<!-- OTOMATIK:sm-didem-kirilim -->
+*`compute_score(PROFILES["didem"]).explain()` çıktısı — motor dökümü olduğu için ondalık ayracı noktadır.*
 
-  [ 80,2] Nakit Akışı              20,05 / 25 puan
-        · Net nakit akışı marjı         89,9   m=+24,9%
-        · Gelir istikrarı (CV)          92,5   cv=0,08
-        · Kısa vadeli likidite          52,5   18 gün
-        · Gelir çeşitliliği             40,0   ana kaynak %84
-  [ 87,0] Borç Yükü                17,41 / 20 puan
-        · Borç servisi / gelir          88,1   DSR=%14,8
-        · Kart kullanım oranı           80,0   %34
-        · Toplam taahhüt                99,2   %5
-        · Borç trendi (3 ay)            74,3   −6,0%
-  [ 56,5] Tasarruf & Güvence       11,30 / 20 puan   ← en zayıf alan
-        · Kasıtlı tasarruf oranı        84,5   %18,6
-        · Acil durum fonu               22,5   0,5 ay
-        · Tasarruf sürekliliği          66,7   4/6 ay
-        · Enflasyona karşı koruma        —     (veri yok)
-  [ 82,1] Harcama Disiplini        12,31 / 15 puan
-  [ 71,3] Hedef Devamlılığı         7,13 / 10 puan
-  [ 61,6] Finansal Davranış         6,16 / 10 puan
 ```
+Finansal Sağlık Skoru: 73/100  (Gelişiyor)
+  ham=75.0  öncül=46.0  karma=72.4  güven C=0.91  band=71-75
+  [ 79.2] Nakit Akışı              19.80 / 25.0 puan
+        · Net nakit akışı marjı         89.9  ×0.60   m=+24.9%
+        · Gelir istikrarı (CV)          92.5  ×0.13   cv=0.08
+        · Kısa vadeli likidite          52.5  ×0.20   18 gün
+        · Gelir çeşitliliği             40.0  ×0.07   ana kaynak %84
+  [ 87.0] Borç Yükü                17.41 / 20.0 puan
+        · Aylık borç servisi / gelir    88.1  ×0.38   DSR=%14.8
+        · Kart kullanım oranı           80.0  ×0.22   %34
+        · Toplam taahhüt / yıllık gelir  99.2  ×0.25   %5
+        · Borç trendi (3 ay)            74.3  ×0.15   -6.0%
+  [ 60.9] Tasarruf & Güvence       12.18 / 20.0 puan
+        · Kasıtlı tasarruf oranı        84.5  ×0.33   %18.6
+        · Acil durum fonu               34.1  ×0.34   0.5 ay
+        · Tasarruf sürekliliği          66.7  ×0.23   4/6 ay
+        · Enflasyona karşı koruma      —      (veri yok)
+  [ 82.1] Harcama Disiplini        12.31 / 15.0 puan
+        · Bütçe uyumu                   93.1  ×0.38   aşım 1,380/20,000
+        · Kategori limitlerine uyum     75.0  ×0.20   1/4 aşıldı
+        · İsteğe bağlı harcama payı     75.0  ×0.27   %30
+        · Kategori oynaklığı            76.4  ×0.15   cv=0.28
+  [ 71.3] Hedef Devamlılığı         7.13 / 10.0 puan
+        · Hedeflerin ilerleme durumu    62.0  ×0.45   %62
+        · Katkı sürekliliği             67.0  ×0.35   %67
+        · Hedef gerçekçiliği           100.0  ×0.20
+  [ 61.6] Finansal Davranış         6.16 / 10.0 puan
+        · Plansız harcama oranı         48.6  ×0.35   %23
+        · Duygusal harcama payı         74.1  ×0.25   %10
+        · Gece harcama yoğunlaşması     81.3  ×0.20   %11
+        · Harcama sonrası pişmanlık     48.9  ×0.20   %28
+```
+<!-- /OTOMATIK:sm-didem-kirilim -->
 
 Model, mockup'ın kendi *Riskler* ekranında *"Acil Durum Fonu Riski: Yüksek"*
-diye işaretlediği zayıflığı bağımsız olarak en düşük bileşen olarak buldu
-(22,5/100). Bu, kalibrasyonun doğru yönde olduğunun iyi bir işareti.
+diye işaretlediği zayıflığı bağımsız olarak en düşük alt metrik olarak
+buldu (34,1/100). Bu, kalibrasyonun doğru yönde olduğunun iyi bir işareti.
 
-> Mockup 78 gösteriyor, model 74 veriyor. Fark beklenen ve kabul
+> Mockup 78 gösteriyor, model 73 veriyor. Fark beklenen ve kabul
 > edilebilirdir; mockup'taki 78 bir tasarım örneğidir, hesaplanmış bir
 > değer değildir. Ürün lansmanı öncesi kalibrasyon gerçek kullanıcı
 > verisiyle yapılmalıdır (§15).
@@ -553,18 +607,32 @@ diye işaretlediği zayıflığı bağımsız olarak en düşük bileşen olarak
 
 | Durum | Davranış | Gerekçe |
 |---|---|---|
-| Gelir = 0, gider var | Marj alt metriği **0** (None değil), maddi olay: "gelir kaydı yok". Örnek çıktı: skor 56 | Gelirsiz harcama gerçek bir kırılganlıktır; "ölçemedik" demek yanlış olur |
+| Gelir = 0, gider var | Marj alt metriği **0** (None değil), maddi olay: "gelir kaydı yok" | Gelirsiz harcama gerçek bir kırılganlıktır; "ölçemedik" demek yanlış olur |
 | Gelir = 0, gider = 0 | Marj devre dışı, C düşük | Gerçekten veri yok |
-| Gider > gelir | Marj `20×(1+m/0,10)`, −%10'da sıfır. Örnek: skor 38 | Sürekli iniş, uçurum yok |
-| Borç verisi hiç yok | P2 devre dışı, ağırlık yeniden dağıtılır, C düşer. Örnek: skor 69 | Eksik veri ceza değildir |
+| Gider > gelir | Marj `20×(1+m/0,10)`, −%10'da sıfır | Sürekli iniş, uçurum yok |
+| Borç verisi hiç yok | P2 devre dışı, ağırlık yeniden dağıtılır, C düşer | Eksik veri ceza değildir |
 | Borç var ama sıfırlanmış | P2 = 100 | Borçsuzluk ödüllendirilir |
 | Bütçe kurulmamış | P4'ün 2 alt metriği devre dışı, bileşen çalışmaya devam eder | Bütçesiz kullanıcı disiplinden 0 almaz |
 | Hedef yok, gün < 60 | P5 tamamen devre dışı | Yeni kullanıcı muafiyeti |
 | Hedef yok, gün ≥ 60 | P5 = 45 | Bulgu, ceza değil |
 | Davranış etiketi < %25 | P6 devre dışı | Yetersiz veriyle psikoloji yorumu yapılmaz |
 | Kart limiti yok/0 | Kart alt metriği devre dışı | Sıfıra bölme |
-| Veri bütünlüğü şüphesi | `C × 0,60`, band genişler, inceleme bayrağı. Örnek: skor 83, band 77–90 | Suçlu sayılmaz, güven düşer |
+| Veri bütünlüğü şüphesi | `C × 0,60`, band genişler, inceleme bayrağı | Suçlu sayılmaz, güven düşer |
 | İlk hesaplama (önceki skor yok) | Yumuşatma uygulanmaz | Referans yok |
+
+Yukarıdaki tablo **davranışı** anlatır; aşağıdaki blok o davranışın
+**ölçülmüş** hâlidir:
+
+<!-- OTOMATIK:sm-sinir-durumlari -->
+*`golden_profiles.veri_sinir_durumlari()`'ndan üretildi. Davranışın gerekçesi yukarıdaki tabloda; buradaki sayılar ölçümdür.*
+
+| Durum | Skor | Band | C | Seviye | Devre dışı |
+|---|---|---|---|---|---|
+| Sıfır gelir (işsiz) | **55** | 52–58 | 0,75 | Dikkat | — |
+| Gider > gelir (negatif marj) | **35** | 32–37 | 0,76 | Riskli | — |
+| Hiç borç verisi yok | **68** | 65–71 | 0,74 | Gelişiyor | Borç Yükü |
+| Veri bütünlüğü şüphesi | **83** | 77–90 | 0,47 | Dengeli | — |
+<!-- /OTOMATIK:sm-sinir-durumlari -->
 
 ---
 
@@ -622,28 +690,31 @@ Doğru akış:
 
 `simulate()` çıktısı (`golden_profiles.py`, Didem için):
 
+Mockup'taki *"geçen aya göre +4 puan"* satırı `attribute()`'tan gelir:
+
+<!-- OTOMATIK:sm-simulasyon -->
+*`golden_profiles.veri_simulasyon()`'dan üretildi.*
+
 ```
-Mevcut durum: 73/100  (Gelişiyor)
-  Restoran limiti (aylık −600 TL)          → 74/100  (+1)
-  + Acil durum fonuna aylık 1.500 TL       → 76/100  (+3)
-  + Plansız harcama %23 → %15              → 78/100  (+5)
+Mevcut durum: 72/100  (Gelişiyor)
+
+  Restoran limiti (aylık -600 TL gider)      → 74/100  (+2)
+  + Acil durum fonuna aylık 1.500 TL         → 76/100  (+4)
+  + Plansız harcama %23 → %15                → 78/100  (+6)
 
 3 ay sonunda beklenen skor: 78 (Dengeli), band 76–80
 ```
 
-Katkı ayrıştırma (`attribute()`) — mockup'taki *"geçen aya göre +4 puan"*
-bu listeden gelir:
+Katkı ayrıştırma (mevcut → plan sonu) — toplam gösterilen farkı **tam olarak** kapatır, artık kalemi yuvarlamadır:
 
 ```
-  +2,48  Tasarruf & Güvence    56,5 → 70,1
-  +1,35  Finansal Davranış     61,6 → 76,4
-  +1,03  Harcama Disiplini     82,1 → 89,6
-  +0,25  Nakit Akışı           80,2 → 81,3
-  −0,11  Yumuşatma / yuvarlama
+   +2.74  Tasarruf & Güvence   60.9 → 76.0
+   +1.35  Finansal Davranış   61.6 → 76.4
+   +1.03  Harcama Disiplini   82.1 → 89.6
+   +0.61  Yumuşatma / yuvarlama
+   +0.27  Nakit Akışı   79.2 → 80.4
 ```
-
-Ayrıştırma toplamı gösterilen farkı **tam olarak** kapatır; artık kalemi
-yuvarlama farkıdır.
+<!-- /OTOMATIK:sm-simulasyon -->
 
 ### Guardrail'ler
 
@@ -735,6 +806,11 @@ Bunlar modeli bloke etmez ama ürün kararı bekler:
    ekstre kesim tarihi bazlı görünüm ürün tarafında ayrıca kararlaştırılmalı.
 3. **Hane halkı / ortak bütçe.** Model tek kullanıcı varsayıyor. Eş/partner
    ortak hesabı yaygın; v2.1 konusu.
-4. **Acil fon hedefi 6 ay mı 3 ay mı?** Model 6 ay alıyor (uluslararası
-   standart). Türkiye'nin enflasyon ortamında 3 ay + enflasyon korumalı
-   enstrüman daha gerçekçi olabilir; finansal danışman görüşü alınmalı.
+
+### Kapanmış
+
+- ~~**Acil fon hedefi 6 ay mı 3 ay mı?**~~ **12 Ağu 2026'da kapandı:**
+  skor **3 ay** üzerinden hesaplanır, 6 ay skorun dışında bir rozettir.
+  Gerekçe §6.3'te, karar kaydı Ek 0'da. (Bu madde bir süre "model 6 ay
+  alıyor" diyerek açık listede kaldı — oysa `p3.guvence.tam_ay` çoktan
+  3'e çekilmişti.)

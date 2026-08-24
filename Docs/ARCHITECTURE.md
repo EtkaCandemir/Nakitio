@@ -61,8 +61,21 @@ K3'ün tek girdisidir. Bu ayrım bilinçlidir:
 - Her katman kendi test setine sahiptir; bir hatanın hangi katmanda
   olduğu belirsiz kalmaz.
 
-İki sürüm ayrı takip edilir: `PIPELINE_VERSION` ve `MODEL_VERSION`.
-Bir skor kaydı **ikisini birden** saklamalıdır.
+**Üç sürüm ayrı takip edilir:** `PIPELINE_VERSION`, `MODEL_VERSION` ve
+`CATEGORY_VERSION`. Bir skor kaydı **üçünü birden** saklamalıdır.
+
+Kategorizasyonun ayrı sürümlenmesi bilinçlidir: N9, hattın geri kalanından
+çok daha hızlı evrilir. Sözlüğe bir marka eklemek N1–N8'i etkilemez ama
+**herkesin skorunu değiştirir** — "Diğer"e düşen bir harcama kategorize
+olunca `e_essential` değişir, o da `ef_months` ve `disc_share` üzerinden
+P3/P4'ü oynatır. Tek bir sürüm numarası bu farkı uzlaştıramaz.
+
+`CATEGORY_VERSION` elle bumplanır ama **kendini denetler**: `normalize.
+category_fingerprint()` taksonomi + marka sözlüğü + tür sözcükleri + MCC +
+özel desenlerin içerik özetini hesaplar, `t_category_version_fingerprint`
+onu beyan edilen değere karşı kontrol eder. Sürümü bumplamadan sözlüğü
+değiştirirsen test kırılır ve yeni parmak izini söyler — çünkü yalan
+söyleyen bir sürüm, olmayandan kötüdür.
 
 ---
 
@@ -239,12 +252,15 @@ GET  /api/coach?q=<durum|tasarruf|risk|kategori|yatirim>
   ↓ N8 aykırı değer       → 1 işlem (95.000 TL toplu hakediş)
   ↓ derive_features       → gelir 27.890 · gider 19.463 · marj %30,2
   ↓ behavior_infer        → plansız %12 · kapsam %55
-  ↓ compute_score         → 74/100 (C 0,91)
+  ↓ compute_score         → 75/100 (ham 76,4 · C 0,98)
 ```
 
-Bu sonuç, elle kurulmuş `golden_profiles.didem` ile **aynı skoru** verir.
-İki katman bağımsız kuruldu; aynı sonuca ulaşmaları hattın tutarlı
-olduğunu gösterir.
+Elle kurulmuş `golden_profiles.didem` **73** verir. İkisi **aynı kullanıcı
+değildir** — bakiyeler ve onboarding aynı, akış metrikleri 281 işlemden
+türetildiği için farklı (golden profilin hiç taksiti yok, fixture'ın iki
+planı var). Dolayısıyla bu bir determinizm denetimi değil, **hattın hiçbir
+yerinde kopukluk olmadığının** göstergesidir: bir N kuralı atlansa fark
+2 puan değil onlarca puan olurdu. Ayrıntı: `Docs/TESTING.md` §7.
 
 ---
 

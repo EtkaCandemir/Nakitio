@@ -213,9 +213,36 @@ tetikler:
 | N7 | İade edilmiş giyim alışverişi |
 | N8 | ₺95.000 toplu hakediş |
 
-**Sonuç: 74** — elle kurulmuş `golden_profiles.didem` ile aynı.
-İki katman bağımsız kuruldu; aynı sonuca ulaşmaları hattın tutarlı
-olduğunu gösterir.
+**Sonuç: 75** (ham 76,4 · C 0,98). Elle kurulmuş `golden_profiles.didem`
+ise **73** verir.
+
+### Bu iki sayı özdeş değildir — ve olmamalıdır
+
+İlk sürümde burada *"fixture golden ile aynı skoru veriyor, demek ki hat
+tutarlı"* yazıyordu. Bu iddia yanlıştı: iki "didem" **aynı kullanıcı
+değil.**
+
+`Features`'ın 25 alanı (bakiyeler, borç, kart limiti, onboarding) bilerek
+aynı tutulmuştur; ama **24 akış alanı** 281 işlemden türetildiği için
+farklı çıkar — gelir 28.450 → 27.890, gider 21.380 → 19.463, plansızlık
+%23 → %12. En belirgini: **golden profilin hiç taksiti yok**
+(`installment_remaining = 0`), fixture'ın iki aktif planı var.
+
+Yani bu bir *"aynı girdi → aynı çıktı"* denetimi değildir. Onu
+`t_determinism` yapar ve fixture'ın orada söyleyecek sözü yoktur.
+
+### Fixture gerçekte neyi garanti eder
+
+**281 ham işlem hattın tamamından geçtiğinde N1–N9'un hepsi tetikleniyor
+ve sonuç elle kurulmuş profille aynı komşulukta kalıyor** — 2 puan fark.
+
+Değeri buradadır: bir N kuralı sessizce atlanırsa fark 2 puan olmaz.
+Yalnızca N2 çift sayımı gideri ₺19.463'ten ₺29.978'e çıkarır (%54) ve
+skoru onlarca puan oynatır. Fixture'ın 73–75 aralığında kalması, hattın
+hiçbir yerinde böyle bir kopukluk olmadığının kanıtıdır.
+
+Bu yüzden fixture'ın beklentisi **tek bir sayı değil, bir aralık** olarak
+okunmalıdır; parametre kararları iki tarafı farklı miktarlarda oynatır.
 
 ---
 
@@ -264,6 +291,27 @@ arasındaki içerik ona aittir; dışarısı elle yazılmıştır.
 | `kategori-tablosu` | `FORMULAS.md` §7 | `CATEGORIES` + `CATEGORY_IMPULSE_PRIOR` |
 | `golden-skorlar` | `TESTING.md` §6 | `golden_profiles` çalıştırılır |
 | `test-sayilari` | `CLAUDE.md` §6 | süitler çalıştırılır |
+| `sm-sureklilik` | `skor-modeli-v2.md` §5 | `veri_sureklilik()` |
+| `sm-belirsizlik-bandi` | `skor-modeli-v2.md` §7 | `can` + `didem` bandı |
+| `sm-maddi-olay` | `skor-modeli-v2.md` §8 | `veri_maddi_olay()` |
+| `sm-golden-senaryo` | `skor-modeli-v2.md` §10 | `senaryo_profilleri()` |
+| `sm-didem-kirilim` | `skor-modeli-v2.md` §10 | `didem`'in `explain()`'i |
+| `sm-sinir-durumlari` | `skor-modeli-v2.md` §11 | `veri_sinir_durumlari()` |
+| `sm-simulasyon` | `skor-modeli-v2.md` §13 | `veri_simulasyon()` |
+
+### `sm-*` blokları neden sonradan eklendi
+
+`skor-modeli-v2.md` deponun en eski şartnamesidir ve uzun süre işaretsiz
+kaldı. 12 Ağu parametre kararları (`prior.baz` 50→40, `prior.min` 40→28,
+`p3.guvence.tam_ay` 6→3) elle yazılmış tablolarını geçersiz kıldı ama
+`--check` bunu göremedi — işaretlerin dışındaki metne bu araç dokunmaz.
+Sonuç: depo aynı commit'te `didem` için hem **73** (üretilen blok) hem
+**74** (elle yazılan tablo) taşıyordu.
+
+Bu bloklar `golden_profiles.veri_*()` **saf fonksiyonlarını** çağırır;
+hesap orada tek yerde durur. `run_*()` yazdırıcıları da aynı fonksiyonları
+kullanır — CLI çıktısı ile doküman aynı kaynaktan beslenmezse aradaki
+sapma bu kez kod içinde doğardı.
 
 Ayrıca üretilmeyen ama koda bağlı iddiaları doğrular: dokümanlardaki
 dosya yolları var mı, geçen parametre adları `params.py`'de mevcut mu,

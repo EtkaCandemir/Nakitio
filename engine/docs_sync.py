@@ -69,6 +69,22 @@ def _sayi(v: float) -> str:
     return s.replace("-", "−").replace(".", ",")
 
 
+def _ondalik(v: float, basamak: int) -> str:
+    """Türkçe biçim, SABİT ondalık — sayısal sütunlar için.
+
+    `_sayi` sondaki sıfırı kırpar (`0,60` → `0,6`, `58,0` → `58`); bir
+    parametre listesinde bu okunaklıdır ama hizalanmış bir ölçüm
+    tablosunda sütunu bozar ve değerler farklı hassasiyetteymiş gibi
+    görünür.
+    """
+    return f"{v:.{basamak}f}".replace("-", "−").replace(".", ",")
+
+
+def _delta(n: int) -> str:
+    """İşaretli tam sayı, Türkçe eksi işaretiyle."""
+    return f"{n:+d}".replace("-", "−")
+
+
 def blok_params_tablosu() -> str:
     """96 parametrenin tam tablosu, gruplara ayrılmış."""
     from params import M, P
@@ -105,6 +121,8 @@ def blok_params_tablosu() -> str:
 
 #: (modül, sabit adı, açıklama) — dokümana girecek normalizasyon sabitleri
 NORM_SABITLERI: List[Tuple[str, str, str]] = [
+    ("normalize", "PIPELINE_VERSION", "Veri hattı sürümü"),
+    ("normalize", "CATEGORY_VERSION", "Kategorizasyon sürümü — ayrı takip"),
     ("normalize", "WINDOW_DAYS", "Kayan pencere uzunluğu (gün)"),
     ("normalize", "N_WINDOWS", "Tutulan pencere sayısı"),
     ("normalize", "TRANSFER_MATCH_DAYS", "İç transfer eşleştirme penceresi (gün)"),
@@ -191,14 +209,22 @@ def blok_kategori_tablosu() -> str:
            "",
            "| Kategori | `essential_weight` | Plansızlık ön olasılığı | TÜFE grubu |",
            "|---|---|---|---|"]
-    for c in sorted(CATEGORIES.values(), key=lambda x: (-x.essential_weight, x.key)):
+    # None ağırlıklılar (pazaryeri, diğer) en sona — sıralama anahtarında
+    # -1 kullanılır ki 0,00 ağırlıklı gerçek kategorilerin altına düşsünler.
+    for c in sorted(CATEGORIES.values(),
+                    key=lambda x: (-(x.essential_weight if x.essential_weight
+                                     is not None else -1.0), x.key)):
         prior = CATEGORY_IMPULSE_PRIOR.get(c.key)
         p = _sayi(prior) if prior is not None else "—"
-        out.append(f"| {c.label} (`{c.key}`) | **{_sayi(c.essential_weight)}** | "
+        ew = "**bilinmiyor**" if c.essential_weight is None else f"**{_sayi(c.essential_weight)}**"
+        out.append(f"| {c.label} (`{c.key}`) | {ew} | "
                    f"{p} | `{c.cpi_group}` |")
     out.append("")
     out.append("```")
     out.append("e_essential = Σ (tutar_i × essential_weight[kategori_i])")
+    out.append("")
+    out.append("Ağırlığı `bilinmiyor` olanlar bu toplama GİRMEZ; oran, ağırlığı")
+    out.append("bilinen harcamadan tahmin edilip toplama genişletilir.")
     out.append("```")
     return "\n".join(out)
 
@@ -215,6 +241,137 @@ def blok_golden_skorlar() -> str:
         out.append(f"| `{ad}` | **{r.score}** | {r.band[0]}–{r.band[1]} | "
                    f"{_sayi(round(r.confidence, 2))} | {not_} |")
     return "\n".join(out)
+
+
+# ── `Docs/skor-modeli-v2.md` blokları ────────────────────────────────────────
+# Bu dosya deponun EN ESKİ şartnamesidir ve uzun süre işaretsiz kaldı: elle
+# yazılmış tabloları 12 Ağu parametre kararlarının (prior.baz 50→40,
+# prior.min 40→28, p3.guvence.tam_ay 6→3) gerisinde kaldı ve `--check` bunu
+# göremedi — çünkü işaretlerin dışındaki metne bu araç dokunmaz. Depo aynı
+# commit'te didem için hem 73 (üretilen blok) hem 74 (elle yazılan tablo)
+# taşıyordu. Aşağıdaki üreticiler o sınıfı kalıcı olarak kapatır.
+#
+# Hepsi `golden_profiles.veri_*()` saf fonksiyonlarını çağırır; hesap orada
+# TEK yerde durur. Buraya kopyalanırsa aynı sapma bu kez kod içinde doğar.
+
+def blok_sm_golden_senaryo() -> str:
+    """§10 — 10 senaryo profili. Kapsam profilleri `TESTING.md`'de."""
+    from golden_profiles import senaryo_profilleri
+    from score_engine import compute_score
+
+    out = ["*`golden_profiles.py` çalıştırılarak üretildi. Kapsam profilleri "
+           "dahil tam liste: `Docs/TESTING.md` §6.*", "",
+           "| Profil | Skor | Band | Ham | Öncül | C | Seviye |",
+           "|---|---|---|---|---|---|---|"]
+    for ad, (f, not_, _beklenen) in senaryo_profilleri().items():
+        r = compute_score(f)
+        out.append(f"| **{ad}** — {not_} | **{r.score}** | {r.band[0]}–{r.band[1]} | "
+                   f"{_ondalik(r.raw_score, 1)} | {_ondalik(r.prior_score, 1)} | "
+                   f"{_ondalik(r.confidence, 2)} | {r.level} |")
+    return "\n".join(out)
+
+
+def blok_sm_didem_kirilim() -> str:
+    """§10 — mockup kullanıcısının tam bileşen kırılımı."""
+    from golden_profiles import PROFILES
+    from score_engine import compute_score
+
+    f, _, _ = PROFILES["didem"]
+    return ("*`compute_score(PROFILES[\"didem\"]).explain()` çıktısı — motor "
+            "dökümü olduğu için ondalık ayracı noktadır.*\n\n"
+            "```\n" + compute_score(f).explain().rstrip() + "\n```")
+
+
+def blok_sm_sureklilik() -> str:
+    """§5 — gün-30 uçurumunun kalktığının kanıtı."""
+    from golden_profiles import veri_sureklilik
+
+    out = ["*`golden_profiles.veri_sureklilik()`'ten üretildi.*", "",
+           "| gün | C | ham | öncül | karma | skor | aşama |",
+           "|---|---|---|---|---|---|---|"]
+    for d, r in veri_sureklilik():
+        # Uçurumun iki yanı vurgulanır — iddianın can alıcı noktası orası.
+        g = f"**{d}**" if d in (30, 31) else str(d)
+        asama = r.stage_label.replace(" Skoru", "")
+        out.append(f"| {g} | {_ondalik(r.confidence, 2)} | "
+                   f"{_ondalik(r.raw_score, 1)} | {_ondalik(r.prior_score, 1)} | "
+                   f"{_ondalik(r.blended_score, 1)} | **{r.score}** | {asama} |")
+    return "\n".join(out)
+
+
+def blok_sm_belirsizlik_bandi() -> str:
+    """§7 — bant genişliğinin güvenle daralması."""
+    from golden_profiles import PROFILES
+    from score_engine import compute_score
+
+    out = ["*`golden_profiles.py`'den üretildi.*", ""]
+    for ad in ("can", "didem"):
+        f, _, _ = PROFILES[ad]
+        r = compute_score(f)
+        yari = (r.band[1] - r.band[0]) / 2
+        out.append(f"`C = {_ondalik(r.confidence, 2)}` → ±{_sayi(yari)} puan "
+                   f"(`{ad}`: **{r.score}**, band `{r.band[0]}–{r.band[1]}`)")
+        out.append("")
+    return "\n".join(out).rstrip()
+
+
+def blok_sm_maddi_olay() -> str:
+    """§8 — kötü haber hızlı, iyi haber yavaş."""
+    from golden_profiles import veri_maddi_olay
+
+    ok, bad, good = veri_maddi_olay()
+    return ("*`golden_profiles.veri_maddi_olay()`'dan üretildi.*\n\n"
+            "```\n"
+            f"Normal ay            : {ok.score}\n"
+            f"Gecikmeye düştü      : {bad.score}   "
+            f"(Δ {_delta(bad.score - ok.score)})   ← ±8 sınırı bypass edildi\n"
+            f"Ani büyük iyileşme   : {good.score}   "
+            f"(Δ {_delta(good.score - ok.score)})   ← yukarı yön sınırlı kaldı\n"
+            "```\n\n"
+            f"Tespit edilen maddi olay: {', '.join(bad.material_events)}.")
+
+
+def blok_sm_sinir_durumlari() -> str:
+    """§11 — sınır durumlarının ÖLÇÜLMÜŞ çıktısı."""
+    from golden_profiles import veri_sinir_durumlari
+
+    out = ["*`golden_profiles.veri_sinir_durumlari()`'ndan üretildi. Davranışın "
+           "gerekçesi yukarıdaki tabloda; buradaki sayılar ölçümdür.*", "",
+           "| Durum | Skor | Band | C | Seviye | Devre dışı |",
+           "|---|---|---|---|---|---|"]
+    for etiket, r, dis in veri_sinir_durumlari():
+        out.append(f"| {etiket} | **{r.score}** | {r.band[0]}–{r.band[1]} | "
+                   f"{_ondalik(r.confidence, 2)} | {r.level} | "
+                   f"{', '.join(dis) if dis else '—'} |")
+    return "\n".join(out)
+
+
+def blok_sm_simulasyon() -> str:
+    """§13 — koçun 'bu planı uygularsan X olur' vaadinin kaynağı."""
+    from golden_profiles import veri_simulasyon
+
+    base, adimlar, katki = veri_simulasyon()
+    son = adimlar[-1][1] if adimlar else base
+    satir = [f"Mevcut durum: {base.score}/100  ({base.level})", ""]
+    for etiket, r in adimlar:
+        satir.append(f"  {etiket:<42} → {r.score}/100  ({_delta(r.score - base.score)})")
+    satir.append("")
+    satir.append(f"3 ay sonunda beklenen skor: {son.score} ({son.level}), "
+                 f"band {son.band[0]}–{son.band[1]}")
+
+    kat = ["```"]
+    for row in katki:
+        ok_ = ""
+        if row["from"] is not None and row["to"] is not None:
+            ok_ = f"   {row['from']} → {row['to']}"
+        kat.append(f"  {row['delta']:+6.2f}  {row['label']}{ok_}")
+    kat.append("```")
+
+    return ("*`golden_profiles.veri_simulasyon()`'dan üretildi.*\n\n"
+            "```\n" + "\n".join(satir) + "\n```\n\n"
+            "Katkı ayrıştırma (mevcut → plan sonu) — toplam gösterilen farkı "
+            "**tam olarak** kapatır, artık kalemi yuvarlamadır:\n\n"
+            + "\n".join(kat))
 
 
 def blok_test_sayilari() -> str:
@@ -260,6 +417,14 @@ BLOKLAR: Dict[str, Callable[[], str]] = {
     "kategori-tablosu": blok_kategori_tablosu,
     "golden-skorlar": blok_golden_skorlar,
     "test-sayilari": blok_test_sayilari,
+    # skor-modeli-v2.md — bkz. üreticilerin üstündeki gerekçe
+    "sm-sureklilik": blok_sm_sureklilik,
+    "sm-belirsizlik-bandi": blok_sm_belirsizlik_bandi,
+    "sm-maddi-olay": blok_sm_maddi_olay,
+    "sm-golden-senaryo": blok_sm_golden_senaryo,
+    "sm-didem-kirilim": blok_sm_didem_kirilim,
+    "sm-sinir-durumlari": blok_sm_sinir_durumlari,
+    "sm-simulasyon": blok_sm_simulasyon,
 }
 
 

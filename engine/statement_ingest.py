@@ -73,11 +73,23 @@ class BankProfile:
     col_credit: str = ""
 
     # ── pdf_text ───────────────────────────────────────────────────────
-    #: Adlandırılmış gruplar: date, desc, amount (+ isteğe bağlı sign, inst)
+    #: Adlandırılmış gruplar: date, desc, amount (+ isteğe bağlı sign, inst,
+    #: inst_rest, inst_last)
     line_re: str = ""
     #: Üstbilgi alanları için desenler: period_start/end, account_ref,
     #: closing_balance, minimum_payment, due_date
     header_re: Dict[str, str] = field(default_factory=dict)
+    #: İŞLEM SAYILMAYACAK satırlar. Kart ekstrelerinde devir bakiyesi
+    #: ("ÖNCEKİ DÖNEM ... BAKİYENİZ") işlem satırıyla aynı düzendedir:
+    #: tarih + açıklama + tutar. Elenmezse dönem borcunun tamamı kadar
+    #: hayalî bir harcama doğar — gerçek VakıfBank ekstresinde 264.905,73 TL.
+    exclude_re: Tuple[str, ...] = ()
+    #: Açıklamada yalnız SIRA yazan düzenler için ("9. Taksit"), toplam
+    #: adet ayrı sütunda gelir. Verilirse `line_re`'nin `inst_rest` (kalan
+    #: adet) ya da `inst_last` (son taksit) grubuyla birlikte kullanılır:
+    #:     toplam = sıra + kalan   ·   "Son Taksit" ise toplam = sıra
+    #: Varsayılan `INSTALLMENT_RE` ("TAKSIT 3/12") bu düzeni GÖREMEZ.
+    installment_index_re: str = ""
 
     # ── ortak ──────────────────────────────────────────────────────────
     date_formats: Tuple[str, ...] = ("%d.%m.%Y", "%d/%m/%Y", "%d.%m.%y")
@@ -131,6 +143,57 @@ PROFILES: Dict[str, BankProfile] = {
             password_hint="Genellikle TCKN/doğum tarihi/kart son hanelerinden "
                           "türetilir; bankaya göre değişir.",
         ),
+        # ── VakıfBank World — GERÇEK ekstre ile doğrulandı ──────────────
+        # Bu profil, elde tutulan gerçek bir "Kredi Kartı Hesap Özeti (TL)"
+        # dosyasıyla yazıldı ve bankanın kendi HESAP ÖZETİ bloğuna karşı
+        # mutabakat edildi (kuruşuna kadar tuttu):
+        #     devir + harcama + faiz − ödeme = Dönem Borcunuz
+        # Regresyon: `test_ingest.t_parse_vakifbank_card`.
+        #
+        # Jenerik kart profili bu dosyada TAMAMEN başarısızdı ve bir kısmı
+        # SESSİZ başarısızlıktı — ayrıntı `decimal` alanının yanında.
+        BankProfile(
+            key="tr_vakifbank_card_pdf",
+            bank="VakıfBank", doc_kind=DocKind.CARD, fmt=Fmt.PDF_TEXT,
+            # Satır düzeni:
+            #   TARİH  AÇIKLAMA  TUTAR  [KALAN TAKSİT]  [WORLDPUAN]  [*]
+            # Sondaki iki sütun tuzaktır: WORLDPUAN çıplak bir tam sayıdır,
+            # KALAN TAKSİT ise ikinci bir tutar gibi görünür ("3x3,610.50").
+            # Açgözlü bir tutar deseni ikisinden birini tutar olarak yakalar.
+            line_re=(
+                r"^(?P<date>\d{2}\.\d{2}\.\d{4})\s+"
+                r"(?P<desc>.+?)\s+"
+                r"(?P<amount>[+-]?[\d,]+\.\d{2})"
+                r"(?:\s+(?:(?P<inst_rest>\d+)x[\d,]+\.\d{2}"
+                r"|(?P<inst_last>Son\s+Taksit)))?"
+                r"(?:\s+\d+)?"
+                r"\s*\*?\s*$"
+            ),
+            header_re={
+                "period_end": r"Hesap\s*Kesim\s*Tarihi\s*:?\s*(\d{2}\.\d{2}\.\d{4})",
+                "due_date": r"Son\s*Ödeme\s*Tarihi\s*:?\s*(\d{2}\.\d{2}\.\d{4})",
+                # "Dönem Borcunuz" — jenerik profil "Dönem Borcu" arar ve
+                # sondaki "nuz" yüzünden eşleşmez.
+                "closing_balance": r"Dönem\s*Borcunuz\s*:?\s*([\d,]+\.\d{2})",
+                "minimum_payment": r"Asgari\s*Ödeme\s*Tutarı\s*:?\s*([\d,]+\.\d{2})",
+                "account_ref": r"Kart\s*No\s*:?\s*([\d*]{8,25})",
+            },
+            exclude_re=(r"ÖNCEK[İI]\s+DÖNEM.*BAK[İI]YEN[İI]Z",),
+            installment_index_re=r"(\d{1,2})\s*\.\s*Taksit",
+            # ⚠ EN BİÇİM. 293,149.69 → virgül BİNLİK, nokta ONDALIK.
+            # Jenerik profil "tr" varsayıyor ve asgari ödemeyi
+            # 117.260,00 yerine 117,26 okuyordu: 1000 kat hata, hem de
+            # HİÇBİR UYARI ÜRETMEDEN. Sıfır satır eşleşmesi en azından
+            # uyarı veriyor; yanlış ondalık biçimi makul görünen bir sayı
+            # üretiyor. Yeni profil eklerken ilk doğrulanacak alan budur.
+            decimal="en",
+            # Alacak satırları "+" önekiyle gelir ama işaret bilgisi
+            # kelimeyle de doğrulanır: "ÖDEMENİZ İÇİN TEŞEKKÜRLER", "İADE/".
+            credit_markers=("ödemeniz için teşekkürler", "iade", "iptal",
+                            "alacak"),
+            password_hint="VakıfBank kart ekstresi genellikle TCKN'nin ilk "
+                          "haneleri veya doğum tarihi ile açılır.",
+        ),
     ]
 }
 
@@ -162,6 +225,10 @@ class ParsedStatement:
     minimum_payment: Optional[float] = None
     due_date: Optional[date] = None
     warnings: List[str] = field(default_factory=list)
+    #: `exclude_re` ile elenen satır sayısı — devir bakiyesi, ara toplam.
+    #: Sıfır çıkması, elenmesi gereken satırın işlem sayıldığına işaret
+    #: edebilir; tanı için raporlanır.
+    excluded: int = 0
 
     @property
     def key(self) -> str:
@@ -229,6 +296,35 @@ def _extract_installment(desc: str) -> Tuple[Optional[int], Optional[int]]:
     if not m:
         return None, None
     idx, cnt = int(m.group(1)), int(m.group(2))
+    if cnt < 2 or idx > cnt or cnt > 36:
+        return None, None
+    return idx, cnt
+
+
+def _installment_from_remaining(desc: str, groups: Dict[str, Optional[str]],
+                                profile: "BankProfile"
+                                ) -> Tuple[Optional[int], Optional[int]]:
+    """"9. Taksit" + ayrı "3x3.610,50" sütunu → (sıra, toplam adet).
+
+    VakıfBank düzeni. Açıklama yalnız KAÇINCI taksit olduğunu söyler;
+    kaç taksit KALDIĞI ayrı sütundadır. Toplam adet ikisinin toplamıdır.
+
+    Gerçek bir ekstrede bu düzen olmadan 16 taksitli satırın 16'sı da
+    tanınmıyordu ve 72.730,87 TL'lik kalan taahhüt görünmez kalıyordu —
+    `COMMIT` oranı Borç Yükü bileşeninin dörtte biridir.
+    """
+    m = re.search(profile.installment_index_re, desc or "", re.IGNORECASE)
+    if not m:
+        return None, None
+    idx = int(m.group(1))
+
+    if groups.get("inst_last"):
+        cnt = idx                       # "Son Taksit" → bu sonuncusu
+    elif groups.get("inst_rest"):
+        cnt = idx + int(groups["inst_rest"])
+    else:
+        return None, None
+
     if cnt < 2 or idx > cnt or cnt > 36:
         return None, None
     return idx, cnt
@@ -302,6 +398,7 @@ def parse_pdf_text(text: str, profile: BankProfile) -> ParsedStatement:
             setattr(st, fieldname, re.sub(r"\s+", "", val))
 
     line_re = re.compile(profile.line_re, re.MULTILINE)
+    haric = [re.compile(p, re.IGNORECASE) for p in (profile.exclude_re or ())]
     for m in line_re.finditer(text):
         g = m.groupdict()
         d = parse_date(g.get("date", ""), profile.date_formats)
@@ -309,6 +406,11 @@ def parse_pdf_text(text: str, profile: BankProfile) -> ParsedStatement:
         if d is None or amt is None:
             continue
         desc = (g.get("desc") or "").strip()
+
+        # Devir bakiyesi / ara toplam satırları işlem değildir.
+        if any(p.search(desc) for p in haric):
+            st.excluded += 1
+            continue
 
         # Kart ekstresinde harcama pozitif yazılır → hesap perspektifine
         # çevrilir (çıkış negatif). Alacak satırları kelimeyle işaretlidir.
@@ -318,6 +420,8 @@ def parse_pdf_text(text: str, profile: BankProfile) -> ParsedStatement:
             amt = abs(amt) if is_credit else -abs(amt)
 
         i, c = _extract_installment(desc)
+        if i is None and profile.installment_index_re:
+            i, c = _installment_from_remaining(desc, g, profile)
         st.rows.append(ParsedRow(d, desc, amt, i, c, m.group(0)))
 
     if not st.rows:

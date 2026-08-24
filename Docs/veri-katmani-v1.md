@@ -3,7 +3,7 @@
 **Durum:** Uygulanmaya hazır teknik şartname
 **Kapsam:** Ham banka hareketinden `Features` nesnesine kadar olan her şey
 **Referans implementasyon:** `engine/data_model.py`, `engine/normalize.py`
-**Testler:** `engine/test_normalize.py` (48 kontrol) · `engine/fixture_didem.py` (uçtan uca)
+**Testler:** `engine/test_normalize.py` · `engine/fixture_didem.py` (uçtan uca) · `engine/eval_kategori.py` (kategorizasyon ölçümü)
 **Devamı:** `Docs/skor-modeli-v2.md`
 
 ```
@@ -28,8 +28,21 @@ geldiği onun sorunu değildir. Bu ayrım bilinçlidir:
 - Her katman **kendi test setine** sahiptir; bir hatanın hangi katmanda
   olduğu belirsiz kalmaz.
 
-İki katmanın sürümü ayrı takip edilir: `PIPELINE_VERSION` ve `MODEL_VERSION`.
-Bir skor kaydı **ikisini birden** saklamalıdır.
+**Üç sürüm ayrı takip edilir:** `PIPELINE_VERSION`, `MODEL_VERSION` ve
+`CATEGORY_VERSION`. Bir skor kaydı **üçünü birden** saklamalıdır.
+
+Kategorizasyonun ayrı sürümlenmesi bilinçlidir: N9, hattın geri kalanından
+çok daha hızlı evrilir. Sözlüğe bir marka eklemek N1–N8'i etkilemez ama
+**herkesin skorunu değiştirir** — "Diğer"e düşen bir harcama kategorize
+olunca `e_essential` değişir, o da `ef_months` ve `disc_share` üzerinden
+P3/P4'ü oynatır. Tek bir sürüm numarası bu farkı uzlaştıramaz.
+
+`CATEGORY_VERSION` elle bumplanır ama **kendini denetler**: `normalize.
+category_fingerprint()` taksonomi + marka sözlüğü + tür sözcükleri + MCC +
+özel desenlerin içerik özetini hesaplar, `t_category_version_fingerprint`
+onu beyan edilen değere karşı kontrol eder. Sürümü bumplamadan sözlüğü
+değiştirirsen test kırılır ve yeni parmak izini söyler — çünkü yalan
+söyleyen bir sürüm, olmayandan kötüdür.
 
 ---
 
@@ -64,7 +77,7 @@ mutabakatsızlık üretir.
 
 ## 3. Kategori taksonomisi
 
-25 kategori, her biri bir `essential_weight ∈ [0,1]` taşır.
+26 kategori. Her biri bir `essential_weight ∈ [0,1]` **ya da `None`** taşır.
 
 ### Neden ikili bayrak değil, kesirli ağırlık
 
@@ -88,29 +101,74 @@ e_essential = Σ tutar_i × essential_weight[kategori_i]
 | 0,95 | çocuk / bakım |
 | 0,85 | market, iletişim |
 | 0,75 | ulaşım |
-| 0,40 | ev / yaşam, diğer |
+| 0,40 | ev / yaşam |
 | 0,35 | kişisel bakım |
 | 0,25 | giyim |
 | 0,15 | restoran & kafe |
 | 0,10 | dijital abonelik, elektronik, spor |
 | 0,05 | hediye |
 | 0,00 | eğlence, tatil, alkol & tütün, şans oyunları |
+| **bilinmiyor** | **pazaryeri, faiz & ücret, diğer** |
 
 Ağırlıklar Türkiye hanehalkı tüketim yapısı dikkate alınarak konuldu ve
 **gerçek veriyle kalibre edilmelidir**.
 
+### `None` ağırlık: "sıfır" değil, "bilmiyoruz"
+
+Üç kategorinin ağırlığı bilerek `None`'dır ve ortak özellikleri şu:
+**işyerini biliyoruz, ne alındığını bilmiyoruz.**
+
+- **pazaryeri** — Trendyol/Amazon tek satırı giyim de olabilir elektronik de
+- **faiz & ücret** — tüketim değil, borcun maliyeti
+- **diğer** — hiç eşleşmedi
+
+`None ≠ 0` kuralının taksonomi düzeyindeki karşılığıdır. Bunlar
+`e_essential` toplamına **girmez**; oran, ağırlığı bilinen harcamadan
+tahmin edilip toplama genişletilir.
+
+Naif çözüm — bilinmeyeni toplamdan düşmek — **daha kötüdür**, çünkü
+`e_essential` bir PAYDADIR: `ef_months = ef_liquid / e_essential`. Payda
+küçülünce acil fon daha uzun dayanıyor GÖRÜNÜR. Gerçek bir kart
+ekstresinde ölçüldü: harcamanın %37'si bilinemezken naif çekimserlik
+`ef_months`'u 0,74 yerine 1,30 gösteriyordu — bilmemek %76 ödül
+kazandırıyordu. Regresyon: `t_essential_estimator_not_biased`.
+
 ### Kategorizasyon önceliği
 
+Katmanlı, en özelden en genele:
+
 ```
-kullanıcı düzeltmesi  >  merchant kuralı  >  MCC kodu  >  "diğer"
+L0   işlem düzeltmesi   user_overrides[txn_id]      → bu TEK işlem
+L0'  işyeri hafızası    category_overrides[mid]     → o işyerinin HEPSİ
+L1   faiz/ücret         desen                       → tüketim değil
+L2   marka sözlüğü      markalar.py (164 zincir)    → zincirler
+L3   tür sözcüğü        MERCHANT_RULES (18 kalıp)   → yerel işletmeler
+L4   MCC                kart kodu                   → ekstrede genelde YOK
+L5   ÇEKİMSER           diger + CategorySource.NONE
 ```
 
-Kullanıcı düzeltmeleri kalıcıdır ve aynı `merchant_id` için gelecekteki
-işlemlere uygulanmalıdır (referans implementasyonda kapsam dışı).
+**İşyeri hafızası kalıcıdır.** Kullanıcı bir kez "AYYILDIZ market'tir"
+dediğinde o işyerinin GEÇMİŞ ve GELECEK tüm işlemleri düzelir
+(`RawData.category_overrides`). Marka sözlüğünü de ezer — kullanıcı kendi
+bağlamını bizden iyi bilir.
 
-`_merchant_key()` merchant adını normalleştirir —
-`MIGROS TIC A.S IST *4471` ve `MIGROS TIC SUBE 12` aynı anahtara düşer.
-Yinelenen ödeme tespiti (N4) ve iade eşleştirme (N7) buna dayanır.
+**L4 pratikte ölüdür:** kart ekstresinde MCC YOKTUR (gerçek bir dosyada
+sıfır eşleşme). Yük tamamen L2+L3'tedir.
+
+### Kanonik merchant kimliği
+
+`_merchant_key()` merchant adını normalleştirir; marka tanınıyorsa
+**kanonik anahtar** döner. Bu, hafızanın ve N4/N7'nin temelidir:
+
+```
+"9922 - 5650 - A101 C"   ┐
+"9946-E325-A101 TUNAL"   ┴→  "a101"
+"BIM O831 GORDION POL"   ┐
+"BIM T288 YENIMAHALLE"   ┴→  "bim"
+```
+
+Marka tanınmazsa mağaza kodu anahtara sızar ve aynı zincirin iki şubesi
+iki ayrı işyeri sanılır — bir düzeltme diğerini kapsamazdı.
 
 ---
 
@@ -392,17 +450,24 @@ TÜRETİLMİŞ METRİKLER
   zorunlu gider            11.480 TL      kart kullanımı         %34
   nakit akışı marjı        %30,2          bütçe aşımı            3.290 / 14.600 TL
   kasıtlı tasarruf          5.303 TL      kategori oynaklığı     0,201
-  acil durum fonu           0,65 ay       davranış kapsamı       %36
+  acil durum fonu           0,65 ay       davranış kapsamı       %55
   tasarruf sürekliliği      6/6 ay        kategorize oran        %88
 
 SKOR
-  Finansal Sağlık Skoru: 74/100  (Gelişiyor)
-  ham=73,6  öncül=56,0  C=0,98  band=72-76
+  Finansal Sağlık Skoru: 75/100  (Dengeli)
+  ham=76,4  öncül=46,0  karma=75,6  C=0,98  band=73-77
 ```
 
-**Sonuç 74** — elle kurulmuş golden profilin (`golden_profiles.didem`)
-verdiği skorla **aynı**. İki katman bağımsız kuruldu; aynı sonuca
-ulaşmaları hattın tutarlı olduğunu gösterir.
+**Sonuç 75.** Elle kurulmuş golden profil (`golden_profiles.didem`) **73**
+verir — ve bu ikisinin **aynı olması beklenmez.** İki profil aynı
+bakiyeleri ve onboarding cevaplarını paylaşır, ama akış metrikleri 281
+işlemden türetildiği için ayrışır: golden profilin hiç taksiti yokken
+fixture'ın iki aktif planı vardır.
+
+Fixture'ın doğruladığı şey determinizm değil **hattın bütünlüğüdür**: bu
+kadar farklı bir yoldan gelen iki hesabın 2 puan içinde buluşması,
+N1–N9'un hiçbirinin sessizce atlanmadığı anlamına gelir. Tek başına N2
+çift sayımı gideri ₺19.463'ten ₺29.978'e çıkarırdı.
 
 ### Fixture'ın ortaya çıkardığı bir ürün bulgusu
 

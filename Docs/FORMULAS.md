@@ -325,7 +325,6 @@ triyaj değeri = (tutar / toplam) × (1 − |2p − 1|)
 | İnternet / Telefon (`iletisim`) | **0,85** | 0,05 | `haberlesme` |
 | Market (`market`) | **0,85** | 0,15 | `gida` |
 | Ulaşım (`ulasim`) | **0,75** | 0,12 | `ulastirma` |
-| Diğer (`diger`) | **0,4** | 0,3 | `cesitli` |
 | Ev / Yaşam (`ev`) | **0,4** | 0,35 | `ev_esyasi` |
 | Kişisel Bakım (`kisisel`) | **0,35** | 0,4 | `cesitli` |
 | Giyim (`giyim`) | **0,25** | 0,55 | `giyim` |
@@ -338,9 +337,15 @@ triyaj değeri = (tutar / toplam) × (1 − |2p − 1|)
 | Eğlence & Hobi (`eglence`) | **0** | 0,65 | `eglence` |
 | Şans Oyunları (`sans_oyunu`) | **0** | 0,8 | `eglence` |
 | Tatil & Seyahat (`tatil`) | **0** | 0,4 | `lokanta` |
+| Diğer (`diger`) | **bilinmiyor** | 0,3 | `cesitli` |
+| Faiz & Ücret (`faiz_ucret`) | **bilinmiyor** | — | `cesitli` |
+| Pazaryeri (`pazaryeri`) | **bilinmiyor** | 0,45 | `cesitli` |
 
 ```
 e_essential = Σ (tutar_i × essential_weight[kategori_i])
+
+Ağırlığı `bilinmiyor` olanlar bu toplama GİRMEZ; oran, ağırlığı
+bilinen harcamadan tahmin edilip toplama genişletilir.
 ```
 <!-- /OTOMATIK:kategori-tablosu -->
 
@@ -528,6 +533,8 @@ isteğe bağlıdır. İkili bayrak gri bölgede sistematik hata üretir ve hem
 
 | Sabit | Değer | Modül | Anlamı |
 |---|---|---|---|
+| `PIPELINE_VERSION` | **1.0.0** | `normalize` | Veri hattı sürümü |
+| `CATEGORY_VERSION` | **1.1.0** | `normalize` | Kategorizasyon sürümü — ayrı takip |
 | `WINDOW_DAYS` | **30** | `normalize` | Kayan pencere uzunluğu (gün) |
 | `N_WINDOWS` | **6** | `normalize` | Tutulan pencere sayısı |
 | `TRANSFER_MATCH_DAYS` | **3** | `normalize` | İç transfer eşleştirme penceresi (gün) |

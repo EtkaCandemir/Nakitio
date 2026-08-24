@@ -67,6 +67,9 @@ CATEGORY_IMPULSE_PRIOR: Dict[str, float] = {
     "restoran": 0.45, "giyim": 0.55, "elektronik": 0.55, "spor": 0.35,
     "hediye": 0.50, "tatil": 0.40,
     "eglence": 0.65, "alkol_tutun": 0.60, "sans_oyunu": 0.80,
+    # Pazaryeri: içerik bilinmiyor ama pazaryeri alışverişi ortalamadan
+    # daha plansızdır (öneri akışları, tek tıkla alım, kampanya baskısı).
+    "pazaryeri": 0.45,
     "diger": 0.30,
 }
 
@@ -197,7 +200,11 @@ def build_signals(ledger, window) -> List[Tuple[Transaction, Signals]]:
     for t in all_purchases:
         w = CATEGORIES.get(t.category or DEFAULT_CATEGORY,
                            CATEGORIES[DEFAULT_CATEGORY]).essential_weight
-        if w <= 0.45:
+        # w is None → zorunluluğu BİLİNMİYOR (pazaryeri, eşleşmeyen).
+        # Kümelenme sinyali "aynı gün kaç isteğe bağlı harcama" sayar;
+        # bilinmeyeni isteğe bağlı SAYMAK, plansızlığı yukarı yanlı ölçer.
+        # Bilmediğimizi sinyale çevirmiyoruz.
+        if w is not None and w <= 0.45:
             day_counts[t.ts.date()] = day_counts.get(t.ts.date(), 0) + 1
 
     out: List[Tuple[Transaction, Signals]] = []

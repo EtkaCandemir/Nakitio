@@ -106,7 +106,17 @@ EXPENSE_KINDS = {TxnKind.PURCHASE, TxnKind.FEE, TxnKind.INTEREST}
 class Category:
     key: str
     label: str
-    essential_weight: float
+    #: [0,1] ağırlık — ya da **None = BİLİNMİYOR**.
+    #:
+    #: None, "sıfır zorunlu" demek DEĞİLDİR; "bu harcamanın ne kadarının
+    #: zorunlu olduğunu bilmiyoruz" demektir. İkisini karıştırmak, modelin
+    #: `None ≠ 0` temel kuralının taksonomi düzeyindeki ihlali olur.
+    #:
+    #: Böyle kategoriler `e_essential` toplamına girmez; oran, ağırlığı
+    #: BİLİNEN harcamadan tahmin edilip toplama genişletilir
+    #: (`normalize.derive_features`). Ortalama bir sayı uydurmak yerine
+    #: bilmediğimizi itiraf edip belirsizliği güvene yansıtırız.
+    essential_weight: Optional[float]
     cpi_group: str            # TÜİK COICOP eşlemesi (enflasyon düzeltmesi)
 
 
@@ -137,7 +147,25 @@ CATEGORIES: Dict[str, Category] = {c.key: c for c in [
     Category("hediye",      "Hediye",              0.05, "cesitli"),
     Category("alkol_tutun", "Alkol & Tütün",       0.00, "alkol_tutun"),
     Category("sans_oyunu",  "Şans Oyunları",       0.00, "eglence"),
-    Category("diger",       "Diğer",               0.40, "cesitli"),
+    # ── Ağırlığı BİLİNMEYENLER ─────────────────────────────────────────
+    # Bu ikisinin ortak özelliği: işyerini biliyoruz, NE ALINDIĞINI
+    # bilmiyoruz. Sabit bir ağırlık vermek uydurmak olur.
+    #
+    # "Pazaryeri": Trendyol/Amazon/Hepsiburada tek satırı giyim de olabilir
+    # elektronik de market de. Bilgi metinde YOKTUR; hiçbir kural ya da
+    # model onu metinden çıkaramaz. Kullanıcıya sorulur (triyaj).
+    Category("pazaryeri",   "Pazaryeri",           None, "cesitli"),
+    # Faiz/ücret TÜKETİM DEĞİLDİR — borcun maliyetidir. Zorunlu/isteğe
+    # bağlı ekseninde bir yeri yoktur: "zorunlu" saymak borçlu olmayı
+    # ödüllendirir (disc_share düşer, disiplin puanı yükselir), "isteğe
+    # bağlı" saymak ise P2'nin zaten ölçtüğü borç yükünü ikinci kez
+    # cezalandırır. İkisi de yanlış; ağırlık BİLİNMEZ bırakılır.
+    Category("faiz_ucret",  "Faiz & Ücret",        None, "cesitli"),
+    # "Diğer" bir kategori değil, EŞLEŞMEYENLERİN kovasıdır. Eskiden 0,40
+    # ağırlık taşıyordu: motor "bilmiyorum" derken hesap katmanı sessizce
+    # ortalama bir tahmin yürütüyordu. Gerçek bir ekstrede bu, harcamanın
+    # %37'sinde uydurulmuş bir ağırlık demekti.
+    Category("diger",       "Diğer",               None, "cesitli"),
 ]}
 
 DEFAULT_CATEGORY = "diger"
@@ -182,6 +210,16 @@ class Transaction:
     kind: TxnKind = TxnKind.UNKNOWN
     category: Optional[str] = None
     category_source: CategorySource = CategorySource.NONE
+    #: HANGİ katman karar verdi — telemetri ve açıklanabilirlik için.
+    #:
+    #: `category_source` kaba ayrımdır (RULE/MCC/USER/NONE) ve RULE'un
+    #: içini göstermez: marka sözlüğü mü, Türkçe tür sözcüğü mü, faiz
+    #: deseni mi? Üretimde "hangi katmana yatırım yapmalıyız" sorusu
+    #: TUTAR ağırlıklı bu kırılımla cevaplanır — adet kırılımıyla değil,
+    #: çünkü `e_essential`'i belirleyen tutardır.
+    #:
+    #: Kullanıcıya "bu neden restoran?" diye sorulduğunda da cevap burada.
+    category_layer: Optional[str] = None
     merchant_id: Optional[str] = None
     is_internal_transfer: bool = False
     counterpart_id: Optional[str] = None
@@ -344,6 +382,19 @@ class RawData:
     #: ETMEYE ÇALIŞMAYIZ: kart harcaması eksi ödeme farkı, limit içinde
     #: dönen bir kartta bile borcun patladığı yanılsamasını üretir.
     debt_principal_history: List["tuple"] = field(default_factory=list)
+    #: İŞYERİ HAFIZASI — `merchant_id` → kategori.
+    #:
+    #: Kullanıcı düzeltmeleri KALICIDIR: bir kez "AYYILDIZ market'tir"
+    #: dendiğinde o işyerinin GEÇMİŞ ve GELECEK tüm işlemleri düzelir.
+    #: Tek işleme özel düzeltme değil, işyerine özel bilgidir.
+    #:
+    #: Anahtar kanonik `merchant_id`'dir; marka tanınıyorsa zincir anahtarı
+    #: ("a101"), değilse temizlenmiş ad. Bu yüzden bir düzeltme aynı
+    #: zincirin tüm şubelerini kapsar.
+    #:
+    #: Kuralları ve marka sözlüğünü EZER — kullanıcı kendi bağlamını
+    #: bizden iyi bilir (aynı kafeden her gün iş yemeği alıyor olabilir).
+    category_overrides: Dict[str, str] = field(default_factory=dict)
 
     def account(self, aid: str) -> Optional[Account]:
         for a in self.accounts:
