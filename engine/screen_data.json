@@ -3,7 +3,7 @@
     "surum": "1.0.0",
     "skor_modeli": "2.0.0",
     "veri_hatti": "1.0.0",
-    "kategorizasyon": "1.1.0",
+    "kategorizasyon": "1.2.0",
     "ekstre_alimi": "1.0.0",
     "kullanici": "Didem (kanonik demo profili)",
     "not": "Tüm sayılar engine/fixture_didem.py'deki ham işlemlerden hesaplanmıştır. Elle değiştirilmemeli; ekran verisi değişecekse fixture değiştirilir ve bu dosya yeniden üretilir."

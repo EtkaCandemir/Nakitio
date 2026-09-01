@@ -534,7 +534,7 @@ isteğe bağlıdır. İkili bayrak gri bölgede sistematik hata üretir ve hem
 | Sabit | Değer | Modül | Anlamı |
 |---|---|---|---|
 | `PIPELINE_VERSION` | **1.0.0** | `normalize` | Veri hattı sürümü |
-| `CATEGORY_VERSION` | **1.1.0** | `normalize` | Kategorizasyon sürümü — ayrı takip |
+| `CATEGORY_VERSION` | **1.2.0** | `normalize` | Kategorizasyon sürümü — ayrı takip |
 | `WINDOW_DAYS` | **30** | `normalize` | Kayan pencere uzunluğu (gün) |
 | `N_WINDOWS` | **6** | `normalize` | Tutulan pencere sayısı |
 | `TRANSFER_MATCH_DAYS` | **3** | `normalize` | İç transfer eşleştirme penceresi (gün) |

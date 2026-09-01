@@ -165,10 +165,10 @@ değişiklik modeli bozar. Ayrıntı: `Docs/CONVENTIONS.md`.
 | Süit | Kontrol | Ne garanti eder |
 |---|---|---|
 | `test_invariants.py` | **191** | Yapısal kurallar — determinizm, monotonluk, süreklilik, anti-gaming, adalet |
-| `test_normalize.py` | **111** | N1–N9 normalizasyon kuralları |
+| `test_normalize.py` | **115** | N1–N9 normalizasyon kuralları |
 | `test_ingest.py` | **109** | Ekstre ayrıştırma, tekilleştirme, davranış çıkarımı |
 | `coach_eval.py` | **73** | Koç sayı sadakati, SPK sınırı, ton, akışlar |
-| | **484** | |
+| | **488** | |
 <!-- /OTOMATIK:test-sayilari -->
 
 **Golden vs invariant farkı:** golden testler "bu profil bu skoru alır"

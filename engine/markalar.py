@@ -52,7 +52,8 @@ MARKALAR: List[Marka] = [
     Marka("disney", "Disney+", r"DISNEY", "abonelik"),
     Marka("blutv", "BluTV", r"BLUTV", "abonelik"),
     Marka("exxen", "Exxen", r"EXXEN", "abonelik"),
-    Marka("gain", "Gain", r"\bGAIN\b", "abonelik"),
+    # "GAIN VERGİSİ" (sermaye kazancı) ile çakışıyordu.
+    Marka("gain", "Gain", r"\bGAIN\b(?! ?VERGI)", "abonelik"),
     Marka("amazon_prime", "Amazon Prime", r"AMAZON ?PRIME", "abonelik"),
     Marka("apple_svc", "Apple Servisleri", r"ICLOUD|APPLE ?(MUSIC|TV|ONE|COM/BILL)",
           "abonelik"),
@@ -146,7 +147,8 @@ MARKALAR: List[Marka] = [
     Marka("defacto", "DeFacto", r"DEFACTO", "giyim"),
     Marka("koton", "Koton", r"\bKOTON\b", "giyim"),
     Marka("mavi", "Mavi", r"\bMAVI ?(JEANS|GIYIM)\b", "giyim"),
-    Marka("zara", "Zara", r"\bZARA\b", "giyim"),
+    # "ZARA HOME" ev mağazasıdır; çıplak ZARA onu gölgeliyordu.
+    Marka("zara", "Zara", r"\bZARA\b(?! ?HOME)", "giyim"),
     Marka("hm", "H&M", r"H ?& ?M\b|\bHM ?GIYIM", "giyim"),
     Marka("bershka", "Bershka", r"BERSHKA", "giyim"),
     Marka("pullbear", "Pull&Bear", r"PULL ?& ?BEAR", "giyim"),
@@ -189,7 +191,8 @@ MARKALAR: List[Marka] = [
     Marka("tekzen", "Tekzen", r"TEKZEN", "ev"),
     Marka("english_home", "English Home", r"ENGLISH ?HOME", "ev"),
     Marka("madame_coco", "Madame Coco", r"MADAME ?COCO", "ev"),
-    Marka("karaca", "Karaca", r"\bKARACA\b", "ev"),
+    # "KARACA AHMET" (mezarlık/semt adı) ile çakışıyordu.
+    Marka("karaca", "Karaca", r"\bKARACA\b(?! ?AHMET)", "ev"),
     Marka("pasabahce", "Paşabahçe", r"PASABAHCE", "ev"),
     Marka("mrdiy", "Mr DIY", r"\bMR ?DIY\b|\bMRDIY\b", "ev"),
 
@@ -245,7 +248,152 @@ MARKALAR: List[Marka] = [
     Marka("iddaa", "İddaa", r"\bIDDAA\b", "sans_oyunu"),
     Marka("nesine", "Nesine", r"NESINE", "sans_oyunu"),
     Marka("bilyoner", "Bilyoner", r"BILYONER", "sans_oyunu"),
-    Marka("misli", "Misli", r"\bMISLI\b", "sans_oyunu"),
+    # "BİR MİSLİ" (kat anlamında) ile çakışıyordu; alan adı bağlamı şart.
+    Marka("misli", "Misli", r"MISLI ?\.? ?COM|\bMISLI ?BAHIS\b", "sans_oyunu"),
+
+    # ── Market — 2. dalga ───────────────────────────────────────────────
+    Marka("onur", "Onur Market", r"ONUR ?MARKET", "market"),
+    Marka("ozdilek", "Özdilek", r"OZDILEK", "market"),
+    Marka("happy_center", "Happy Center", r"HAPPY ?CENTER", "market"),
+    Marka("begendik", "Beğendik", r"BEGENDIK", "market"),
+    Marka("uyum", "Uyum Market", r"UYUM ?(MARKET|GIDA)", "market"),
+    Marka("mopas", "Mopaş", r"\bMOPAS\b", "market"),
+    Marka("seyhanlar", "Seyhanlar", r"SEYHANLAR", "market"),
+    Marka("makro", "Makro Market", r"MAKRO ?MARKET", "market"),
+    Marka("altunbilekler", "Altunbilekler", r"ALTUNBILEK", "market"),
+    Marka("yunus", "Yunus Market", r"YUNUS ?MARKET", "market"),
+    Marka("ekomini", "Ekomini", r"EKOMINI", "market"),
+    Marka("kiler", "Kiler", r"\bKILER ?(MARKET|AVM)\b", "market"),
+
+    # ── Akaryakıt — 2. dalga ────────────────────────────────────────────
+    Marka("sunpet", "Sunpet", r"SUNPET", "ulasim"),
+    Marka("kadoil", "Kadoil", r"KADOIL", "ulasim"),
+    Marka("termopet", "Termo Petrol", r"TERMOPET|TERMO ?PETROL", "ulasim"),
+
+    # ── Ulaşım — şehir kartları ve otobüs ───────────────────────────────
+    Marka("kentkart", "Kentkart", r"KENTKART|IZMIRIM ?KART|BURSAKART", "ulasim"),
+    Marka("kamil_koc", "Kâmil Koç", r"KAMIL ?KOC", "ulasim"),
+    Marka("metro_turizm", "Metro Turizm", r"METRO ?TURIZM", "ulasim"),
+    Marka("pamukkale", "Pamukkale Turizm", r"PAMUKKALE ?TURIZM", "ulasim"),
+    Marka("ulusoy", "Ulusoy", r"ULUSOY ?(TURIZM|SEYAHAT)", "ulasim"),
+    Marka("havaist", "HAVAIST", r"HAVAIST|HAVABUS|HAVARAY", "ulasim"),
+
+    # ── Restoran — 2. dalga ─────────────────────────────────────────────
+    Marka("kfc", "KFC", r"\bKFC\b", "restoran"),
+    Marka("subway", "Subway", r"\bSUBWAY\b", "restoran"),
+    Marka("pizza_hut", "Pizza Hut", r"PIZZA ?HUT", "restoran"),
+    Marka("arbys", "Arby's", r"ARBY", "restoran"),
+    Marka("usta_donerci", "Usta Dönerci", r"USTA ?DONERCI", "restoran"),
+    Marka("komagene", "Komagene", r"KOMAGENE", "restoran"),
+    Marka("oses", "Oses Çiğköfte", r"\bOSES\b", "restoran"),
+    Marka("bursa_kebap", "Bursa Kebap Evi", r"BURSA ?KEBAP", "restoran"),
+    Marka("hd_iskender", "HD İskender", r"HD ?ISKENDER", "restoran"),
+    Marka("gunaydin", "Günaydın", r"GUNAYDIN ?(ET|RESTORAN|KASAP)", "restoran"),
+    Marka("nusret", "Nusr-Et", r"NUSR ?-? ?ET\b", "restoran"),
+    Marka("big_chefs", "Big Chefs", r"BIG ?CHEFS", "restoran"),
+    Marka("midpoint", "Midpoint", r"MIDPOINT", "restoran"),
+    Marka("kitchenette", "Kitchenette", r"KITCHENETTE", "restoran"),
+    Marka("tchibo", "Tchibo", r"TCHIBO", "restoran"),
+    Marka("caffe_nero", "Caffè Nero", r"CAFFE ?NERO", "restoran"),
+    Marka("dunkin", "Dunkin'", r"DUNKIN", "restoran"),
+    Marka("krispy", "Krispy Kreme", r"KRISPY", "restoran"),
+    Marka("cinnabon", "Cinnabon", r"CINNABON", "restoran"),
+    Marka("sultanahmet", "Sultanahmet Köftecisi", r"SULTANAHMET ?KOFTE", "restoran"),
+    Marka("coffy", "Coffy", r"\bCOFFY\b", "restoran"),
+    Marka("arabica", "%100 Arabica", r"ARABICA", "restoran"),
+
+    # ── Giyim — 2. dalga ────────────────────────────────────────────────
+    Marka("massimo", "Massimo Dutti", r"MASSIMO ?DUTTI", "giyim"),
+    Marka("oysho", "Oysho", r"\bOYSHO\b", "giyim"),
+    Marka("nike", "Nike", r"\bNIKE\b", "giyim"),
+    Marka("adidas", "Adidas", r"ADIDAS", "giyim"),
+    Marka("puma", "Puma", r"\bPUMA\b", "giyim"),
+    Marka("skechers", "Skechers", r"SKECHERS", "giyim"),
+    Marka("new_balance", "New Balance", r"NEW ?BALANCE", "giyim"),
+    Marka("lacoste", "Lacoste", r"LACOSTE", "giyim"),
+    Marka("us_polo", "U.S. Polo Assn.", r"U ?\.? ?S ?\.? ?POLO", "giyim"),
+    Marka("altinyildiz", "Altınyıldız Classics", r"ALTINYILDIZ", "giyim"),
+    Marka("sarar", "Sarar", r"\bSARAR\b", "giyim"),
+    Marka("ramsey", "Ramsey", r"RAMSEY", "giyim"),
+    Marka("ipekyol", "İpekyol", r"IPEKYOL", "giyim"),
+    Marka("twist", "Twist", r"\bTWIST ?(GIYIM|MAGAZA)\b", "giyim"),
+    Marka("adil_isik", "Adil Işık", r"ADIL ?ISIK", "giyim"),
+    Marka("pierre_cardin", "Pierre Cardin", r"PIERRE ?CARDIN", "giyim"),
+    Marka("mudo", "Mudo", r"\bMUDO\b", "giyim"),
+    Marka("yargici", "Yargıcı", r"YARGICI", "giyim"),
+    Marka("derimod", "Derimod", r"DERIMOD", "giyim"),
+    Marka("desa", "Desa", r"\bDESA ?(DERI|MAGAZA)\b", "giyim"),
+    Marka("greyder", "Greyder", r"GREYDER", "giyim"),
+    Marka("lumberjack", "Lumberjack", r"LUMBERJACK", "giyim"),
+    Marka("kinetix", "Kinetix", r"KINETIX", "giyim"),
+    Marka("levis", "Levi's", r"LEVI ?S?\b|LEVIS ?STORE", "giyim"),
+
+    # ── Elektronik — 2. dalga ───────────────────────────────────────────
+    Marka("xiaomi", "Xiaomi", r"XIAOMI|\bMI ?STORE\b", "elektronik"),
+    Marka("huawei", "Huawei", r"HUAWEI", "elektronik"),
+    Marka("lg", "LG", r"\bLG ?(ELEKTRONIK|STORE|TURKIYE)\b", "elektronik"),
+    Marka("philips", "Philips", r"PHILIPS", "elektronik"),
+    Marka("siemens", "Siemens", r"SIEMENS", "elektronik"),
+    Marka("bosch", "Bosch", r"\bBOSCH\b", "elektronik"),
+    Marka("monster", "Monster Notebook", r"MONSTER ?NOTEBOOK", "elektronik"),
+    Marka("itopya", "İtopya", r"ITOPYA", "elektronik"),
+    Marka("incehesap", "İnce Hesap", r"INCEHESAP", "elektronik"),
+
+    # ── Ev — 2. dalga ───────────────────────────────────────────────────
+    Marka("jumbo", "Jumbo", r"\bJUMBO\b", "ev"),
+    Marka("chakra", "Chakra", r"CHAKRA", "ev"),
+    Marka("tepe_home", "Tepe Home", r"TEPE ?HOME", "ev"),
+    Marka("dogtas", "Doğtaş", r"DOGTAS", "ev"),
+    Marka("bellona", "Bellona", r"BELLONA", "ev"),
+    Marka("istikbal", "İstikbal", r"ISTIKBAL ?(MOBILYA|MAGAZA)", "ev"),
+    Marka("yatas", "Yataş", r"YATAS", "ev"),
+    Marka("linens", "Linens", r"\bLINENS\b", "ev"),
+    Marka("zara_home", "Zara Home", r"ZARA ?HOME", "ev"),
+    Marka("evkur", "Evkur", r"EVKUR", "ev"),
+    Marka("vivense", "Vivense", r"VIVENSE", "ev"),
+    Marka("kelebek", "Kelebek Mobilya", r"KELEBEK ?MOBILYA", "ev"),
+
+    # ── Kişisel bakım — 2. dalga ────────────────────────────────────────
+    Marka("yves_rocher", "Yves Rocher", r"YVES ?ROCHER", "kisisel"),
+    Marka("body_shop", "The Body Shop", r"BODY ?SHOP", "kisisel"),
+    Marka("tekin_acar", "Tekin Acar", r"TEKIN ?ACAR", "kisisel"),
+    Marka("atelier_rebul", "Atelier Rebul", r"ATELIER ?REBUL", "kisisel"),
+
+    # ── Sağlık — 2. dalga ───────────────────────────────────────────────
+    Marka("liv", "Liv Hospital", r"LIV ?HOSPITAL", "saglik"),
+    Marka("florence", "Florence Nightingale", r"FLORENCE ?NIGHTINGALE", "saglik"),
+    Marka("amerikan_hastanesi", "Amerikan Hastanesi", r"AMERIKAN ?HASTANE", "saglik"),
+    Marka("dunyagoz", "Dünyagöz", r"DUNYAGOZ", "saglik"),
+    Marka("anadolu_saglik", "Anadolu Sağlık", r"ANADOLU ?SAGLIK", "saglik"),
+
+    # ── Faturalar — 2. dalga ────────────────────────────────────────────
+    Marka("izsu", "İZSU", r"\bIZSU\b", "faturalar"),
+    Marka("buski", "BUSKİ", r"\bBUSKI\b", "faturalar"),
+    Marka("asat", "ASAT", r"\bASAT\b", "faturalar"),
+    Marka("izgaz", "İzgaz", r"\bIZGAZ\b|BURSAGAZ|AKSA ?DOGALGAZ", "faturalar"),
+    Marka("uludag_elektrik", "Uludağ Elektrik", r"ULUDAG ?ELEKTRIK|\bUEDAS\b", "faturalar"),
+    Marka("toroslar", "Toroslar EDAŞ", r"TOROSLAR ?EDAS", "faturalar"),
+    Marka("sepas", "Sepaş", r"\bSEPAS ?ENERJI\b", "faturalar"),
+
+    # ── Eğlence / spor — 2. dalga ───────────────────────────────────────
+    Marka("epic", "Epic Games", r"EPIC ?GAMES", "eglence"),
+    Marka("nintendo", "Nintendo", r"NINTENDO", "eglence"),
+    Marka("avsar", "Avşar Sinema", r"AVSAR ?SINEMA", "eglence"),
+    Marka("prestige", "Prestige Sinema", r"PRESTIGE ?SINEMA", "eglence"),
+    Marka("bfit", "B-Fit", r"\bB ?- ?FIT\b", "spor"),
+    Marka("fit_center", "Fit Center", r"FIT ?CENTER", "spor"),
+
+    # ── Tatil — 2. dalga ────────────────────────────────────────────────
+    Marka("corendon", "Corendon", r"CORENDON", "tatil"),
+    Marka("trivago", "Trivago", r"TRIVAGO", "tatil"),
+    Marka("expedia", "Expedia", r"EXPEDIA", "tatil"),
+    Marka("jolly", "Jolly Tur", r"\bJOLLY ?TUR\b", "tatil"),
+    Marka("touristica", "Touristica", r"TOURISTICA", "tatil"),
+    Marka("anex", "Anex Tour", r"ANEX ?TOUR", "tatil"),
+
+    # ── Şans oyunları — 2. dalga ────────────────────────────────────────
+    Marka("tuttur", "Tuttur", r"TUTTUR", "sans_oyunu"),
+    Marka("birebin", "Birebin", r"BIREBIN", "sans_oyunu"),
 
     # ── Eğitim ──────────────────────────────────────────────────────────
     Marka("udemy", "Udemy", r"\bUDEMY\b", "egitim"),
@@ -267,6 +415,92 @@ def bul(blob: str) -> Optional[Marka]:
     return None
 
 
+#: DESEN GÜVENLİK AĞI — marka desenleri bunların HİÇBİRİNİ yakalamamalı.
+#:
+#: Türkçe'de kısa marka adları sıradan kelimelerle çakışır ve sonuç sessiz
+#: bir hatadır: adres "market" sayılır, mobilyacı "pazaryeri" olur. Elle
+#: yakalananlar: "ŞOK"→SOK (sokak kısaltması), "DOLAP" (mobilya parçası),
+#: "ASKI" (giysi askısı), "ALTIN" (ALTINDAĞ ilçesi, "altındaki" kelimesi).
+#:
+#: Sözlük büyüdükçe bunları göz kararı yakalamak imkânsızlaşır. Bu liste
+#: her yeni desende otomatik denenir — çakışan desen testi kırar.
+#:
+#: Metinler ASCII katlanmış ve büyük harflidir (`normalize._fold_upper`).
+RISKLI_METINLER: Tuple[str, ...] = (
+    # Adres bileşenleri — ekstrede işyeri adı yerine adres yazılabiliyor
+    "POLATLI ZAFER SOK", "BESTEKAR SOKAK ANKARA", "ATATURK CAD NO 12",
+    "CUMHURIYET MAH", "MERKEZ SUBE", "1 SANAYI SITESI", "BULVAR 34",
+    "KARSIYAKA MAHALLESI", "ISTIKLAL CADDESI", "GAZI BULVARI",
+    # Yer adları — marka adıyla çakışan
+    "ALTINDAG BELEDIYESI", "ALTINPARK AVM", "ALTINOLUK PLAJ",
+    "GOLBASI ANKARA", "ETIMESGUT SUBE", "BAHCELIEVLER MAH",
+    "SULTANBEYLI", "KARTAL ISTANBUL", "MALTEPE ANKARA",
+    # Sıradan Türkçe kelimeler — işyeri adında geçebilir
+    "MOBILYA DOLAP DUNYASI", "ASKI VE RAF SISTEMLERI", "TOTAL TUTAR",
+    "GENEL TOPLAM", "NAKIT CEKIM", "PARA TRANSFERI", "HAVALE EFT",
+    "FATURA ODEME MERKEZI", "OTOMATIK ODEME TALIMATI",
+    # Marka adı sıradan kelimeyle çakışanlar — en sinsi sınıf
+    "MAVI DENIZ TURIZM ACENTESI",      # MAVI: renk sıfatı
+    "NETWORK MARKETING EGITIMI",       # NETWORK: İngilizce kelime
+    "BIR MISLI ARTIS BEDELI",          # MISLI: "kat" anlamında
+    "FILE DOSYA KIRTASIYE",            # FILE: dosya
+    "FLORYA YEMEK TICARET",            # FLO: FLORYA'nın içinde
+    "GAIN VERGISI HESABI",             # GAIN: İngilizce kazanç
+    "KARACA AHMET MEZARLIGI",          # KARACA: yer/kişi adı
+    # Kurumsal unvan gürültüsü
+    "SAN VE TIC LTD STI", "ANONIM SIRKETI", "KOLLEKTIF SIRKET",
+    # Banka/kart işlemleri — işyeri değil
+    "KREDI KARTI ODEMESI", "EKSTRE BORCU", "ASGARI ODEME",
+    "ALISVERIS FAIZI", "GECIKME FAIZI", "KART AIDATI",
+)
+
+
+def desen_guvenligi() -> List[str]:
+    """Her marka deseni riskli metinlerden HİÇBİRİNİ yakalamamalı.
+
+    Bir desenin yanlış yakalaması sessizdir: hata vermez, sadece yanlış
+    kategori üretir ve `essential_weight` üzerinden skoru kaydırır.
+    Bu yüzden otomatik denenmesi şart — sözlük büyüdükçe göz kararı
+    denetim imkânsızlaşır.
+    """
+    hata = []
+    for desen, m in _DERLI:
+        for metin in RISKLI_METINLER:
+            if desen.search(metin):
+                hata.append(f"{m.anahtar}: {m.desen!r} deseni "
+                            f"{metin!r} metnini yakalıyor")
+    return hata
+
+
+def golgeleme_kontrolu() -> List[str]:
+    """Her markanın KENDİ adı yine kendisine çözülmeli.
+
+    Sıra önemli olduğu için genel bir desen daha özelini GÖLGELEYEBİLİR:
+    "ZARA HOME" bir ev mağazasıdır ama çıplak `\\bZARA\\b` deseni listede
+    önce geldiği için onu giyim sanıyordu. Elle fark edilmesi zor, çünkü
+    ikisi de "çalışıyor" görünür.
+
+    Bu kontrol markanın görünen adını normalleştirip sözlüğe geri sorar.
+    Farklı bir markaya düşüyorsa gölgeleme vardır ve daha ÖZEL olan
+    yukarı taşınmalı ya da genel desene bağlam koşulu eklenmelidir.
+    """
+    import unicodedata
+    hata = []
+    for m in MARKALAR:
+        ad = unicodedata.normalize("NFKD", m.ad)
+        ad = "".join(c for c in ad if not unicodedata.combining(c))
+        ad = ad.replace("ı", "i").replace("İ", "I").upper()
+        bulunan = bul(ad)
+        # HİÇ eşleşmemek hata DEĞİLDİR: bazı desenler bilerek bağlam
+        # ister ("SOK" yalnız "SOK MARKET" olarak, "TOTAL" yalnız
+        # "TUTAR" değilse). Aranan şey ÇAPRAZ gölgeleme: markanın adının
+        # BAŞKA bir markaya düşmesi.
+        if bulunan is not None and bulunan.anahtar != m.anahtar:
+            hata.append(f"{m.anahtar}: kendi adı ({m.ad!r}) "
+                        f"{bulunan.anahtar!r} tarafından gölgeleniyor")
+    return hata
+
+
 def dogrula() -> List[str]:
     """Sözlük kendi içinde tutarlı mı."""
     from data_model import CATEGORIES
@@ -275,6 +509,8 @@ def dogrula() -> List[str]:
     for a in set(anahtarlar):
         if anahtarlar.count(a) > 1:
             hata.append(f"tekrar eden anahtar: {a}")
+    hata += desen_guvenligi()
+    hata += golgeleme_kontrolu()
     for m in MARKALAR:
         if m.kategori not in CATEGORIES:
             hata.append(f"{m.anahtar}: '{m.kategori}' CATEGORIES'te yok")

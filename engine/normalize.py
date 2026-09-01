@@ -42,7 +42,7 @@ PIPELINE_VERSION = "1.0.0"
 #: Bir skor kaydı ÜÇÜNÜ birden saklamalıdır: MODEL_VERSION,
 #: PIPELINE_VERSION, CATEGORY_VERSION. Aksi hâlde "skorum neden değişti"
 #: sorusuna cevap veremeyiz ve modeli güvenle değiştiremeyiz.
-CATEGORY_VERSION = "1.1.0"
+CATEGORY_VERSION = "1.2.0"
 
 #: `CATEGORY_VERSION`'ın karşılık geldiği İÇERİK PARMAK İZİ.
 #:
@@ -54,7 +54,7 @@ CATEGORY_VERSION = "1.1.0"
 #: `t_category_version_fingerprint` bu değeri hesaplanana karşı denetler.
 #: Kategorizasyonu etkileyen bir şey değiştiyse test kırılır ve sürümü
 #: bumplamanı söyler. Bu, `docs_sync` felsefesinin koda uygulanmasıdır.
-CATEGORY_FINGERPRINT = "61701cd0eccf212d"
+CATEGORY_FINGERPRINT = "8c67e009fa4724b7"
 
 WINDOW_DAYS = 30
 N_WINDOWS = 6          # W0..W5 — 6 pencerelik geçmiş tutulur

@@ -696,6 +696,37 @@ def t_kategori_telemetrisi_tutar_agirlikli():
           f"{tel['bilinmeyen_agirlik_payi']}")
 
 
+def t_marka_sozlugu_korumalari():
+    """Sözlük kendi kendini denetlemeli — 282 deseni göz kararı okuyamayız."""
+    import markalar as _mk
+
+    # 1) DESEN GÜVENLİĞİ — hiçbir marka deseni sıradan Türkçe metni
+    #    yakalamamalı. Elle yakalananlar: ŞOK→SOK (sokak), DOLAP (mobilya),
+    #    ASKI (giysi askısı), GAIN (vergi), KARACA (mezarlık), MİSLİ (kat).
+    #    Sözlük 164→282'ye çıkarken bunların üçünü BU KONTROL buldu.
+    check("sözlük: hiçbir desen sıradan metni yakalamıyor",
+          not _mk.desen_guvenligi(), _mk.desen_guvenligi()[:3])
+
+    # 2) GÖLGELEME — genel desen daha özelini örtmemeli. "ZARA HOME" bir
+    #    ev mağazasıdır ama çıplak `\bZARA\b` listede önce geldiği için
+    #    onu giyim sanıyordu. İkisi de "çalışıyor" göründüğü için elle
+    #    fark edilmesi zor.
+    check("sözlük: marka kendi adında gölgelenmiyor",
+          not _mk.golgeleme_kontrolu(), _mk.golgeleme_kontrolu()[:3])
+
+    # Korumaların GERÇEKTEN çalıştığı: bozuk desen eklenince yakalanmalı.
+    import re as _re
+    orij_m, orij_d = _mk.MARKALAR[:], _mk._DERLI[:]
+    try:
+        kotu = _mk.Marka("test_kotu", "Test", r"\bSOK\b", "market")
+        _mk.MARKALAR.append(kotu)
+        _mk._DERLI.append((_re.compile(kotu.desen), kotu))
+        check("sözlük: riskli desen YAKALANIYOR", bool(_mk.desen_guvenligi()))
+    finally:
+        _mk.MARKALAR[:], _mk._DERLI[:] = orij_m, orij_d
+    check("sözlük: geri alınca temiz", not _mk.desen_guvenligi())
+
+
 def t_merchant_key():
     check("merchant: gürültü temizlenir",
           _merchant_key("MIGROS TIC A.S IST *4471") == _merchant_key("MIGROS TIC SUBE 12"),
@@ -856,7 +887,8 @@ TESTS = [t_n1_internal_transfer, t_n1_no_false_match,
          t_n9_generic_turkish_patterns, t_merchant_key,
          t_essential_weighting, t_essential_estimator_not_biased,
          t_pazaryeri_agirlik_uydurmaz, t_marka_sozlugu_kisa_desen_tuzagi,
-         t_marka_kanonik_kimlik, t_faiz_ucret_tuketim_sayilmaz,
+         t_marka_kanonik_kimlik, t_marka_sozlugu_korumalari,
+         t_faiz_ucret_tuketim_sayilmaz,
          t_turkce_katlama_tur_siniflandirmada,
          t_isyeri_hafizasi_kalicidir, t_hafiza_marka_sozlugunu_ezer,
          t_kategori_triyaji_isyeri_bazli,
