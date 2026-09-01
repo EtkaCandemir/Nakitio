@@ -339,6 +339,72 @@ def get_risks(ctx: CoachContext) -> Dict[str, Any]:
     return {"riskler": risks, "toplam": len(risks)}
 
 
+def get_data_gaps(ctx: CoachContext, n: int = 3) -> Dict[str, Any]:
+    """Kategorisi bilinmeyen harcamanın payı + sorulacak işyerleri.
+
+    KOÇUN BU ARACI NEDEN KULLANMASI GEREKİR
+    ----------------------------------------
+    Kategorizasyon eksikse `e_essential` ölçülmez, TAHMİN edilir: bilinen
+    harcamadaki zorunluluk oranı toplama genişletilir. Gerçek bir kart
+    ekstresinde bu pay %34 çıktı — yani `ef_months` ve `disc_share`'in
+    üçte biri ölçüm değil çıkarım.
+
+    Koç bunu SÖYLEYEBİLMELİ. "Skorun 74" demek ile "harcamanın üçte biri
+    hakkında tahmin yürütüyorum, üç soru cevaplarsan kesinleşir" demek
+    arasındaki fark, ürünün 1 numaralı iddiasının ta kendisidir: skor veri
+    yeterliliğini itiraf eder.
+
+    ⚠ VAAT KESİNLİK, İYİLEŞME DEĞİL
+    Cevap skoru YÜKSELTMEYEBİLİR — bilinmeyen harcamalar zorunlu çıkarsa
+    `e_essential` büyür, `ef_months` düşer ve skor GERİLER. Ölçüldü: aynı
+    ekstrede cevaplara göre ef_months 0,80 ile 1,74 arasında oynuyor.
+    Bu yüzden dönen metinlerde "skorun artar" demiyoruz; "kesinleşir"
+    diyoruz. Koç da öyle demek zorunda.
+    """
+    nrec = ctx.numbers
+    bos = {"tahmin_payi": None, "sorulacak": [], "toplam_soru": 0,
+           "aciklama": "Kategori kırılımı yok; veri boşluğu ölçülemiyor."}
+    if ctx.ledger is None or ctx.as_of is None:
+        return bos
+
+    from normalize import (active_windows, category_telemetry,
+                           select_category_triage, windows)
+    W = active_windows(ctx.ledger, windows(ctx.as_of, 6))
+    if not W:
+        return bos
+
+    tel = category_telemetry(ctx.ledger, W[0])
+    pay = tel["bilinmeyen_agirlik_payi"]
+    kuyruk = select_category_triage(ctx.ledger, W[0], k=max(n, 1))
+    tum = select_category_triage(ctx.ledger, W[0], k=999)
+
+    nrec.add(pay * 100, Kind.PERCENT, "kategorisi bilinmeyen harcama payı",
+             "get_data_gaps")
+    nrec.add(len(tum), Kind.COUNT, "sorulacak işyeri sayısı", "get_data_gaps")
+
+    sorular = []
+    for q in kuyruk:
+        nrec.add(q["tutar"], Kind.CURRENCY, f"{q['ornek']} harcaması", "get_data_gaps")
+        nrec.add(q["toplam_adet"], Kind.COUNT, f"{q['ornek']} işlem sayısı",
+                 "get_data_gaps")
+        sorular.append({"isyeri": q["ornek"], "tutar": round(q["tutar"]),
+                        "islem_sayisi": q["toplam_adet"], "neden": q["neden"]})
+
+    return {
+        "tahmin_payi": round(pay * 100, 1),
+        "sorulacak": sorular,
+        "toplam_soru": len(tum),
+        # Bu cümle LLM'e verilecek; içindeki sayılar yukarıda deftere yazıldı.
+        "aciklama": (
+            f"Harcamanın %{pay*100:.0f} kadarı için zorunlu/isteğe bağlı "
+            f"ayrımını tahmin ediyorum. Bu işyerlerini tanıtırsan ölçüme "
+            f"dönüşür."),
+        "uyari": ("Cevaplamak skoru YÜKSELTMEK için değil KESİNLEŞTİRMEK "
+                  "içindir; sonuç aşağı da gidebilir. Koç 'skorun artar' "
+                  "dememeli."),
+    }
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Aksiyonlar ve simülasyon
 # ─────────────────────────────────────────────────────────────────────────────
@@ -555,6 +621,7 @@ TOOLS: Dict[str, Callable[..., Dict[str, Any]]] = {
     "get_metrics": get_metrics,
     "get_top_categories": get_top_categories,
     "get_risks": get_risks,
+    "get_data_gaps": get_data_gaps,
     "simulate_action": simulate_action,
     "build_action_plan": build_action_plan,
 }
@@ -574,6 +641,11 @@ TOOL_SCHEMA: List[Dict[str, Any]] = [
          "n": {"type": "integer", "default": 5}}}},
     {"name": "get_risks", "description": "Öncelik sırasına göre risk bayrakları.",
      "input_schema": {"type": "object", "properties": {}}},
+    {"name": "get_data_gaps", "description":
+     "Kategorisi bilinmeyen harcamanın payı ve kullanıcıya sorulacak işyerleri. "
+     "Cevaplamak skoru kesinleştirir; YÜKSELTECEĞİ vaat edilmemeli.",
+     "input_schema": {"type": "object", "properties": {
+         "n": {"type": "integer", "default": 3}}}},
     {"name": "simulate_action", "description": "Tek bir aksiyonun skora etkisini deterministik hesaplar.",
      "input_schema": {"type": "object", "required": ["action"], "properties": {
          "action": {"type": "string", "enum": sorted(ACTIONS)},

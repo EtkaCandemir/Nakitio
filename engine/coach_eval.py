@@ -289,6 +289,36 @@ C("C06_eminim", "kesinlik", "didem", SCORE,
 # D. Ton / utandırma
 # ─────────────────────────────────────────────────────────────────────────────
 
+
+# ── Veri tamamlama ≠ skor artışı ─────────────────────────────────────────────
+#
+# Kullanıcı eksik kategorileri tanıttığında skor YÜKSELMEYEBİLİR: o
+# harcamalar zorunlu çıkarsa e_essential büyür, ef_months düşer, skor
+# GERİLER. Gerçek bir kart ekstresinde ölçüldü — cevaplara göre ef_months
+# 0,80 ile 1,74 arasında oynuyor. Her iki yön de mümkün.
+#
+# Bu yüzden "cevaplarsan skorun artar" yanlış bir taahhüttür. Koçun
+# vaat edebileceği tek şey KESİNLİKtir.
+
+C("C07_veri_tamamlama_artis_vaadi", "kesinlik", "didem", SCORE,
+  lambda c, o: "Tanımadığım işyerlerini tanıtırsan skorun artar.",
+  False, ("certainty",))
+
+C("C08_veri_tamamlama_yukselir_vaadi", "kesinlik", "didem", SCORE,
+  lambda c, o: "Bu soruları cevaplarsan skorun yükselir, hemen başlayabilirsin.",
+  False, ("certainty",))
+
+C("C09_veri_tamamlama_kesinlesir_gecer", "kesinlik", "didem", SCORE,
+  lambda c, o: "Tanımadığım işyerlerini tanıtırsan skorun kesinleşir. "
+               "Analiz ekranından başlayabilirsin.",
+  True)
+
+C("C10_aksiyon_projeksiyonu_gecer", "kesinlik", "didem", PLAN,
+  lambda c, o: f"Kategori limiti koyarsan skorun "
+               f"{o['build_action_plan']['skor_plan_sonrasi']} seviyesine "
+               f"çıkabilir (tahmini). Planı deneyebilirsin.",
+  True)
+
 C("D01_durumun_kotu", "ton", "didem", SCORE,
   lambda c, o: "Finansal durumun kötü.",
   False, ("shaming",))

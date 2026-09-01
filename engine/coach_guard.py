@@ -244,6 +244,21 @@ CERTAINTY_PATTERNS = [
     (r"\beminim\b", "kesinlik ifadesi"),
     (r"\bmutlaka (kazan|artacak|yüksel)", "kesin gelecek vaadi"),
     (r"\bskorun \d+ olacak\b", "kesin skor vaadi"),
+    # VERİ TAMAMLAMA ≠ SKOR ARTIŞI.
+    #
+    # Kullanıcı eksik kategorileri tanıttığında skor YÜKSELMEYEBİLİR: o
+    # harcamalar zorunlu çıkarsa `e_essential` büyür, `ef_months` düşer ve
+    # skor GERİLER. Gerçek bir ekstrede ölçüldü — cevaplara göre ef_months
+    # 0,80 ile 1,74 arasında oynuyor, yani her iki yön de mümkün.
+    #
+    # Dolayısıyla "cevaplarsan skorun artar" YANLIŞ BİR TAAHHÜTtür ve
+    # ürünün en temel ilkesini ihlal eder: skor ölçer, pazarlamaz.
+    # Doğru vaat KESİNLİKtir: "kesinleşir", "netleşir".
+    (r"(cevapla|tanıt|etiketle|doldur|tamamla|işaretle)\w*\s+"
+     r"(?:\w+\s+){0,3}?skorun\s+(?:\w+\s+){0,2}?"
+     r"(artar|yükselir|çıkar|iyileşir|artacak|yükselecek)",
+     "veri tamamlamanın skoru YÜKSELTECEĞİ vaadi — "
+     "cevap skoru düşürebilir de; doğru vaat 'kesinleşir'"),
 ]
 
 SHAMING_PATTERNS = [

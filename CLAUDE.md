@@ -167,8 +167,8 @@ değişiklik modeli bozar. Ayrıntı: `Docs/CONVENTIONS.md`.
 | `test_invariants.py` | **191** | Yapısal kurallar — determinizm, monotonluk, süreklilik, anti-gaming, adalet |
 | `test_normalize.py` | **115** | N1–N9 normalizasyon kuralları |
 | `test_ingest.py` | **109** | Ekstre ayrıştırma, tekilleştirme, davranış çıkarımı |
-| `coach_eval.py` | **73** | Koç sayı sadakati, SPK sınırı, ton, akışlar |
-| | **488** | |
+| `coach_eval.py` | **77** | Koç sayı sadakati, SPK sınırı, ton, akışlar |
+| | **492** | |
 <!-- /OTOMATIK:test-sayilari -->
 
 **Golden vs invariant farkı:** golden testler "bu profil bu skoru alır"
