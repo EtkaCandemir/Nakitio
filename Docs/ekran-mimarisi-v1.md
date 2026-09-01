@@ -160,7 +160,27 @@ Bunların hiçbirinin mockup'ı yok ve üçü de hibrit kararının doğrudan so
 Hata durumları: taranmış PDF (→ "internet bankacılığından PDF indir"),
 tanınmayan düzen (→ "bu bankayı henüz desteklemiyoruz"), yanlış parola.
 
-### B. Triyaj — Davranış Analizi ekranını kurtaran şey
+### B. Triyaj — İKİ AYRI ekran
+
+Yükleme sonrası iki farklı soru sorulur ve **ayrı olmaları yapısal bir
+gerekliliktir**, tasarım tercihi değil:
+
+| | Soru | Kime | Cevap neyi çözer |
+|---|---|---|---|
+| **İmpuls triyajı** | "Bu harcama plansız mıydı?" | İŞLEME | O tek işlem |
+| **Kategori triyajı** | "Bu işyeri ne satıyor?" | İŞYERİNE | O işyerinin TÜM işlemleri |
+
+Fark, aynı marketten yapılan iki alışverişten birinin plansız olabilmesinden
+gelir — ama bir işyeri ne satıyorsa onu satar. Bu yüzden kategori cevabı
+`RawData.category_overrides` üzerinden kalıcıdır ve geçmiş+gelecek tüm
+işlemlere yayılır.
+
+Soru başına bilgi kazancı da bu yüzden çok farklıdır. Gerçek bir kart
+ekstresinde ölçüldü: **8 kategori sorusu 30.410 TL'yi aydınlatıyor**, ilk
+soru tek başına 9 işlemi. Bu yüzden her kartta *"bu işyerinden N harcaman
+var"* yazar — kullanıcı ne kazandığını görmeli.
+
+#### B1. İmpuls triyajı — Davranış Analizi ekranını kurtaran şey
 
 Yükleme sonrası 8–12 kart. **Atlanabilir olmalı** — zorunlu tutulursa
 yükleme akışı terk edilir.
@@ -230,7 +250,9 @@ Frontend "bu sayı nereden geliyor" diye sormaz:
 | Harcama Dağılımı, Öne Çıkan Değişimler | `coach_tools.get_top_categories` |
 | Riskler sekmesi | `coach_tools.get_risks` |
 | AI Aksiyon Planı | `coach_tools.build_action_plan` |
-| Triyaj kartları | `behavior_infer.select_for_triage` |
+| İmpuls triyaj kartları | `behavior_infer.select_for_triage` |
+| Kategori triyaj kartları | `normalize.select_category_triage` |
+| Kategori cevabı kaydı | `RawData.category_overrides` |
 | Davranış sekmesi | `behavior_infer.estimate_behavior` |
 | Dönem etiketleri | `screen_data.period_labels` |
 | Eksik dönem uyarısı | `statement_ingest.missing_months` |
@@ -245,7 +267,8 @@ Frontend "bu sayı nereden geliyor" diye sormaz:
 | Onboarding (5 soru) | **yok** | MVP |
 | Ana sayfa — 3 durum | kısmen (yalnızca dolu hâli) | MVP |
 | Ekstre yükleme akışı | **yok** | MVP |
-| Triyaj | **yok** | MVP |
+| İmpuls triyajı | **yok** | MVP |
+| Kategori triyajı | **yok** — motor + ekran verisi hazır | MVP |
 | Finansal Sağlık Raporu | var | MVP |
 | Analiz — Genel Bakış / Gelir&Gider / Riskler | var | MVP |
 | Analiz — Davranış | var, **yeniden tasarım** (§6) | MVP |

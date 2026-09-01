@@ -38,7 +38,8 @@ from coach_tools import (                                         # noqa: E402
 from data_model import (                                          # noqa: E402
     CATEGORIES, DEFAULT_CATEGORY, BehaviorTag, RawData, Transaction, TxnKind,
 )
-from normalize import active_windows, build_features, windows     # noqa: E402
+from normalize import (active_windows, build_features, windows,          # noqa: E402
+                       _merchant_key)
 import screen_data as SD                                          # noqa: E402
 from statement_ingest import (                                    # noqa: E402
     effective_as_of, import_statement, parse_statement, statement_coverage,
@@ -149,6 +150,33 @@ class Session:
             BehaviorTag(txn_id=txn_id, planned=planned, emotion=emotion))
         self.log.append(f"Triyaj: {'planlıydı' if planned else 'plansızdı'}"
                         + (f" · {emotion}" if emotion else ""))
+
+    def kategori_ata(self, merchant_id: str, kategori: str) -> None:
+        """İŞYERİ hafızasına yaz — o işyerinin TÜM işlemlerine yayılır.
+
+        İmpuls triyajından farkı burada görünür: `triage()` tek bir
+        `txn_id` etiketler, bu ise `merchant_id` üzerinden kalıcı bir
+        kural koyar. Bir cevap, o işyerinin geçmiş ve gelecek bütün
+        harcamalarını düzeltir — bu yüzden soru başına bilgi kazancı
+        çok daha yüksektir.
+        """
+        if not merchant_id:
+            raise ValueError("merchant_id boş olamaz")
+        if kategori not in CATEGORIES:
+            raise ValueError(f"bilinmeyen kategori: {kategori}")
+        self.raw.category_overrides[merchant_id] = kategori
+
+        # DİKKAT: `t.merchant_id` burada OKUNAMAZ. `compute()` normalize'ı
+        # bilerek `deepcopy` üzerinde çalıştırır (mutasyonlar oturum
+        # verisine sızmasın diye), dolayısıyla `self.raw.transactions`
+        # üzerindeki merchant_id hep None kalır. Kanonik anahtarı aynı
+        # fonksiyonla yeniden türetiyoruz — `_merchant_key` marka
+        # aramasını da içerdiği için categorize ile aynı sonucu verir.
+        etkilenen = sum(1 for t in self.raw.transactions
+                        if _merchant_key(t.merchant_raw or t.description_raw)
+                        == merchant_id)
+        self.log.append(f"Kategori: {merchant_id} → "
+                        f"{CATEGORIES[kategori].label} ({etkilenen} işlem)")
 
     def add_txn(self, amount: float, category: str, planned: Optional[bool],
                 emotion: Optional[str], desc: str) -> None:
@@ -355,6 +383,11 @@ class Handler(BaseHTTPRequestHandler):
             if u.path == "/api/coach":
                 return self._send(coach_turn((q.get("q") or ["durum"])[0]))
             self.send_error(404)
+        except (ValueError, KeyError) as e:
+            # İSTEMCİ hatası: geçersiz kategori, eksik alan. 500 dönmek
+            # yanıltıcıdır — sunucu bozulmadı, istek geçersizdi. Arayüz
+            # bu ayrımı gösterip kullanıcıya anlamlı mesaj verebilmeli.
+            self._send({"hata": str(e), "tur": "gecersiz_istek"}, 400)
         except Exception:
             traceback.print_exc()
             self._send({"hata": traceback.format_exc(limit=3)}, 500)
@@ -363,6 +396,14 @@ class Handler(BaseHTTPRequestHandler):
         u = urlparse(self.path)
         try:
             b = self._body()
+            if u.path == "/api/kategori":
+                # DİKKAT: `_body()` yukarıda BİR KEZ okundu. İkinci çağrı
+                # `rfile.read(n)` ile soketten n bayt daha bekler ve asla
+                # gelmez — istek sonsuza kadar asılı kalır. Gövde tek sefer
+                # okunur, aşağıdaki tüm yollar aynı `b`'yi kullanır.
+                SESSION.kategori_ata(str(b.get("merchant_id") or ""),
+                                     str(b.get("kategori") or ""))
+                return self._send(SESSION.bundle())
             if u.path == "/api/triage":
                 SESSION.triage(b["txn_id"], bool(b["planned"]), b.get("emotion"))
                 return self._send(SESSION.bundle())
@@ -381,6 +422,10 @@ class Handler(BaseHTTPRequestHandler):
                 res = SESSION.upload(text, profile, acct)
                 return self._send({"sonuc": res, "bundle": SESSION.bundle()})
             self.send_error(404)
+        except (ValueError, KeyError) as e:
+            # İSTEMCİ hatası: geçersiz kategori, eksik alan. 500 dönmek
+            # yanıltıcıdır — sunucu bozulmadı, istek geçersizdi.
+            self._send({"hata": str(e), "tur": "gecersiz_istek"}, 400)
         except Exception:
             traceback.print_exc()
             self._send({"hata": traceback.format_exc(limit=3)}, 500)

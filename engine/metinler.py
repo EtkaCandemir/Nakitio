@@ -144,3 +144,43 @@ def eksik_ay_metni(aylar: list, ay_adlari: Dict[int, str]) -> str:
     adlar = [ay_adlari[int(m.split("-")[1])] for m in aylar]
     sablon = KAPSAM["eksik_tekil"] if len(adlar) == 1 else KAPSAM["eksik_coklu"]
     return sablon.format(aylar=", ".join(adlar))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Kategori triyajı — "bu ne harcamasıydı?"
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# İMPULS TRİYAJINDAN AYRI bir ekrandır ve ayrı olması gerekir:
+#
+#   · İmpuls sorusu İŞLEME sorulur ("bu alışveriş plansız mıydı"), çünkü
+#     aynı marketten yapılan iki alışverişten biri plansız olabilir.
+#   · Kategori sorusu İŞYERİNE sorulur ("burası ne satıyor"), çünkü bir
+#     işyeri ne satıyorsa onu satar. Cevap o işyerinin GEÇMİŞ ve GELECEK
+#     tüm işlemlerine yayılır.
+#
+# Bu fark kullanıcıya da yansıtılmalı: bir cevabın kaç işlemi çözdüğünü
+# görmek, soruyu cevaplama motivasyonunu doğrudan artırır.
+#
+# TON: soru "bilmiyoruz" diye çerçevelenir, kullanıcının eksiği olarak
+# değil. Ekstrede o bilgi GERÇEKTEN yoktur — bu bizim sınırımızdır.
+
+KATEGORI_TRIYAJ = {
+    "baslik": "Bu işyerleri ne satıyor?",
+    "alt": "Ekstrede yazmıyor, o yüzden soruyoruz. Bir cevap o işyerinin "
+           "tüm harcamalarını düzeltir.",
+    "atlanabilir": True,
+    "atla": "Şimdilik atla",
+    # Neden sorulduğu her kartta gösterilir — çıkarım şeffaf olmalı.
+    "neden_tanimiyoruz": "Bu işyerini tanımıyoruz",
+    "neden_pazaryeri": "Pazaryeri — ne alındığı ekstrede yazmıyor",
+    # Cevabın kapsamı: kullanıcı ne kazandığını görsün.
+    "kapsam_tekil": "Bu işyerinden 1 harcaman var",
+    "kapsam_coklu": "Bu işyerinden {adet} harcaman var",
+    "kapsam_not": "Cevabın hepsine ve bundan sonrakilere uygulanır.",
+    # Ekran tamamlandığında
+    "bitti": "Teşekkürler — harcama analizin bu cevaplarla netleşti.",
+    "bos": "Şu an sorulacak bir şey yok; harcamalarının tamamı tanındı.",
+    # Neden önemli olduğunun açıklaması (bilgi kutusu)
+    "aciklama": "Tanımadığımız harcamalar için zorunlu/isteğe bağlı ayrımını "
+                "tahmin ediyoruz. Cevapladıkça tahmin yerini ölçüme bırakır.",
+}

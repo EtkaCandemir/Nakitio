@@ -548,10 +548,19 @@ def select_category_triage(ledger, window, k: int = 8) -> List[Dict]:
         g["neden"] = ("bu işyerini tanımıyoruz" if cekimser
                       else "pazaryeri — ne alındığı ekstrede yazmıyor")
 
+    # Kullanıcıya verilen söz "cevabın HEPSİNE uygulanır" olduğuna göre
+    # gösterilecek sayı da tüm geçmişi kapsamalı. Sıralama pencere
+    # tutarına göre kalır (güncel olan daha alakalıdır), ama vaat edilen
+    # kapsam penceredeki değil TOPLAM işlem sayısıdır.
+    tum_adet: Dict[str, int] = defaultdict(int)
+    for t in ledger.raw.transactions:
+        if t.merchant_id:
+            tum_adet[t.merchant_id] += 1
+
     toplam = sum(g["tutar"] for g in grup.values()) or 1.0
     out = [{"merchant_id": mid, "ornek": g["ornek"], "tutar": round(g["tutar"], 2),
-            "adet": g["adet"], "pay": round(g["tutar"] / toplam, 4),
-            "neden": g["neden"]}
+            "adet": g["adet"], "toplam_adet": tum_adet.get(mid, g["adet"]),
+            "pay": round(g["tutar"] / toplam, 4), "neden": g["neden"]}
            for mid, g in grup.items()]
     out.sort(key=lambda x: -x["tutar"])
     return out[:k]

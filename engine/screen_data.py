@@ -39,7 +39,8 @@ from coach_tools import (
 )
 import metinler as MET
 from data_model import CATEGORIES, DEFAULT_CATEGORY
-from normalize import Ledger, active_windows, build_features, windows
+from normalize import (Ledger, active_windows, build_features,
+                       select_category_triage, windows)
 from score_engine import MODEL_VERSION, Features, ScoreResult, compute_score
 from statement_ingest import INGEST_VERSION, missing_months
 
@@ -436,6 +437,72 @@ def screen_triage(ledger: Optional[Ledger], k: int = 10) -> Dict[str, Any]:
     }
 
 
+def screen_category_triage(ledger: Optional[Ledger], k: int = 8) -> Dict[str, Any]:
+    """"Bu işyeri ne satıyor?" — İMPULS triyajından ayrı ekran.
+
+    Ayrı olması yapısal bir gerekliliktir, tasarım tercihi değil:
+
+      · İmpuls sorusu İŞLEME sorulur; aynı marketten iki alışverişten biri
+        plansız olabilir.
+      · Kategori sorusu İŞYERİNE sorulur; bir işyeri ne satıyorsa onu satar.
+        Cevap `RawData.category_overrides` üzerinden o işyerinin GEÇMİŞ ve
+        GELECEK tüm işlemlerine yayılır.
+
+    Bu yüzden her kartta kaç işlemi çözdüğü gösterilir: gerçek bir kart
+    ekstresinde 8 soru 30.410 TL'yi aydınlatıyordu, ilk soru tek başına
+    9 işlemi. Kullanıcı ne kazandığını görmeli.
+
+    Kartlar tutara göre sıralıdır — belirsizlik burada olasılık değil
+    ikilidir (ya biliyoruz ya bilmiyoruz), dolayısıyla en çok parayı
+    aydınlatan soru önce sorulur.
+    """
+    bos = {"kartlar": [], "durum": "veri yok"}
+    if ledger is None:
+        return bos
+    W = active_windows(ledger, windows(ledger.as_of, 6))
+    if not W:
+        return bos
+
+    ham = select_category_triage(ledger, W[0], k=k)
+    kartlar = []
+    for q in ham:
+        # Pencere adedi değil TOPLAM adet gösterilir: cevap tüm geçmişe
+        # uygulanacağı için vaat edilen kapsam odur.
+        adet = q.get("toplam_adet", q["adet"])
+        kartlar.append({
+            "merchant_id": q["merchant_id"],
+            "isyeri": q["ornek"],
+            "tutar": tl(q["tutar"]),
+            "adet": adet,
+            "adet_bu_donem": q["adet"],
+            "kapsam": (MET.KATEGORI_TRIYAJ["kapsam_tekil"] if adet == 1
+                       else MET.KATEGORI_TRIYAJ["kapsam_coklu"].format(adet=adet)),
+            # Neden sorduğumuz her kartta yazılı — çıkarım şeffaf olmalı,
+            # kullanıcı neyi onayladığını bilmeli.
+            "neden": (MET.KATEGORI_TRIYAJ["neden_pazaryeri"]
+                      if "pazaryeri" in q["neden"]
+                      else MET.KATEGORI_TRIYAJ["neden_tanimiyoruz"]),
+        })
+
+    return {
+        "baslik": MET.KATEGORI_TRIYAJ["baslik"],
+        "alt": MET.KATEGORI_TRIYAJ["alt"],
+        "aciklama": MET.KATEGORI_TRIYAJ["aciklama"],
+        "atlanabilir": MET.KATEGORI_TRIYAJ["atlanabilir"],
+        "atla_etiketi": MET.KATEGORI_TRIYAJ["atla"],
+        "kapsam_notu": MET.KATEGORI_TRIYAJ["kapsam_not"],
+        "bos_mesaji": MET.KATEGORI_TRIYAJ["bos"],
+        "kartlar": kartlar,
+        # Seçenekler taksonomiden ÜRETİLİR, elle yazılmaz: kategori eklenince
+        # ekran kendiliğinden güncellenir. Ağırlığı bilinmeyenler (pazaryeri,
+        # diğer, faiz) seçenek DEĞİLDİR — kullanıcıya "bilmiyorum" dedirtmenin
+        # anlamı yok, zaten bilmiyoruz.
+        "secenekler": [{"anahtar": c.key, "etiket": c.label}
+                       for c in sorted(CATEGORIES.values(), key=lambda x: x.label)
+                       if c.essential_weight is not None],
+    }
+
+
 def screen_goals(ctx: CoachContext, ledger: Optional[Ledger]) -> Dict[str, Any]:
     if ledger is None or not ledger.raw.goals:
         return {"hedefler": [], "durum": "hedef yok"}
@@ -470,6 +537,7 @@ def _bundle(f: Features, ledger: Optional[Ledger], today: date,
         "analiz": screen_analysis(ctx, ledger),
         "plan": screen_plan(ctx),
         "triyaj": screen_triage(ledger),
+        "kategori_triyaji": screen_category_triage(ledger),
         "hedefler": screen_goals(ctx, ledger),
     }
 

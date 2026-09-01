@@ -189,6 +189,10 @@
         "kartlar": [],
         "durum": "veri yok"
       },
+      "kategori_triyaji": {
+        "kartlar": [],
+        "durum": "veri yok"
+      },
       "hedefler": {
         "hedefler": [],
         "durum": "hedef yok"
@@ -666,6 +670,129 @@
           "Canım sıkıldı",
           "Sosyal etki",
           "Alışkanlık"
+        ]
+      },
+      "kategori_triyaji": {
+        "baslik": "Bu işyerleri ne satıyor?",
+        "alt": "Ekstrede yazmıyor, o yüzden soruyoruz. Bir cevap o işyerinin tüm harcamalarını düzeltir.",
+        "aciklama": "Tanımadığımız harcamalar için zorunlu/isteğe bağlı ayrımını tahmin ediyoruz. Cevapladıkça tahmin yerini ölçüme bırakır.",
+        "atlanabilir": true,
+        "atla_etiketi": "Şimdilik atla",
+        "kapsam_notu": "Cevabın hepsine ve bundan sonrakilere uygulanır.",
+        "bos_mesaji": "Şu an sorulacak bir şey yok; harcamalarının tamamı tanındı.",
+        "kartlar": [
+          {
+            "merchant_id": "net odeme",
+            "isyeri": "NET ODEME SISTEMI",
+            "tutar": "₺1.424",
+            "adet": 2,
+            "adet_bu_donem": 2,
+            "kapsam": "Bu işyerinden 2 harcaman var",
+            "neden": "Bu işyerini tanımıyoruz"
+          },
+          {
+            "merchant_id": "platform odeme",
+            "isyeri": "PLATFORM ODEME",
+            "tutar": "₺584",
+            "adet": 2,
+            "adet_bu_donem": 2,
+            "kapsam": "Bu işyerinden 2 harcaman var",
+            "neden": "Bu işyerini tanımıyoruz"
+          }
+        ],
+        "secenekler": [
+          {
+            "anahtar": "aidat",
+            "etiket": "Aidat"
+          },
+          {
+            "anahtar": "alkol_tutun",
+            "etiket": "Alkol & Tütün"
+          },
+          {
+            "anahtar": "abonelik",
+            "etiket": "Dijital Abonelik"
+          },
+          {
+            "anahtar": "elektronik",
+            "etiket": "Elektronik"
+          },
+          {
+            "anahtar": "ev",
+            "etiket": "Ev / Yaşam"
+          },
+          {
+            "anahtar": "egitim",
+            "etiket": "Eğitim"
+          },
+          {
+            "anahtar": "eglence",
+            "etiket": "Eğlence & Hobi"
+          },
+          {
+            "anahtar": "faturalar",
+            "etiket": "Faturalar"
+          },
+          {
+            "anahtar": "giyim",
+            "etiket": "Giyim"
+          },
+          {
+            "anahtar": "hediye",
+            "etiket": "Hediye"
+          },
+          {
+            "anahtar": "kira",
+            "etiket": "Kira / Konut"
+          },
+          {
+            "anahtar": "kisisel",
+            "etiket": "Kişisel Bakım"
+          },
+          {
+            "anahtar": "market",
+            "etiket": "Market"
+          },
+          {
+            "anahtar": "restoran",
+            "etiket": "Restoran & Kafe"
+          },
+          {
+            "anahtar": "saglik",
+            "etiket": "Sağlık"
+          },
+          {
+            "anahtar": "sigorta",
+            "etiket": "Sigorta"
+          },
+          {
+            "anahtar": "spor",
+            "etiket": "Spor & Fitness"
+          },
+          {
+            "anahtar": "tatil",
+            "etiket": "Tatil & Seyahat"
+          },
+          {
+            "anahtar": "ulasim",
+            "etiket": "Ulaşım"
+          },
+          {
+            "anahtar": "vergi",
+            "etiket": "Vergi / Resmi"
+          },
+          {
+            "anahtar": "cocuk",
+            "etiket": "Çocuk / Bakım"
+          },
+          {
+            "anahtar": "iletisim",
+            "etiket": "İnternet / Telefon"
+          },
+          {
+            "anahtar": "sans_oyunu",
+            "etiket": "Şans Oyunları"
+          }
         ]
       },
       "hedefler": {
@@ -1227,6 +1354,129 @@
           "Canım sıkıldı",
           "Sosyal etki",
           "Alışkanlık"
+        ]
+      },
+      "kategori_triyaji": {
+        "baslik": "Bu işyerleri ne satıyor?",
+        "alt": "Ekstrede yazmıyor, o yüzden soruyoruz. Bir cevap o işyerinin tüm harcamalarını düzeltir.",
+        "aciklama": "Tanımadığımız harcamalar için zorunlu/isteğe bağlı ayrımını tahmin ediyoruz. Cevapladıkça tahmin yerini ölçüme bırakır.",
+        "atlanabilir": true,
+        "atla_etiketi": "Şimdilik atla",
+        "kapsam_notu": "Cevabın hepsine ve bundan sonrakilere uygulanır.",
+        "bos_mesaji": "Şu an sorulacak bir şey yok; harcamalarının tamamı tanındı.",
+        "kartlar": [
+          {
+            "merchant_id": "net odeme",
+            "isyeri": "NET ODEME SISTEMI",
+            "tutar": "₺1.424",
+            "adet": 4,
+            "adet_bu_donem": 2,
+            "kapsam": "Bu işyerinden 4 harcaman var",
+            "neden": "Bu işyerini tanımıyoruz"
+          },
+          {
+            "merchant_id": "platform odeme",
+            "isyeri": "PLATFORM ODEME",
+            "tutar": "₺584",
+            "adet": 4,
+            "adet_bu_donem": 2,
+            "kapsam": "Bu işyerinden 4 harcaman var",
+            "neden": "Bu işyerini tanımıyoruz"
+          }
+        ],
+        "secenekler": [
+          {
+            "anahtar": "aidat",
+            "etiket": "Aidat"
+          },
+          {
+            "anahtar": "alkol_tutun",
+            "etiket": "Alkol & Tütün"
+          },
+          {
+            "anahtar": "abonelik",
+            "etiket": "Dijital Abonelik"
+          },
+          {
+            "anahtar": "elektronik",
+            "etiket": "Elektronik"
+          },
+          {
+            "anahtar": "ev",
+            "etiket": "Ev / Yaşam"
+          },
+          {
+            "anahtar": "egitim",
+            "etiket": "Eğitim"
+          },
+          {
+            "anahtar": "eglence",
+            "etiket": "Eğlence & Hobi"
+          },
+          {
+            "anahtar": "faturalar",
+            "etiket": "Faturalar"
+          },
+          {
+            "anahtar": "giyim",
+            "etiket": "Giyim"
+          },
+          {
+            "anahtar": "hediye",
+            "etiket": "Hediye"
+          },
+          {
+            "anahtar": "kira",
+            "etiket": "Kira / Konut"
+          },
+          {
+            "anahtar": "kisisel",
+            "etiket": "Kişisel Bakım"
+          },
+          {
+            "anahtar": "market",
+            "etiket": "Market"
+          },
+          {
+            "anahtar": "restoran",
+            "etiket": "Restoran & Kafe"
+          },
+          {
+            "anahtar": "saglik",
+            "etiket": "Sağlık"
+          },
+          {
+            "anahtar": "sigorta",
+            "etiket": "Sigorta"
+          },
+          {
+            "anahtar": "spor",
+            "etiket": "Spor & Fitness"
+          },
+          {
+            "anahtar": "tatil",
+            "etiket": "Tatil & Seyahat"
+          },
+          {
+            "anahtar": "ulasim",
+            "etiket": "Ulaşım"
+          },
+          {
+            "anahtar": "vergi",
+            "etiket": "Vergi / Resmi"
+          },
+          {
+            "anahtar": "cocuk",
+            "etiket": "Çocuk / Bakım"
+          },
+          {
+            "anahtar": "iletisim",
+            "etiket": "İnternet / Telefon"
+          },
+          {
+            "anahtar": "sans_oyunu",
+            "etiket": "Şans Oyunları"
+          }
         ]
       },
       "hedefler": {

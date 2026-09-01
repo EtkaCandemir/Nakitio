@@ -130,6 +130,18 @@ function viewHome() {
       <div class="tiny muted" style="margin-top:3px">${B.triyaj.kartlar.length} işlem bekliyor · ${B.etiket_sayisi} etiket verildi</div>
       </div></div><button class="cta ghost" onclick="openTriage()">Başla</button></div>`;
   }
+
+  // Kategori triyajı AYRI bir kart. İmpuls triyajıyla birleştirilmemeli:
+  // biri işleme sorulur ("plansız mıydı"), diğeri işyerine ("ne satıyor").
+  // Kullanıcı iki farklı iş yaptığını görmeli.
+  const kt = B.kategori_triyaji;
+  if (kt && kt.kartlar && kt.kartlar.length) {
+    const toplam = kt.kartlar.reduce((a, k) => a + k.adet, 0);
+    out += `<div class="card"><div class="row"><div>
+      <b>${esc(kt.baslik)}</b>
+      <div class="tiny muted" style="margin-top:3px">${kt.kartlar.length} işyeri · ${toplam} harcamayı birden düzeltir</div>
+      </div></div><button class="cta ghost" onclick="openCatTriage()">Başla</button></div>`;
+  }
   return out;
 }
 
@@ -328,6 +340,68 @@ async function answer(id, planned) {
   render();
 }
 
+/* ── KATEGORİ TRİYAJI ───────────────────────────────────────────────── */
+//
+// İmpuls triyajından AYRI tutulur ve ayrı olması yapısal bir gerekliliktir:
+// impuls sorusu işleme sorulur (aynı marketten iki alışverişten biri
+// plansız olabilir), kategori sorusu işyerine sorulur (bir işyeri ne
+// satıyorsa onu satar). Cevap o işyerinin TÜM işlemlerine yayıldığı için
+// her kartta kaç harcamayı düzelttiği yazar — kullanıcı ne kazandığını
+// görmeli, yoksa soruyu cevaplamak için sebebi olmaz.
+
+let CAT_I = 0;
+
+function openCatTriage() {
+  CAT_I = 0;
+  const kt = B.kategori_triyaji;
+  if (!kt || !kt.kartlar.length) { toast(kt ? kt.bos_mesaji : 'Sorulacak bir şey yok'); return; }
+  renderCatTriage();
+}
+
+function renderCatTriage() {
+  const kt = B.kategori_triyaji;
+  const k = kt.kartlar[CAT_I];
+  if (!k) { closeSheet(); toast('Teşekkürler — harcama analizin netleşti'); return; }
+  const secenekler = kt.secenekler.map(c =>
+    `<button onclick="answerCat('${esc(k.merchant_id)}','${esc(c.anahtar)}')">${esc(c.etiket)}</button>`
+  ).join('');
+  sheet(`
+    <h3>${esc(kt.baslik)}</h3>
+    <div class="sub">${esc(kt.alt)}</div>
+    <div class="triage-card">
+      <div class="row"><span class="amt">${esc(k.tutar)}</span>
+        <span class="tag m">${k.adet} harcama</span></div>
+      <div class="tiny muted" style="margin-top:4px">${esc(k.isyeri)}</div>
+      <div class="why">🔍 ${esc(k.neden)}</div>
+      <div class="why" style="color:var(--mor-2)">↩︎ ${esc(k.kapsam)} — ${esc(kt.kapsam_notu)}</div>
+    </div>
+    <div class="tiny muted" style="margin:12px 0 7px">Ne satıyor?</div>
+    <div class="qchips">${secenekler}</div>
+    <div class="row tiny muted" style="margin-top:12px">
+      <span>${CAT_I + 1} / ${kt.kartlar.length}</span>
+      <button class="qchips" style="border:0;background:none;color:var(--mor);font-weight:700;cursor:pointer"
+        onclick="closeSheet()">${esc(kt.atla_etiketi)}</button>
+    </div>`);
+}
+
+async function answerCat(merchantId, kategori) {
+  const oncekiSkor = B.ana_sayfa.skor_karti.skor;
+  const oncekiKart = B.kategori_triyaji.kartlar.length;
+  B = await api('/api/kategori', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ merchant_id: merchantId, kategori })
+  });
+  const sonraSkor = B.ana_sayfa.skor_karti.skor;
+  if (sonraSkor !== oncekiSkor) toast(`Skor ${oncekiSkor} → ${sonraSkor}`);
+
+  // Cevaplanan işyeri listeden düştüğü için indeks İLERLETİLMEZ —
+  // aksi hâlde her cevapta bir kart atlanır. Liste kısalmadıysa
+  // (beklenmedik durum) ilerlet ki döngüye girilmesin.
+  if (B.kategori_triyaji.kartlar.length >= oncekiKart) CAT_I++;
+  renderCatTriage();
+  render();
+}
+
 /* ── EKLE / YÜKLE ───────────────────────────────────────────────────── */
 
 function openFab() {
@@ -364,7 +438,9 @@ async function upload(sample) {
     </div>
     ${s.uyarilar.length ? `<div class="alert" style="margin-top:10px"><span>⚠️</span><div>${s.uyarilar.map(esc).join('<br>')}</div></div>` : ''}
     <button class="cta" onclick="closeSheet();render()">Tamam</button>
-    ${B.triyaj.kartlar.length ? `<button class="cta ghost" onclick="openTriage()">Triyaja Başla</button>` : ''}`);
+    ${B.triyaj.kartlar.length ? `<button class="cta ghost" onclick="openTriage()">Plansız harcamaları işaretle</button>` : ''}
+    ${B.kategori_triyaji && B.kategori_triyaji.kartlar.length
+      ? `<button class="cta ghost" onclick="openCatTriage()">Tanımadığımız ${B.kategori_triyaji.kartlar.length} işyerini tanıt</button>` : ''}`);
   render();
 }
 

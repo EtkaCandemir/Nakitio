@@ -564,6 +564,13 @@ def t_kategori_triyaji_isyeri_bazli():
           q == sorted(q, key=lambda x: -x["tutar"]))
     check("triyaj: pazaryeri de aday — işyeri belli, içerik değil",
           "trendyol" in by and "pazaryeri" in by["trendyol"]["neden"])
+    # Kullanıcıya verilen söz "cevabın HEPSİNE uygulanır" olduğuna göre
+    # gösterilen adet TÜM geçmişi kapsamalı, yalnızca pencereyi değil.
+    # Aksi hâlde kart 2 işlem vaat ederken cevap 4'ünü düzeltir ve
+    # ekranda yazan sayı ile yapılan iş tutmaz.
+    check("triyaj: toplam adet raporlanıyor",
+          all("toplam_adet" in x and x["toplam_adet"] >= x["adet"] for x in q),
+          [(x["merchant_id"], x["adet"], x.get("toplam_adet")) for x in q])
 
     # Zaten düzeltilmiş işyeri bir daha sorulmaz.
     txns2 = [T("cc", 10, -3_000, "BILINMEYEN BBB", "POS")]
