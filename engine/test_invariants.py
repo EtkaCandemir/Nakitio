@@ -133,25 +133,56 @@ CONTINUITY = [
     ("net varlık", "net_worth", -400_000, 900_000),
     ("para taşıma", "payment_carry_days", 0.0, 30.0),
     ("plana uyum", "goal_plan_adherence", 0.0, 1.50),
+    # ETİKET KAPSAMI — bu satır bir hatanın nöbetçisidir.
+    #
+    # `beh_coverage` sert eşikliyken %24,9 → %25,1 geçişinde ham skor 1,07
+    # puan sıçrıyordu: kullanıcı bir işlem daha etiketlediği için skoru
+    # oynuyordu. K3 ihlaliydi ve YILLARCA görünmedi — çünkü tam da bu
+    # tarama listesinde yoktu. Rampa çözümü doğru ama koruması olmadan
+    # bir sonraki "kapsam eşiği" fikrinde geri gelir.
+    ("etiket kapsamı", "beh_coverage", 0.0, 1.0),
 ]
 MAX_JUMP = 1.0
 
 
+#: Süreklilik taramasının çalıştığı profiller.
+#:
+#: TEK PROFİLLE TARAMAK YETMİYOR — bu, ölçülerek öğrenildi. `beh_coverage`
+#: sert eşikliyken `base_user`da karma skor yalnız 0,414 sıçrıyordu (sınırın
+#: altında) çünkü P6 açılırken güven de yükseliyor ve iki etki birbirini
+#: kısmen götürüyordu. Aynı geçiş `selin`de 3,15 puan sıçrıyordu.
+#:
+#: Yani süreksizlik vardı ama TEK bir profilde maskeleniyordu. İki
+#: süreksizliğin birbirini götürmesine güvenmek, kuralı test etmemektir.
+SUREKLILIK_PROFILLERI = ("base", "selin", "zeynep", "burak", "kerem")
+
+
+def _sureklilik_tabani(anahtar: str) -> Features:
+    if anahtar == "base":
+        return base_user()
+    from golden_profiles import PROFILES
+    return PROFILES[anahtar][0]
+
+
 def t_continuity():
     for label, fieldname, lo, hi in CONTINUITY:
-        steps = 400
-        prev_s = None
-        worst, worst_at = 0.0, None
-        for i in range(steps + 1):
-            v = lo + (hi - lo) * i / steps
-            s = compute_score(base_user(**{fieldname: v})).blended_score
-            if prev_s is not None:
-                j = abs(s - prev_s)
-                if j > worst:
-                    worst, worst_at = j, v
-            prev_s = s
-        check(f"süreklilik: {label} (uçurum yok)", worst <= MAX_JUMP,
-              f"en büyük sıçrama {worst:.3f} puan @ {worst_at:,.0f}")
+        steps = 200
+        for pk in SUREKLILIK_PROFILLERI:
+            taban = _sureklilik_tabani(pk)
+            prev_s = None
+            worst, worst_at = 0.0, None
+            for i in range(steps + 1):
+                v = lo + (hi - lo) * i / steps
+                s = compute_score(
+                    dataclasses.replace(taban, **{fieldname: v})).blended_score
+                if prev_s is not None:
+                    j = abs(s - prev_s)
+                    if j > worst:
+                        worst, worst_at = j, v
+                prev_s = s
+            check(f"süreklilik/{pk}: {label} (uçurum yok)", worst <= MAX_JUMP,
+                  f"en büyük sıçrama {worst:.3f} puan"
+                  + ("" if worst_at is None else f" @ {worst_at:.4g}"))
 
 
 # ── 4. Eksik veri asla ceza değildir ─────────────────────────────────────────

@@ -312,7 +312,7 @@ araç çıktısını aktardığında halüsinasyon sanılıyordu.
 | Net worth boyutu | v2.1 | Skor akış odaklı; varlık yalnızca acil fon ve likidite üzerinden |
 | Hane halkı / ortak bütçe | v2.1 | Model tek kullanıcı varsayıyor |
 | OCR (taranmış ekstre) | v1.1 | Metin katmanlı PDF öncelikli |
-| `infer.cikarim_kapsam` ayarı | **Kapandı (v3)** | Ölçülemiyordu çünkü etkisi `beh_coverage`in SERT eşiğinin ardındaydı ve parametrenin aralığı (0,30–0,80) tamamen eşiğin (0,25) üstünde kalıyordu. Eşik rampaya çevrildi — bu aynı zamanda bir K3 ihlalini kapattı: kapsam %24,9→%25,1 geçişinde ham skor 1,07 puan sıçrıyordu. `tune.py` artık az etiketli fixture varyantını da tarıyor; ham skorda 0,55 puan |
+| `infer.cikarim_kapsam` ayarı | **Kapandı (v3)** | Ölçülemiyordu çünkü etkisi `beh_coverage`in SERT eşiğinin ardındaydı ve parametrenin aralığı (0,30–0,80) tamamen eşiğin (0,25) üstünde kalıyordu. Eşik rampaya çevrildi — bu aynı zamanda bir K3 ihlalini kapattı: kapsam %24,9→%25,1 geçişinde gösterilen skor `selin` profilinde 3,15 puan sıçrıyordu (aynı geçiş `base_user`da 0,414 — süreksizlik tek profilde maskeleniyordu, o yüzden yıllarca görünmedi). `tune.py` artık az etiketli fixture varyantını da tarıyor; ham skorda 0,55 puan |
 
 ---
 

@@ -164,11 +164,11 @@ değişiklik modeli bozar. Ayrıntı: `Docs/CONVENTIONS.md`.
 
 | Süit | Kontrol | Ne garanti eder |
 |---|---|---|
-| `test_invariants.py` | **402** | Yapısal kurallar — determinizm, monotonluk, süreklilik, anti-gaming, adalet |
+| `test_invariants.py` | **447** | Yapısal kurallar — determinizm, monotonluk, süreklilik, anti-gaming, adalet |
 | `test_normalize.py` | **138** | N1–N9 normalizasyon kuralları |
 | `test_ingest.py` | **109** | Ekstre ayrıştırma, tekilleştirme, davranış çıkarımı |
 | `coach_eval.py` | **83** | Koç sayı sadakati, SPK sınırı, ton, akışlar |
-| | **732** | |
+| | **777** | |
 <!-- /OTOMATIK:test-sayilari -->
 
 **Golden vs invariant farkı:** golden testler "bu profil bu skoru alır"
@@ -217,7 +217,8 @@ Her biri gerçekten yaşandı, testle yakalandı ve düzeltildi. Yeniden
 | **Bayat `.pyc`** | `params.py`'de 0,10 yazarken 0,14 import ediliyor | Python önbellek geçerliliğini (mtime **saniye**, boyut) ile ölçer. Aynı boyutta ve aynı saniyede yapılan düzenleme önbelleği tazelemez. `docs_sync.py` her çalıştığında `__pycache__`'i siler |
 | **Bakiye yokluğu sıfır sayılıyor** | Bakiye tutmayan kaynakta `tampon`/`guvence` 0 puan; sağlıklı kullanıcı −7,3, riskli +3,4 (r=−0,93) | `liquid_balance`/`ef_liquid` **Optional**. `sum([])` yokluğu ölçülmüş sıfır gibi gösterir — ayrımı `normalize` yapar. Ölçüt hesabın VARLIĞI, bakiyenin büyüklüğü değil |
 | **Güven alt metrik körlüğü** | Girdi yüzeyinin %37'sini kaybeden kaynak yalnızca 0,09 güven kaybediyor | Kural 2 ÜÇ şey ister: bileşeni kapat, ağırlığı normalize et, **güveni düşür**. `c_pillar` artık açık bileşenin içindeki kapalı alt metriği de sayar |
-| **Sert eşik gizli süreksizlik** | `beh_coverage` %24,9→%25,1 geçişinde ham skor 1,07 puan sıçrıyordu — bir işlem daha etiketlemek skoru oynatıyordu | K3 ihlali. `t_continuity` o alanı taramadığı için görünmedi. Bileşen aç/kapa yerine ağırlık RAMPASI; `confidence` aynı sorunu ilk üç hafta için zaten böyle çözmüştü |
+| **Sert eşik gizli süreksizlik** | `beh_coverage` %24,9→%25,1 geçişinde gösterilen skor `selin`de **3,15 puan** sıçrıyordu — bir işlem daha etiketlemek skoru oynatıyordu | K3 ihlali. Bileşen aç/kapa yerine ağırlık RAMPASI; `confidence` aynı sorunu ilk üç hafta için zaten böyle çözmüştü |
+| **Tek profille süreklilik taraması** | Aynı sıçrama `base_user`da yalnız 0,414'tü (sınırın altında): P6 açılırken güven de yükseliyor, iki etki birbirini götürüyordu | Süreksizlik VARDI, tek profilde MASKELENİYORDU. İki süreksizliğin birbirini götürmesine güvenmek kuralı test etmemektir. `t_continuity` artık 5 profil tarıyor |
 | **Ölçülemeyen parametre** | `infer.cikarim_kapsam` aralığı, etkisini üreten eşiğin tamamen üstündeydi | Ölçülemeyen parametre ayarlanamaz. Çözüm modeli parametreye uydurmak değil, onu tetikleyen profil/fixture varyantı eklemek |
 | **Yinelenen ≠ iptal edilebilir** | Abonelik aksiyonu gerçek veriye bağlanınca ilk önerisi "telefon faturanı iptal et" oldu | Kira, fatura, aidat da her ay tekrarlar. Kapı taksonomideki zorunluluk ağırlığıdır (`ABONELIK_AZAMI_ZORUNLULUK`); ağırlığı BİLİNMEYEN kategori de elenir |
 | **Uydurma parametre** | `abonelik_iptali` tasarrufu `e_total × %1` varsayımıydı — koç olmayan bir aboneliği iptal ettiriyordu | Aksiyon parametresi ölçülmüş veriden gelir. `_params_for` ham veriyi okur; `default_params` yalnız `Features` görür |

@@ -342,7 +342,9 @@ M: Dict[str, Meta] = {
                           "KARAR: 0,50. Bileşen bu kapsamda TAM ağırlığına "
                           "ulaşır; min_kapsam ile arasında ağırlığı doğrusal "
                           "artar. Sert eşik ölçüldü: %24,9 → %25,1 geçişi ham "
-                          "skoru 1,07 puan sıçratıyordu (K3 ihlali)."),
+                          "skoru `selin` profilinde 3,15 puan sıçratıyordu "
+                          "(K3 ihlali; `base_user`da 0,414 olduğu için tek "
+                          "profilli tarama görmüyordu)."),
     "p6.min_kapsam": Meta("Davranış min. kapsam", "P6", "gate", 0.1, 0.5,
                           "Altındaysa bileşen devre dışı"),
 
