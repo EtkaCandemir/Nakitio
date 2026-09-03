@@ -164,11 +164,11 @@ değişiklik modeli bozar. Ayrıntı: `Docs/CONVENTIONS.md`.
 
 | Süit | Kontrol | Ne garanti eder |
 |---|---|---|
-| `test_invariants.py` | **338** | Yapısal kurallar — determinizm, monotonluk, süreklilik, anti-gaming, adalet |
+| `test_invariants.py` | **374** | Yapısal kurallar — determinizm, monotonluk, süreklilik, anti-gaming, adalet |
 | `test_normalize.py` | **138** | N1–N9 normalizasyon kuralları |
 | `test_ingest.py` | **109** | Ekstre ayrıştırma, tekilleştirme, davranış çıkarımı |
 | `coach_eval.py` | **77** | Koç sayı sadakati, SPK sınırı, ton, akışlar |
-| | **662** | |
+| | **698** | |
 <!-- /OTOMATIK:test-sayilari -->
 
 **Golden vs invariant farkı:** golden testler "bu profil bu skoru alır"
@@ -182,7 +182,7 @@ Ayrıntı: `Docs/TESTING.md`.
 ## 7. Şu anki durum
 
 **Kilitli:**
-- Skor modeli v2.0.0 — 96 parametre, kararlar `Docs/DECISIONS.md`'de
+- Skor modeli v3.0.0 — 108 parametre, 27 alt metrik, kararlar `Docs/DECISIONS.md`'de
 - Veri hattı 1.0.0, ekstre alımı 1.0.0, davranış çıkarımı 1.0.0
 - Koç sözleşmesi + guard 1.0.0
 - Ekran mimarisi + kanonik veri seti

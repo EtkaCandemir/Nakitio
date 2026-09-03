@@ -50,10 +50,11 @@ P: Dict[str, float] = {
     "p6.weight": 10.0,
 
     # ── P1 Nakit Akışı ────────────────────────────────────────────────
-    "p1.marj.w": 0.600,
-    "p1.istikrar.w": 0.130,
-    "p1.tampon.w": 0.195,
-    "p1.cesitlilik.w": 0.075,
+    "p1.marj.w": 0.560,
+    "p1.istikrar.w": 0.120,
+    "p1.tampon.w": 0.180,
+    "p1.cesitlilik.w": 0.070,
+    "p1.zamanlama.w": 0.070,
     "p1.breakeven": 20.0,          # gelir = gider noktasının puanı
     "p1.marj.k": 0.12,             # doygunluk sabiti
     "p1.marj.neg_sifir": 0.10,     # bu negatif marjda 0'a iner
@@ -61,14 +62,17 @@ P: Dict[str, float] = {
     "p1.istikrar.yuz": 0.05,
     "p1.tampon.tam_gun": 45.0,
     "p1.tampon.us": 0.70,
+    "p1.zamanlama.sifir": 28.0,
+    "p1.zamanlama.yuz": 5.0,
     "p1.cesitlilik.sifir": 1.00,   # tek gelir kaynağı
     "p1.cesitlilik.yuz": 0.60,
 
     # ── P2 Borç Yükü ──────────────────────────────────────────────────
-    "p2.dsr.w": 0.38,
-    "p2.kart.w": 0.22,
-    "p2.taahhut.w": 0.25,
-    "p2.trend.w": 0.15,
+    "p2.dsr.w": 0.32,
+    "p2.kart.w": 0.18,
+    "p2.taahhut.w": 0.22,
+    "p2.trend.w": 0.12,
+    "p2.maliyet.w": 0.16,
     "p2.dsr.sifir": 0.50,
     "p2.dsr.yuz": 0.10,
     "p2.kart.sifir": 0.90,
@@ -77,6 +81,8 @@ P: Dict[str, float] = {
     "p2.taahhut.yuz": 0.05,
     "p2.trend.sifir": 0.20,
     "p2.trend.yuz": -0.15,
+    "p2.maliyet.sifir": 0.80,
+    "p2.maliyet.yuz": 0.00,
     "mod.gecikme_1_29": 0.70,
     "mod.gecikme_30": 0.45,
     "mod.asgari": 0.80,
@@ -84,13 +90,16 @@ P: Dict[str, float] = {
     "mod.kmh": 0.85,
 
     # ── P3 Tasarruf & Güvence ─────────────────────────────────────────
-    "p3.oran.w": 0.33,
-    "p3.guvence.w": 0.34,
-    "p3.sureklilik.w": 0.23,
-    "p3.reel.w": 0.10,
+    "p3.oran.w": 0.30,
+    "p3.guvence.w": 0.31,
+    "p3.sureklilik.w": 0.20,
+    "p3.reel.w": 0.09,
+    "p3.net_varlik.w": 0.10,
     "p3.oran.k": 0.10,
     "p3.guvence.tam_ay": 3.0,
     "p3.guvence.us": 0.60,
+    "p3.net_varlik.sifir": -0.50,
+    "p3.net_varlik.yuz": 1.00,
     "p3.reel.sifir": -0.25,
     "p3.reel.yuz": 0.00,
 
@@ -105,9 +114,12 @@ P: Dict[str, float] = {
     "p4.oynaklik.yuz": 0.15,
 
     # ── P5 Hedef Devamlılığı ──────────────────────────────────────────
-    "p5.ontrack.w": 0.45,
-    "p5.tutarlilik.w": 0.35,
-    "p5.gercekcilik.w": 0.20,
+    "p5.ontrack.w": 0.38,
+    "p5.tutarlilik.w": 0.28,
+    "p5.gercekcilik.w": 0.17,
+    "p5.plan_uyumu.w": 0.17,
+    "p5.plan_uyumu.sifir": 0.30,
+    "p5.plan_uyumu.yuz": 1.00,
     "p5.gercekcilik.sifir": 1.60,
     "p5.gercekcilik.yuz": 0.80,
     "p5.hedefsiz_puan": 45.0,
@@ -185,6 +197,18 @@ M: Dict[str, Meta] = {
     "p1.istikrar.w": Meta("Gelir istikrarı ağırlığı", "P1", "weight", 0.05, 0.35),
     "p1.tampon.w": Meta("Likidite tamponu ağırlığı", "P1", "weight", 0.05, 0.35),
     "p1.cesitlilik.w": Meta("Gelir çeşitliliği ağırlığı", "P1", "weight", 0.0, 0.25),
+    "p1.zamanlama.w": Meta("Ödeme zamanlaması ağırlığı", "P1", "weight", 0.0, 0.20,
+                           "KARAR: 0,07. Aynı marjda çok farklı kırılganlık: "
+                           "maaşı 1'inde gelip kartı 5'inde ödeyen taze parayla "
+                           "öder, 20'sinde gelip 5'inde ödeyen bir önceki ayın "
+                           "artığından. Gerçek ama ikincil bir eksen; marjın "
+                           "yerine geçmez."),
+    "p1.zamanlama.sifir": Meta("Taşıma süresi sıfır eşiği (gün)", "P1",
+                               "threshold", 20.0, 30.0,
+                               "KARAR: 28. Neredeyse tam ay taşımak."),
+    "p1.zamanlama.yuz": Meta("Taşıma süresi tam puan eşiği (gün)", "P1",
+                             "threshold", 0.0, 12.0,
+                             "KARAR: 5. Gelirden hemen sonra ödeme."),
     "p1.breakeven": Meta("Başabaş puanı", "P1", "shape", 0, 40,
                          "Gelir=gider noktası. 0 yaparsan başabaş 'kötü' olur"),
     "p1.marj.k": Meta("Marj doygunluk sabiti", "P1", "shape", 0.06, 0.25,
@@ -205,10 +229,31 @@ M: Dict[str, Meta] = {
     "p2.kart.w": Meta("Kart kullanımı ağırlığı", "P2", "weight", 0.05, 0.4),
     "p2.taahhut.w": Meta("Taahhüt yükü ağırlığı", "P2", "weight", 0.1, 0.4),
     "p2.trend.w": Meta("Borç trendi ağırlığı", "P2", "weight", 0.05, 0.3),
+    "p2.maliyet.w": Meta("Borç maliyeti ağırlığı", "P2", "weight", 0.05, 0.35,
+                         "KARAR: 0,16. Borcun FİYATI, hacminden bağımsız bir "
+                         "olgudur ve motor onu hiç ölçmüyordu — %0 taksitle "
+                         "%60 KMH aynı puanı alıyordu. DSR (ödeyebiliyor mu) "
+                         "birincil kalır; maliyet ikinci sıraya konur, çünkü "
+                         "ödenemeyen ucuz borç, ödenebilen pahalı borçtan "
+                         "daha risklidir."),
     "p2.dsr.sifir": Meta("DSR sıfır eşiği", "P2", "threshold", 0.35, 0.70,
                          "Bu orandan sonra borç bileşeni sıfırlanır"),
     "p2.dsr.yuz": Meta("DSR tam puan eşiği", "P2", "threshold", 0.0, 0.25),
     "p2.kart.sifir": Meta("Kart kullanımı sıfır eşiği", "P2", "threshold", 0.7, 1.0),
+    "p2.maliyet.sifir": Meta("Borç maliyeti sıfır eşiği (yıllık nominal)",
+                             "P2", "threshold", 0.40, 1.20,
+                             "KARAR: 0,80. Yayılım şöyle olsun istendi — "
+                             "%0 taksit 100, ~%30 konut/taşıt 62, ~%42 normal "
+                             "tüketici kredisi 47, ~%60 kart döneri 25, %80+ "
+                             "KMH/ceza 0. NOMİNAL eşiktir ve enflasyon "
+                             "rejimine BAĞIMLIDIR: N5 (TÜFE) gerçek veriyle "
+                             "beslendiğinde metrik reel orana çevrilmeli ve "
+                             "bu eşik yeniden kalibre edilmelidir."),
+    "p2.maliyet.yuz": Meta("Borç maliyeti tam puan eşiği", "P2", "threshold",
+                           0.0, 0.25,
+                           "KARAR: 0,00. Faizsiz borç bir yük değildir; "
+                           "taksitin kendisi P2'nin taahhüt alt metriğinde "
+                           "zaten ölçülüyor, burada ikinci kez sayılmaz."),
     "p2.kart.yuz": Meta("Kart kullanımı tam puan", "P2", "threshold", 0.05, 0.4),
     "p2.taahhut.sifir": Meta("Taahhüt/yıllık gelir sıfır", "P2", "threshold", 0.35, 1.0),
     "p2.taahhut.yuz": Meta("Taahhüt tam puan", "P2", "threshold", 0.0, 0.2),
@@ -224,6 +269,20 @@ M: Dict[str, Meta] = {
     "p3.guvence.w": Meta("Acil fon ağırlığı", "P3", "weight", 0.15, 0.55),
     "p3.sureklilik.w": Meta("Süreklilik ağırlığı", "P3", "weight", 0.05, 0.4),
     "p3.reel.w": Meta("Enflasyon koruması ağırlığı", "P3", "weight", 0.0, 0.25),
+    "p3.net_varlik.w": Meta("Net varlık ağırlığı", "P3", "weight", 0.0, 0.30,
+                            "KARAR: 0,10. DECISIONS §6'nın v2.1'e ertelediği "
+                            "boyut, bileşen eklemeden. Ağırlık DÜŞÜK çünkü "
+                            "`tampon` ve `guvence` ile kısmen örtüşüyor; "
+                            "ayırt ettiği şey net POZİSYON (3 aylık fonu olup "
+                            "200k borcu olan kullanıcı)."),
+    "p3.net_varlik.sifir": Meta("Net varlık sıfır eşiği (yıllık gelir katı)",
+                                "P3", "threshold", -1.5, 0.0,
+                                "KARAR: -0,50. Sıfır net varlık NÖTRdür (33 "
+                                "puan), ceza değil: borcu da varlığı da olmayan "
+                                "genç kullanıcı cezalandırılmamalı. Ceza yalnız "
+                                "net BORÇLU olmaya başlar."),
+    "p3.net_varlik.yuz": Meta("Net varlık tam puan eşiği", "P3", "threshold",
+                              0.5, 3.0, "KARAR: 1,00 yıllık gelir."),
     "p3.oran.k": Meta("Tasarruf doygunluk sabiti", "P3", "shape", 0.05, 0.22,
                       "0,10 → %10 tasarruf 63 puan, %20 → 86"),
     "p3.guvence.tam_ay": Meta("Acil fon hedefi (ay)", "P3", "threshold", 3, 12,
@@ -248,6 +307,17 @@ M: Dict[str, Meta] = {
     "p5.ontrack.w": Meta("Hedef ilerlemesi ağırlığı", "P5", "weight", 0.25, 0.65),
     "p5.tutarlilik.w": Meta("Katkı sürekliliği ağırlığı", "P5", "weight", 0.15, 0.55),
     "p5.gercekcilik.w": Meta("Hedef gerçekçiliği ağırlığı", "P5", "weight", 0.0, 0.4),
+    "p5.plan_uyumu.w": Meta("Plana uyum ağırlığı", "P5", "weight", 0.0, 0.35,
+                            "KARAR: 0,17. `ontrack` hedefe YAKLAŞMAYI ölçer, "
+                            "bu SÖZE UYMAYI. İkisi ayrışır: fazla iyimser hedef "
+                            "koymuş biri plana harfiyen uysa da geride görünür. "
+                            "P5'in adı zaten 'söylediğini yapma'."),
+    "p5.plan_uyumu.sifir": Meta("Plana uyum sıfır eşiği", "P5", "threshold",
+                                0.0, 0.60, "KARAR: 0,30. Planın üçte birinden "
+                                "azı gerçekleştiyse plan yaşamıyor demektir."),
+    "p5.plan_uyumu.yuz": Meta("Plana uyum tam puan eşiği", "P5", "threshold",
+                              0.85, 1.30, "KARAR: 1,00. Planı AŞMAK ek puan "
+                              "getirmez; fazla katkı zaten `ontrack`ta görünür."),
     "p5.gercekcilik.sifir": Meta("Gerçekçilik sıfır eşiği", "P5", "threshold", 1.2, 2.5),
     "p5.gercekcilik.yuz": Meta("Gerçekçilik tam puan", "P5", "threshold", 0.5, 1.0),
     "p5.hedefsiz_puan": Meta("Hedefsizlik puanı", "P5", "gate", 0, 70,
@@ -321,11 +391,15 @@ def check() -> None:
         raise ValueError(f"bileşen ağırlıkları 100 etmiyor: {total}")
 
     for grup, anahtarlar in (
-        ("P1", ["p1.marj.w", "p1.istikrar.w", "p1.tampon.w", "p1.cesitlilik.w"]),
-        ("P2", ["p2.dsr.w", "p2.kart.w", "p2.taahhut.w", "p2.trend.w"]),
-        ("P3", ["p3.oran.w", "p3.guvence.w", "p3.sureklilik.w", "p3.reel.w"]),
+        ("P1", ["p1.marj.w", "p1.istikrar.w", "p1.tampon.w", "p1.cesitlilik.w",
+                "p1.zamanlama.w"]),
+        ("P2", ["p2.dsr.w", "p2.kart.w", "p2.taahhut.w", "p2.trend.w",
+                "p2.maliyet.w"]),
+        ("P3", ["p3.oran.w", "p3.guvence.w", "p3.sureklilik.w", "p3.reel.w",
+                "p3.net_varlik.w"]),
         ("P4", ["p4.butce.w", "p4.limit.w", "p4.istege_bagli.w", "p4.oynaklik.w"]),
-        ("P5", ["p5.ontrack.w", "p5.tutarlilik.w", "p5.gercekcilik.w"]),
+        ("P5", ["p5.ontrack.w", "p5.tutarlilik.w", "p5.gercekcilik.w",
+                "p5.plan_uyumu.w"]),
         ("P6", ["p6.impuls.w", "p6.duygusal.w", "p6.gece.w", "p6.pismanlik.w"]),
         ("Güven", ["c.hist.w", "c.cover.w", "c.compl.w", "c.verif.w", "c.pillar.w"]),
     ):

@@ -1243,12 +1243,49 @@ def derive_features(ledger: Ledger) -> Features:
     inst_monthly = sum(p.due_in_window(W[0].start, W[0].end) for p in ledger.plans)
     inst_remaining = sum(p.remaining_after(as_of) for p in ledger.plans)
 
+    # ── Borcun FİYATI ─────────────────────────────────────────────────
+    #
+    # Anapara ağırlıklı ortalama: 100.000 TL'lik %5 konut kredisi ile
+    # 5.000 TL'lik %60 kart borcunun ortalaması aritmetik değildir.
+    # Kullanıcının ödediği faiz tutarını belirleyen şey ağırlıklı ortalamadır.
+    #
+    # Oranı BİLİNMEYEN borçlar paydaya da girmez — bilmediğimizi ortalamaya
+    # katmak, ortalamayı bilinenlere doğru çeker ve sessizce iyimser yapar.
+    faizli = [l for l in raw.liabilities
+              if l.interest_rate is not None and l.principal_outstanding > 0]
+    _ana = sum(l.principal_outstanding for l in faizli)
+    debt_avg_rate = (sum(l.interest_rate * l.principal_outstanding for l in faizli) / _ana
+                     if _ana > 0 else None)
+
     days_past_due = max([l.days_past_due for l in raw.liabilities], default=0)
     min_only = max([l.min_payment_only_months for l in raw.liabilities], default=0)
     kmh_active = any(a.type == AccountType.KMH and a.balance > 0 for a in raw.accounts) or \
                  any(a.type == AccountType.CHECKING and a.balance < 0 for a in raw.accounts)
 
     debt_trend = _debt_trend(ledger, debt_principal)
+
+    # ── Net varlık ─────────────────────────────────────────────────────
+    #
+    # Varlık hesabı YOKSA None. Borcu olup varlığı olmayan kullanıcı ile
+    # varlık tablosu hiç çıkarılamamış kullanıcı aynı şey değildir —
+    # ikincisinde net varlık ölçülmemiştir (bkz. `liquid_balance` dersi).
+    _varlik_h = [a for a in raw.accounts
+                 if a.type in LIQUID_TYPES or a.type in SAVINGS_TYPES]
+    net_worth = None
+    if _varlik_h:
+        net_worth = sum(a.balance for a in _varlik_h) - debt_principal - inst_remaining
+
+    # ── Ödeme zamanlaması ──────────────────────────────────────────────
+    #
+    # Parayı kaç gün taşımak zorunda: (son_ödeme_günü − gelir_günü) mod 30.
+    # Gelir günü, gözlenen gelir işlemlerinin medyan ayın-günüdür; son ödeme
+    # günü, `due_day` bildiren hesapların EN ERKENİdir (en sıkışık olanı
+    # belirleyicidir). İkisinden biri yoksa metrik ölçülmez.
+    _gelir_gunleri = [t.ts.day for w in W for t in ledger.income(w)]
+    _due = [a.due_day for a in raw.accounts if a.due_day]
+    payment_carry = None
+    if _gelir_gunleri and _due:
+        payment_carry = float((min(_due) - _median(_gelir_gunleri)) % 30)
 
     # ── Bütçe / disiplin (tahakkuk görünüm) ────────────────────────────
     budget_planned = sum(b.monthly_limit for b in raw.budgets) or None
@@ -1270,7 +1307,7 @@ def derive_features(ledger: Ledger) -> Features:
 
     # ── Hedefler ───────────────────────────────────────────────────────
     goals = raw.goals
-    goal_ontrack = goal_consistency = goal_required = None
+    goal_ontrack = goal_consistency = goal_required = goal_adherence = None
     if goals:
         num = den = 0.0
         for g in goals:
@@ -1290,6 +1327,23 @@ def derive_features(ledger: Ledger) -> Features:
             months_left = max(1.0, (g.target_date - as_of).days / 30.0)
             req += max(0.0, (g.target_amount - g.current_amount) / months_left)
         goal_required = req
+
+        # ── Plana uyum ─────────────────────────────────────────────────
+        #
+        # `Goal.monthly_plan` sözleşmede vardı ve motorda hiç okunmuyordu.
+        # `ontrack` hedefe YAKLAŞMAYI ölçer; bu SÖZE UYMAYI: planlanan aylık
+        # katkının ne kadarı gerçekleşti.
+        #
+        # Yalnız plan BİLDİRMİŞ hedeflerden hesaplanır. Plan koymamış bir
+        # kullanıcı "planına uymadı" sayılamaz — ortada plan yoktur.
+        planli = [g for g in goals if g.monthly_plan and g.monthly_plan > 0]
+        if planli:
+            planlanan = sum(g.monthly_plan for g in planli)
+            aylik_gecen = max(1.0, min(
+                (as_of - min(g.created_at for g in planli)).days / 30.0,
+                float(N_WINDOWS)))
+            gerceklesen = sum(g.current_amount for g in planli) / aylik_gecen
+            goal_adherence = min(1.5, gerceklesen / planlanan) if planlanan else None
 
     # ── Davranış (çıkarım + etiket harmanı, W0) ────────────────────────
     #
@@ -1354,6 +1408,9 @@ def derive_features(ledger: Ledger) -> Features:
         installment_monthly=inst_monthly,
         installment_remaining=inst_remaining,
         card_balance=card_balance, card_limit=card_limit,
+        debt_avg_rate=debt_avg_rate,
+        net_worth=net_worth,
+        payment_carry_days=payment_carry,
         debt_trend_3m=debt_trend,
         days_past_due=days_past_due, min_payment_only_months=min_only,
         kmh_active=kmh_active,
@@ -1362,6 +1419,7 @@ def derive_features(ledger: Ledger) -> Features:
         cat_volatility=cat_vol,
         goals_active=len(goals), goal_ontrack=goal_ontrack,
         goal_consistency=goal_consistency, goal_required_monthly=goal_required,
+        goal_plan_adherence=goal_adherence,
         beh_coverage=beh["coverage"], imp_rate=beh["imp"], emo_rate=beh["emo"],
         night_conc=beh["night"], regret_rate=beh["regret"],
         accounts_declared=raw.accounts_declared or len(raw.accounts) or 1,

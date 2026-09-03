@@ -166,21 +166,24 @@ run_with_model(lambda system, context, question: my_llm(...))
 
 | Profil | Skor | Band | C | Ne temsil eder |
 |---|---|---|---|---|
-| `didem` | **73** | 71–75 | 0,91 | Mockup kullanıcısı — maaşlı, dengeli, orta borç |
-| `mehmet` | **33** | 31–35 | 0,87 | Kart sarmalı — asgari ödeme, gecikme, KMH |
-| `zeynep` | **82** | 80–84 | 0,97 | Serbest çalışan — yüksek gelir oynaklığı, borçsuz, iyi birikim |
-| `can` | **39** | 30–49 | 0,22 | 12 günlük yeni kullanıcı — veri yok denecek kadar az |
-| `elif` | **90** | 88–92 | 0,99 | Güçlü — yüksek tasarruf, 6+ ay güvence, borçsuz |
-| `burak` | **61** | 59–63 | 0,98 | Taksit yüklü — nakit akışı iyi görünüyor, taahhüt ağır |
+| `didem` | **73** | 71–75 | 0,9 | Mockup kullanıcısı — maaşlı, dengeli, orta borç |
+| `mehmet` | **33** | 31–35 | 0,86 | Kart sarmalı — asgari ödeme, gecikme, KMH |
+| `zeynep` | **83** | 81–85 | 0,97 | Serbest çalışan — yüksek gelir oynaklığı, borçsuz, iyi birikim |
+| `can` | **39** | 30–49 | 0,21 | 12 günlük yeni kullanıcı — veri yok denecek kadar az |
+| `elif` | **90** | 88–92 | 0,98 | Güçlü — yüksek tasarruf, 6+ ay güvence, borçsuz |
+| `burak` | **60** | 58–62 | 0,97 | Taksit yüklü — nakit akışı iyi görünüyor, taahhüt ağır |
 | `deniz` | **78** | 76–80 | 0,84 | Öğrenci — düşük gelir, yüksek disiplin, borçsuz |
-| `selin` | **40** | 38–42 | 0,99 | Yüksek gelir, sıfır tampon — gizli risk |
+| `selin` | **40** | 38–42 | 0,98 | Yüksek gelir, sıfır tampon — gizli risk |
 | `ahmet` | **83** | 81–85 | 0,83 | Emekli — düşük gelir, borçsuz, enflasyona yeniliyor |
-| `merve` | **50** | 45–55 | 0,55 | Gün 25 — geçiş dönemi, kısmi veri |
-| `emre` | **67** | 64–69 | 0,79 | Ekstre kullanıcısı — gelir beyanı yok, 4/6 dönem yüklü |
-| `hakan` | **35** | 33–37 | 0,83 | 45 gün gecikme + 2 ay asgari ödeme — sarmalın başı |
-| `sibel` | **36** | 33–38 | 0,82 | Negatif nakit akışı — gider gelirden %20 fazla |
-| `tolga` | **58** | 56–60 | 0,95 | Ulaşılamaz hedef koymuş, skoru hızla iyileşiyor |
-| `nur` | **81** | 75–86 | 0,54 | Toplu işlem silme tespit edildi — güven düşürüldü |
+| `merve` | **50** | 44–55 | 0,54 | Gün 25 — geçiş dönemi, kısmi veri |
+| `emre` | **67** | 64–69 | 0,78 | Ekstre kullanıcısı — gelir beyanı yok, 4/6 dönem yüklü |
+| `hakan` | **35** | 33–37 | 0,82 | 45 gün gecikme + 2 ay asgari ödeme — sarmalın başı |
+| `sibel` | **36** | 34–39 | 0,81 | Negatif nakit akışı — gider gelirden %20 fazla |
+| `tolga` | **58** | 56–60 | 0,93 | Ulaşılamaz hedef koymuş, skoru hızla iyileşiyor |
+| `nur` | **81** | 75–86 | 0,53 | Toplu işlem silme tespit edildi — güven düşürüldü |
+| `okan` | **69** | 67–71 | 0,97 | Taksitle yaşayan — aynı borç hacmi, faizsiz |
+| `pelin` | **66** | 64–68 | 0,97 | Kart döneri — aynı borç hacmi, yıllık %65 faiz |
+| `kerem` | **46** | 44–48 | 0,98 | Ev sahibi — net varlık yüksek, nakit akışı negatif |
 <!-- /OTOMATIK:golden-skorlar -->
 
 Son beşi **kapsam** için eklendi: duyarlılık analizi 16 parametreyi

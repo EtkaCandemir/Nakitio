@@ -100,6 +100,10 @@
                 "neden": "Birikim sürekliliği için en az üç dönem gerekiyor."
               },
               {
+                "ad": "Net varlık",
+                "neden": "Gelir kaydı görünmüyor."
+              },
+              {
                 "ad": "Enflasyona karşı koruma",
                 "neden": "Birikimin getirisi hesaplanamadı."
               }
@@ -180,14 +184,14 @@
           "skor": 69,
           "band": [
             64,
-            75
+            74
           ],
-          "goster": "64–75",
+          "goster": "64–74",
           "seviye_goster": false,
           "seviye": "Gelişiyor",
           "mesaj": "İyi bir başlangıç var, düzenli devam etmek önemli.",
           "degisim": null,
-          "guven": 0.57,
+          "guven": 0.58,
           "guven_etiketi": "Orta",
           "alt_not": "Veri arttıkça bu aralık daralacak.",
           "bant_aciklama": "Skorunu tek sayı yerine aralık olarak gösteriyoruz, çünkü elimizdeki veri henüz kesin bir sonuç için yeterli değil.",
@@ -288,19 +292,19 @@
         "skor": 69,
         "band": [
           64,
-          75
+          74
         ],
         "seviye": "Gelişiyor",
         "asama": "Geçiş Skoru",
-        "guven": 0.57,
+        "guven": 0.58,
         "veri_yeterliligi": "Orta",
         "hesaplama_notu": "30 günlük veriye göre hesaplandı",
         "bilesenler": [
           {
             "bilesen": "Nakit Akışı",
-            "puan": 20.1,
+            "puan": 18.9,
             "azami": 25.0,
-            "yuzde": 80.4,
+            "yuzde": 75.5,
             "alt_metrikler": [
               {
                 "ad": "Net nakit akışı marjı",
@@ -311,6 +315,11 @@
                 "ad": "Kısa vadeli likidite",
                 "deger": 55.4,
                 "detay": "19 gün"
+              },
+              {
+                "ad": "Ödeme zamanlaması",
+                "deger": 17.4,
+                "detay": "24 gün taşıma"
               },
               {
                 "ad": "Gelir çeşitliliği",
@@ -328,9 +337,9 @@
           },
           {
             "bilesen": "Borç Yükü",
-            "puan": 17.1,
+            "puan": 15.7,
             "azami": 20.0,
-            "yuzde": 85.3,
+            "yuzde": 78.6,
             "alt_metrikler": [
               {
                 "ad": "Aylık borç servisi / gelir",
@@ -346,6 +355,11 @@
                 "ad": "Toplam taahhüt / yıllık gelir",
                 "deger": 97.8,
                 "detay": "%6"
+              },
+              {
+                "ad": "Borcun ortalama faizi",
+                "deger": 47.5,
+                "detay": "yıllık %42"
               }
             ],
             "olculemeyenler": [
@@ -358,9 +372,9 @@
           },
           {
             "bilesen": "Tasarruf & Güvence",
-            "puan": 12.5,
+            "puan": 11.7,
             "azami": 20.0,
-            "yuzde": 62.7,
+            "yuzde": 58.6,
             "alt_metrikler": [
               {
                 "ad": "Kasıtlı tasarruf oranı",
@@ -371,6 +385,11 @@
                 "ad": "Acil durum fonu",
                 "deger": 41.6,
                 "detay": "0.7 ay"
+              },
+              {
+                "ad": "Net varlık",
+                "deger": 33.9,
+                "detay": "yıllık gelirin 0.0 katı"
               }
             ],
             "olculemeyenler": [
@@ -417,9 +436,9 @@
           },
           {
             "bilesen": "Hedef Devamlılığı",
-            "puan": 7.0,
+            "puan": 6.3,
             "azami": 10.0,
-            "yuzde": 69.7,
+            "yuzde": 63.2,
             "alt_metrikler": [
               {
                 "ad": "Hedeflerin ilerleme durumu",
@@ -430,6 +449,11 @@
                 "ad": "Katkı sürekliliği",
                 "deger": 66.7,
                 "detay": "%67"
+              },
+              {
+                "ad": "Plana uyum",
+                "deger": 31.1,
+                "detay": "planın %52'si"
               },
               {
                 "ad": "Hedef gerçekçiliği",
@@ -525,8 +549,8 @@
           {
             "aksiyon": "Kategori limiti koy",
             "zorluk": 2,
-            "kumulatif_skor": 71,
-            "ek_etki": 2,
+            "kumulatif_skor": 70,
+            "ek_etki": 1,
             "parametreler": {
               "aylik_tasarruf": 590.0
             }
@@ -534,7 +558,7 @@
           {
             "aksiyon": "Acil durum fonuna düzenli katkı",
             "zorluk": 2,
-            "kumulatif_skor": 72,
+            "kumulatif_skor": 71,
             "ek_etki": 1,
             "parametreler": {
               "aylik_katki": 1730.0,
@@ -545,7 +569,7 @@
             "aksiyon": "Plansız harcamayı azalt",
             "zorluk": 3,
             "kumulatif_skor": 72,
-            "ek_etki": 0,
+            "ek_etki": 1,
             "parametreler": {
               "hedef_oran": 0.05
             }
@@ -832,16 +856,16 @@
         "skor_karti": {
           "baslik": "Finansal Sağlık Skoru",
           "bant_olarak_sun": false,
-          "skor": 73,
+          "skor": 72,
           "band": [
-            71,
-            75
+            70,
+            74
           ],
-          "goster": "73",
+          "goster": "72",
           "seviye_goster": true,
           "seviye": "Gelişiyor",
           "mesaj": "İyi bir başlangıç var, düzenli devam etmek önemli.",
-          "degisim": 2,
+          "degisim": 4,
           "guven": 0.9,
           "guven_etiketi": "Yüksek",
           "alt_not": null,
@@ -942,10 +966,10 @@
         }
       },
       "skor_raporu": {
-        "skor": 73,
+        "skor": 72,
         "band": [
-          71,
-          75
+          70,
+          74
         ],
         "seviye": "Gelişiyor",
         "asama": "Finansal Sağlık Skoru",
@@ -955,9 +979,9 @@
         "bilesenler": [
           {
             "bilesen": "Nakit Akışı",
-            "puan": 20.7,
+            "puan": 19.9,
             "azami": 25.0,
-            "yuzde": 82.7,
+            "yuzde": 79.7,
             "alt_metrikler": [
               {
                 "ad": "Net nakit akışı marjı",
@@ -975,6 +999,11 @@
                 "detay": "20 gün"
               },
               {
+                "ad": "Ödeme zamanlaması",
+                "deger": 39.1,
+                "detay": "19 gün taşıma"
+              },
+              {
                 "ad": "Gelir çeşitliliği",
                 "deger": 35.0,
                 "detay": "ana kaynak %86"
@@ -985,9 +1014,9 @@
           },
           {
             "bilesen": "Borç Yükü",
-            "puan": 16.7,
+            "puan": 15.6,
             "azami": 20.0,
-            "yuzde": 83.6,
+            "yuzde": 77.8,
             "alt_metrikler": [
               {
                 "ad": "Aylık borç servisi / gelir",
@@ -1005,6 +1034,11 @@
                 "detay": "%7"
               },
               {
+                "ad": "Borcun ortalama faizi",
+                "deger": 47.5,
+                "detay": "yıllık %42"
+              },
+              {
                 "ad": "Borç trendi (3 ay)",
                 "deger": 100.0,
                 "detay": "-18.1%"
@@ -1015,9 +1049,9 @@
           },
           {
             "bilesen": "Tasarruf & Güvence",
-            "puan": 14.4,
+            "puan": 13.5,
             "azami": 20.0,
-            "yuzde": 71.8,
+            "yuzde": 67.3,
             "alt_metrikler": [
               {
                 "ad": "Kasıtlı tasarruf oranı",
@@ -1033,6 +1067,11 @@
                 "ad": "Tasarruf sürekliliği",
                 "deger": 100.0,
                 "detay": "6/6 ay"
+              },
+              {
+                "ad": "Net varlık",
+                "deger": 33.2,
+                "detay": "yıllık gelirin 0.0 katı"
               }
             ],
             "olculemeyenler": [
@@ -1075,9 +1114,9 @@
           },
           {
             "bilesen": "Hedef Devamlılığı",
-            "puan": 6.9,
+            "puan": 6.3,
             "azami": 10.0,
-            "yuzde": 69.1,
+            "yuzde": 62.7,
             "alt_metrikler": [
               {
                 "ad": "Hedeflerin ilerleme durumu",
@@ -1088,6 +1127,11 @@
                 "ad": "Katkı sürekliliği",
                 "deger": 66.7,
                 "detay": "%67"
+              },
+              {
+                "ad": "Plana uyum",
+                "deger": 31.1,
+                "detay": "planın %52'si"
               },
               {
                 "ad": "Hedef gerçekçiliği",
@@ -1129,12 +1173,12 @@
             "uyarilar": []
           }
         ],
-        "en_zayif": "Harcama Disiplini",
+        "en_zayif": "Hedef Devamlılığı",
         "maddi_olaylar": []
       },
       "analiz": {
         "genel_bakis": {
-          "skor": 73,
+          "skor": 72,
           "tasarruf_orani": "%19,0",
           "korunan_tutar": "₺8.426",
           "guvence_suresi_ay": 0.6
@@ -1212,15 +1256,15 @@
         }
       },
       "plan": {
-        "skor_simdi": 73,
+        "skor_simdi": 72,
         "skor_plan_sonrasi": 77,
-        "toplam_etki": 4,
+        "toplam_etki": 5,
         "ufuk_ay": 3,
         "adimlar": [
           {
             "aksiyon": "Kategori limiti koy",
             "zorluk": 2,
-            "kumulatif_skor": 75,
+            "kumulatif_skor": 74,
             "ek_etki": 2,
             "parametreler": {
               "aylik_tasarruf": 580.0
@@ -1230,7 +1274,7 @@
             "aksiyon": "Acil durum fonuna düzenli katkı",
             "zorluk": 2,
             "kumulatif_skor": 76,
-            "ek_etki": 1,
+            "ek_etki": 2,
             "parametreler": {
               "aylik_katki": 1690.0,
               "ay": 3

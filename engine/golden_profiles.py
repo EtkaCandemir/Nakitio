@@ -58,6 +58,7 @@ P("didem", "Mockup kullanıcısı — maaşlı, dengeli, orta borç", "71-75",
   beh_coverage=0.72, imp_rate=0.23, emo_rate=0.10,
   night_conc=0.106, regret_rate=0.28,
   accounts_declared=3, accounts_linked=2, categorized_ratio=0.93,
+  payment_carry_days=12, net_worth=105_000, goal_plan_adherence=0.80,
   manual_entry=False, onboarding=ONB["orta"], prev_score=74)
 
 # ── 2. Mehmet — kredi kartı sarmalı ──────────────────────────────────────────
@@ -75,6 +76,7 @@ P("mehmet", "Kart sarmalı — asgari ödeme, gecikme, KMH", "30-36",
   beh_coverage=0.40, imp_rate=0.34, emo_rate=0.22,
   night_conc=0.28, regret_rate=0.55,
   accounts_declared=3, accounts_linked=2, categorized_ratio=0.80,
+  payment_carry_days=26, net_worth=-140_000,
   manual_entry=False, onboarding=ONB["kotu"], prev_score=46)
 
 # ── 3. Zeynep — serbest çalışan, düzensiz gelir ──────────────────────────────
@@ -92,6 +94,7 @@ P("zeynep", "Serbest çalışan — yüksek gelir oynaklığı, borçsuz, iyi bi
   beh_coverage=0.60, imp_rate=0.18, emo_rate=0.09,
   night_conc=0.14, regret_rate=0.20,
   accounts_declared=2, accounts_linked=2, categorized_ratio=0.90,
+  payment_carry_days=8, net_worth=520_000, goal_plan_adherence=1.00,
   manual_entry=False, onboarding=ONB["iyi"])
 
 # ── 4. Can — 12 günlük yeni kullanıcı ────────────────────────────────────────
@@ -123,6 +126,7 @@ P("elif", "Güçlü — yüksek tasarruf, 6+ ay güvence, borçsuz", "87-93",
   beh_coverage=0.85, imp_rate=0.08, emo_rate=0.04,
   night_conc=0.07, regret_rate=0.10,
   accounts_declared=4, accounts_linked=4, categorized_ratio=0.97,
+  payment_carry_days=6, net_worth=1_150_000, goal_plan_adherence=1.00,
   manual_entry=False, onboarding=ONB["iyi"], prev_score=88)
 
 # ── 6. Burak — taksit yüklü ──────────────────────────────────────────────────
@@ -142,6 +146,7 @@ P("burak", "Taksit yüklü — nakit akışı iyi görünüyor, taahhüt ağır"
   beh_coverage=0.55, imp_rate=0.29, emo_rate=0.15,
   night_conc=0.21, regret_rate=0.38,
   accounts_declared=3, accounts_linked=3, categorized_ratio=0.90,
+  payment_carry_days=21, net_worth=-38_000, goal_plan_adherence=0.35,
   manual_entry=False, onboarding=ONB["orta"], prev_score=62)
 
 # ── 7. Deniz — düşük gelirli ama disiplinli ──────────────────────────────────
@@ -159,6 +164,7 @@ P("deniz", "Öğrenci — düşük gelir, yüksek disiplin, borçsuz", "76-82",
   beh_coverage=0.65, imp_rate=0.12, emo_rate=0.06,
   night_conc=0.09, regret_rate=0.15,
   accounts_declared=1, accounts_linked=1, categorized_ratio=0.88,
+  payment_carry_days=5, net_worth=9_000, goal_plan_adherence=0.95,
   manual_entry=True, onboarding=ONB["iyi"], prev_score=76)
 
 # ── 8. Selin — gizli riskli ──────────────────────────────────────────────────
@@ -177,6 +183,7 @@ P("selin", "Yüksek gelir, sıfır tampon — gizli risk", "36-42",
   beh_coverage=0.70, imp_rate=0.41, emo_rate=0.28,
   night_conc=0.33, regret_rate=0.48,
   accounts_declared=4, accounts_linked=4, categorized_ratio=0.95,
+  payment_carry_days=25, net_worth=12_000, goal_plan_adherence=0.20,
   manual_entry=False, onboarding=ONB["impuls"], prev_score=58)
 
 # ── 9. Ahmet — emekli ────────────────────────────────────────────────────────
@@ -194,6 +201,7 @@ P("ahmet", "Emekli — düşük gelir, borçsuz, enflasyona yeniliyor", "79-85",
   beh_coverage=0.30, imp_rate=0.09, emo_rate=0.03,
   night_conc=0.04, regret_rate=0.08,
   accounts_declared=2, accounts_linked=1, categorized_ratio=0.82,
+  payment_carry_days=10, net_worth=780_000, goal_plan_adherence=0.90,
   manual_entry=True, onboarding=ONB["iyi"], prev_score=82)
 
 # ── 10. Merve — gün 25, geçiş dönemi ─────────────────────────────────────────
@@ -264,6 +272,7 @@ P("hakan", "45 gün gecikme + 2 ay asgari ödeme — sarmalın başı", "33-41",
   night_conc=0.24, regret_rate=0.44,
   accounts_declared=3, accounts_linked=0, categorized_ratio=0.86,
   manual_entry=True, data_source="statement", statement_coverage=0.5,
+  payment_carry_days=28, net_worth=-95_000,
   onboarding=ONB["kotu"], prev_score=52)
 
 # ── 13. Sibel — gider gelirden fazla, hedefsiz ───────────────────────────────
@@ -282,6 +291,7 @@ P("sibel", "Negatif nakit akışı — gider gelirden %20 fazla", "30-40",
   night_conc=0.21, regret_rate=0.39,
   accounts_declared=2, accounts_linked=0, categorized_ratio=0.83,
   manual_entry=True, data_source="statement", statement_coverage=0.5,
+  payment_carry_days=24, net_worth=-11_000, goal_plan_adherence=0.30,
   onboarding=ONB["birikimsiz"])
 
 # ── 14. Tolga — ulaşılamaz hedef + ani büyük iyileşme ────────────────────────
@@ -331,6 +341,70 @@ P("nur", "Toplu işlem silme tespit edildi — güven düşürüldü", "72-82",
 #: temsil etmezler, duyarlılık analizinin "ölçülemedi" dediği parametreleri
 #: tetiklemek için vardır. `Docs/skor-modeli-v2.md` §10 yalnızca senaryo
 #: profillerini listeler; ayrımın tek kaynağı burasıdır.
+# ── 16-17. Okan ve Pelin — AYNI BORÇ HACMİ, FARKLI FİYAT ────────────────────
+# Bu iki profil tek bir soruyu yanıtlamak için var: motor borcun FİYATINI
+# ölçebiliyor mu? İkisinin de DSR'si, taahhüt oranı, kart kullanımı ve borç
+# trendi birbirine yakın — tek anlamlı fark yıllık faiz.
+#
+# v2'de bu ikisi neredeyse aynı puanı alıyordu; borcun maliyeti modelde
+# HİÇ ölçülmüyordu. `p2.maliyet` alt metriğinin varlık sebebi bu çifttir.
+# Ayrıca `p2.maliyet.sifir/yuz` eşikleri onlarsız `tune.py`de "ölçülemedi"
+# diye raporlanıyordu — parametreyi ölçmeden ayarlamak deponun kuralını
+# çiğner.
+_BORC_ORTAK = dict(
+    days_of_data=240,
+    i_net=35_000, i_cv=0.06, i_primary_share=1.0, i_declared=35_000,
+    e_total=27_000, e_essential=17_500, liquid_balance=11_000,
+    s_deliberate=2_500, ef_liquid=18_000, s_consistency_months=4,
+    debt_principal=90_000, debt_monthly_service=7_000,
+    card_balance=18_000, card_limit=45_000, debt_trend_3m=-0.02,
+    budget_planned=26_000, budget_overrun=2_100,
+    limit_categories=4, limit_breached=1, cat_volatility=0.30,
+    goals_active=2, goal_ontrack=0.55, goal_consistency=0.60,
+    goal_required_monthly=3_500,
+    beh_coverage=0.60, imp_rate=0.22, emo_rate=0.11,
+    night_conc=0.14, regret_rate=0.27,
+    accounts_declared=3, accounts_linked=3, categorized_ratio=0.92,
+    manual_entry=False, onboarding=ONB["orta"],
+)
+
+P("okan", "Taksitle yaşayan — aynı borç hacmi, faizsiz", "68-76",
+  debt_avg_rate=0.00, prev_score=70, **_BORC_ORTAK)
+
+P("pelin", "Kart döneri — aynı borç hacmi, yıllık %65 faiz", "62-70",
+  debt_avg_rate=0.65, prev_score=66, **_BORC_ORTAK)
+
+# ── 18. Kerem — VARLIKLI AMA NAKİT SIKIŞIK ──────────────────────────────────
+# `net_varlik` alt metriğinin kritik sınavı: stok, akışı MASKELEMEMELİ.
+#
+# Ev sahibi, yüklü birikimi var, net varlığı yıllık gelirinin 2 katı — ama
+# gelirinin %108'ini harcıyor, tamponu neredeyse yok ve taksit yükü ağır.
+# v2'de bu kullanıcı hiç görünmüyordu; net varlık modelde yoktu. Şimdi
+# görünüyor, AMA nakit akışı bileşeni onu hâlâ aşağı çekmeli: birikmiş
+# varlık, bu ay kapatılamayan açığı ödemez.
+#
+# Beklenti bilinçli olarak DÜŞÜK tutuldu. `net_varlik` P3'ün yalnız %10'u
+# ve P3 skorun %20'si — yani stok, akıştan gelen cezayı en fazla 0,2 puan
+# yumuşatabilir. Sayının küçüklüğü tasarımın kendisidir.
+P("kerem", "Ev sahibi — net varlık yüksek, nakit akışı negatif", "44-54",
+  days_of_data=400,
+  i_net=45_000, i_cv=0.04, i_primary_share=1.0, i_declared=45_000,
+  e_total=48_600, e_essential=31_000, liquid_balance=6_500,
+  s_deliberate=0, ef_liquid=8_000, s_consistency_months=1,
+  net_worth=1_080_000,
+  debt_principal=210_000, debt_monthly_service=9_800, debt_avg_rate=0.28,
+  installment_monthly=6_200, installment_remaining=54_000,
+  card_balance=31_000, card_limit=60_000, debt_trend_3m=0.04,
+  payment_carry_days=23,
+  budget_planned=44_000, budget_overrun=6_400,
+  limit_categories=4, limit_breached=3, cat_volatility=0.38,
+  goals_active=1, goal_ontrack=0.22, goal_consistency=0.33,
+  goal_required_monthly=7_000, goal_plan_adherence=0.25,
+  beh_coverage=0.58, imp_rate=0.26, emo_rate=0.13,
+  night_conc=0.18, regret_rate=0.34,
+  accounts_declared=4, accounts_linked=4, categorized_ratio=0.91,
+  manual_entry=False, onboarding=ONB["orta"], prev_score=52)
+
 KAPSAM_PROFILLERI = ("emre", "hakan", "sibel", "tolga", "nur")
 
 

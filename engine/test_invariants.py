@@ -79,6 +79,9 @@ MONOTONIC = [
     ("acil durum fonu",      "ef_liquid",         [0, 15_000, 45_000, 90_000, 150_000]),
     ("tasarruf sürekliliği", "s_consistency_months", [0, 1, 2, 3, 4, 5, 6]),
     ("likit bakiye",         "liquid_balance",    [0, 5_000, 14_000, 40_000, 80_000]),
+    # v3 alt metrikleri
+    ("net varlık",           "net_worth",         [-200_000, -50_000, 0, 150_000, 500_000]),
+    ("plana uyum",           "goal_plan_adherence", [0.1, 0.4, 0.7, 1.0]),
 ]
 ANTITONIC = [
     ("toplam gider",         "e_total",           [12_000, 18_000, 22_000, 28_000, 34_000]),
@@ -90,6 +93,9 @@ ANTITONIC = [
     ("gelir oynaklığı (CV)", "i_cv",              [0.02, 0.12, 0.25, 0.40, 0.60]),
     ("bütçe aşımı",          "budget_overrun",    [0, 800, 2_500, 6_000, 12_000]),
     ("gecikme günü",         "days_past_due",     [0, 3, 15, 45, 120]),
+    # v3 alt metrikleri — ikisi de ARTTIKÇA kötüleşir
+    ("borcun faizi",         "debt_avg_rate",     [0.0, 0.20, 0.42, 0.65, 0.95]),
+    ("para taşıma süresi",   "payment_carry_days", [2, 8, 15, 22, 29]),
 ]
 
 
@@ -121,6 +127,11 @@ CONTINUITY = [
     ("acil fon", "ef_liquid", 0, 200_000),
     ("plansız oran", "imp_rate", 0.0, 0.6),
     ("kart bakiyesi", "card_balance", 0, 30_000),
+    # v3 alt metrikleri — yeni eşleme fonksiyonu = yeni süreksizlik riski
+    ("borcun faizi", "debt_avg_rate", 0.0, 1.20),
+    ("net varlık", "net_worth", -400_000, 900_000),
+    ("para taşıma", "payment_carry_days", 0.0, 30.0),
+    ("plana uyum", "goal_plan_adherence", 0.0, 1.50),
 ]
 MAX_JUMP = 1.0
 
@@ -486,6 +497,59 @@ def t_requires_covers_real_inputs():
 
 
 
+def t_v3_submetrics_measure_new_facts():
+    """v3 alt metrikleri, mevcut metriklerin ÖLÇMEDİĞİ olguları ölçmeli."""
+    # Yeni bir alt metrik eklemenin tek meşru gerekçesi, modelin o ana kadar
+    # ayırt EDEMEDİĞİ iki durumu ayırt etmesidir. Ölçmüyorsa gürültüdür ve
+    # v1'in hatasını tekrarlar (aynı olguyu iki bileşende saymak).
+    from golden_profiles import PROFILES
+
+    # ── Borcun FİYATI, hacminden bağımsız ölçülüyor mu ───────────────────
+    okan, pelin = PROFILES["okan"][0], PROFILES["pelin"][0]
+    check("okan/pelin yalnız faizde ayrışıyor",
+          okan.dsr == pelin.dsr and okan.commit_ratio == pelin.commit_ratio
+          and okan.debt_principal == pelin.debt_principal,
+          "çift, faiz dışında bir yerde de ayrışıyorsa test bir şey kanıtlamaz")
+    # HAM skor üzerinden ölçülür: gösterilen skor yumuşatmadan da etkilenir
+    # (çiftin `prev_score`ları farklı, çünkü gerçek kullanıcılar öyle) ve
+    # o zaman test alt metriği değil yumuşatmayı sınamış olurdu.
+    o, pe = compute_score(okan), compute_score(pelin)
+    check("borcun fiyatı ham skoru ayırıyor", o.raw_score > pe.raw_score + 1.0,
+          f"okan={o.raw_score:.1f} pelin={pe.raw_score:.1f}")
+    check("faiz ölçülmezse ayrım TAMAMEN kaybolur",
+          abs(compute_score(without(okan, "debt_avg_rate")).raw_score
+              - compute_score(without(pelin, "debt_avg_rate")).raw_score) < 1e-9,
+          "çift faiz dışında da ayrışıyorsa test bir şey kanıtlamaz")
+
+    # ── Net varlık, nakit akışını MASKELEMEMELİ ──────────────────────────
+    #
+    # `net_varlik` bir STOK ölçer, P1 bir AKIŞ. Stokun akışı örtmesi, v1'in
+    # "aynı olguyu iki kez sayma" hatasının aynadaki görüntüsü olurdu:
+    # birikmiş varlık, bu ay kapatılamayan açığı ödemez.
+    kerem = PROFILES["kerem"][0]
+    r = compute_score(kerem)
+    p1 = next(x for x in r.pillars if x.key == "cashflow")
+    nv = next(x for p in r.pillars if p.key == "savings"
+              for x in p.subs if x.key == "net_varlik")
+    check("kerem: net varlık tam puan alıyor", nv.value is not None and nv.value >= 99)
+    check("kerem: buna rağmen nakit akışı çökük", p1.score_100 < 30,
+          f"P1={p1.score_100}")
+    maske = r.score - compute_score(without(kerem, "net_worth")).score
+    check("net varlık akışı en fazla 2 puan maskeler", maske <= 2,
+          f"maskeleme {maske} puan — P3 ağırlığı gözden geçirilmeli")
+
+    # ── Her yeni alt metrik BAĞIMSIZ bir eksen mi ────────────────────────
+    # Aynı profilde iki metrik hep birlikte hareket ediyorsa biri gereksizdir.
+    yeni_alanlar = ("debt_avg_rate", "net_worth", "payment_carry_days",
+                    "goal_plan_adherence")
+    for alan in yeni_alanlar:
+        tasiyan = [k for k, (f, _, _) in PROFILES.items()
+                   if getattr(f, alan) is not None]
+        check(f"{alan}: en az iki golden profil taşıyor", len(tasiyan) >= 2,
+              f"taşıyan={tasiyan} — parametresi ölçülemez kalır")
+
+
+
 # ── 5. Güven ve karma ────────────────────────────────────────────────────────
 
 def t_confidence_blending():
@@ -743,6 +807,7 @@ TESTS = [t_determinism, t_monotonicity, t_continuity,
          t_missing_data_never_punishes, t_absent_balance_is_not_zero,
          t_undefined_ratios_disable_submetrics,
          t_every_submetric_can_be_none, t_requires_covers_real_inputs,
+         t_v3_submetrics_measure_new_facts,
          t_smoothing_anchor_uses_measurement, t_pillar_weights_come_from_params,
          t_confidence_blending, t_bounds,
          t_level_bands, t_no_engagement_inputs,

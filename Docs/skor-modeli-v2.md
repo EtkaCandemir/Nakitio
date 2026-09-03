@@ -189,17 +189,17 @@ v1'in üç ayrı formülü kaldırıldı. Aynı formül, farklı `C` değerlerin
 
 | gün | C | ham | öncül | karma | skor | aşama |
 |---|---|---|---|---|---|---|
-| 10 | 0,22 | 60,0 | 39,0 | 43,5 | **44** | Farkındalık Başlangıç |
-| 15 | 0,35 | 58,9 | 39,0 | 45,9 | **46** | Geçiş |
-| 20 | 0,48 | 58,9 | 39,0 | 48,7 | **49** | Geçiş |
-| 25 | 0,53 | 58,9 | 39,0 | 49,6 | **50** | Geçiş |
-| 28 | 0,54 | 58,9 | 39,0 | 49,8 | **50** | Geçiş |
-| **30** | 0,55 | 58,9 | 39,0 | 50,0 | **50** | Geçiş |
-| **31** | 0,56 | 58,9 | 39,0 | 50,1 | **50** | Geçiş |
-| 35 | 0,57 | 58,9 | 39,0 | 50,4 | **50** | Geçiş |
-| 40 | 0,60 | 58,9 | 39,0 | 50,9 | **51** | Geçiş |
-| 60 | 0,68 | 58,9 | 39,0 | 52,6 | **53** | Finansal Sağlık |
-| 90 | 0,81 | 58,9 | 39,0 | 55,2 | **55** | Finansal Sağlık |
+| 10 | 0,21 | 60,1 | 39,0 | 43,4 | **43** | Farkındalık Başlangıç |
+| 15 | 0,34 | 59,1 | 39,0 | 45,8 | **46** | Geçiş |
+| 20 | 0,47 | 59,1 | 39,0 | 48,5 | **48** | Geçiş |
+| 25 | 0,52 | 59,1 | 39,0 | 49,4 | **49** | Geçiş |
+| 28 | 0,53 | 59,1 | 39,0 | 49,6 | **50** | Geçiş |
+| **30** | 0,54 | 59,1 | 39,0 | 49,8 | **50** | Geçiş |
+| **31** | 0,54 | 59,1 | 39,0 | 49,9 | **50** | Geçiş |
+| 35 | 0,56 | 59,1 | 39,0 | 50,2 | **50** | Geçiş |
+| 40 | 0,58 | 59,1 | 39,0 | 50,7 | **51** | Geçiş |
+| 60 | 0,67 | 59,1 | 39,0 | 52,4 | **52** | Finansal Sağlık |
+| 90 | 0,80 | 59,1 | 39,0 | 55,0 | **55** | Finansal Sağlık |
 <!-- /OTOMATIK:sm-sureklilik -->
 
 Karşılaştırma: v1'de aynı kullanıcı gün 30'da 87,5 alıp gün 31'de ~55'e
@@ -426,9 +426,9 @@ yarı_genişlik = max(2, 12 × (1 − C))
 <!-- OTOMATIK:sm-belirsizlik-bandi -->
 *`golden_profiles.py`'den üretildi.*
 
-`C = 0,22` → ±9,5 puan (`can`: **39**, band `30–49`)
+`C = 0,21` → ±9,5 puan (`can`: **39**, band `30–49`)
 
-`C = 0,91` → ±2 puan (`didem`: **73**, band `71–75`)
+`C = 0,90` → ±2 puan (`didem`: **73**, band `71–75`)
 <!-- /OTOMATIK:sm-belirsizlik-bandi -->
 
 **UI kuralı:** `C < 0,65` iken skor **bant olarak** gösterilmelidir.
@@ -491,7 +491,7 @@ Kanıt (`golden_profiles.py` maddi olay testi):
 
 ```
 Normal ay            : 73
-Gecikmeye düştü      : 67   (Δ −6)   ← ±8 sınırı bypass edildi
+Gecikmeye düştü      : 66   (Δ −7)   ← ±8 sınırı bypass edildi
 Ani büyük iyileşme   : 75   (Δ +2)   ← yukarı yön sınırlı kaldı
 ```
 
@@ -528,16 +528,19 @@ alınamaz, ama kriz gizlenmez.
 
 | Profil | Skor | Band | Ham | Öncül | C | Seviye |
 |---|---|---|---|---|---|---|
-| **didem** — Mockup kullanıcısı — maaşlı, dengeli, orta borç | **73** | 71–75 | 75,0 | 46,0 | 0,91 | Gelişiyor |
-| **mehmet** — Kart sarmalı — asgari ödeme, gecikme, KMH | **33** | 31–35 | 27,1 | 28,0 | 0,87 | Riskli |
-| **zeynep** — Serbest çalışan — yüksek gelir oynaklığı, borçsuz, iyi birikim | **82** | 80–84 | 82,6 | 74,0 | 0,97 | Dengeli |
-| **can** — 12 günlük yeni kullanıcı — veri yok denecek kadar az | **39** | 30–49 | 48,2 | 37,0 | 0,22 | Riskli |
-| **elif** — Güçlü — yüksek tasarruf, 6+ ay güvence, borçsuz | **90** | 88–92 | 94,4 | 74,0 | 0,99 | Güçlü |
-| **burak** — Taksit yüklü — nakit akışı iyi görünüyor, taahhüt ağır | **61** | 59–63 | 59,1 | 46,0 | 0,98 | Gelişiyor |
-| **deniz** — Öğrenci — düşük gelir, yüksek disiplin, borçsuz | **78** | 76–80 | 83,7 | 74,0 | 0,84 | Dengeli |
-| **selin** — Yüksek gelir, sıfır tampon — gizli risk | **40** | 38–42 | 32,3 | 37,0 | 0,99 | Dikkat |
-| **ahmet** — Emekli — düşük gelir, borçsuz, enflasyona yeniliyor | **83** | 81–85 | 86,3 | 74,0 | 0,83 | Dengeli |
-| **merve** — Gün 25 — geçiş dönemi, kısmi veri | **50** | 45–55 | 58,9 | 39,0 | 0,55 | Dikkat |
+| **didem** — Mockup kullanıcısı — maaşlı, dengeli, orta borç | **73** | 71–75 | 74,7 | 46,0 | 0,90 | Gelişiyor |
+| **mehmet** — Kart sarmalı — asgari ödeme, gecikme, KMH | **33** | 31–35 | 26,8 | 28,0 | 0,86 | Riskli |
+| **zeynep** — Serbest çalışan — yüksek gelir oynaklığı, borçsuz, iyi birikim | **83** | 81–85 | 83,4 | 74,0 | 0,97 | Dengeli |
+| **can** — 12 günlük yeni kullanıcı — veri yok denecek kadar az | **39** | 30–49 | 48,3 | 37,0 | 0,21 | Riskli |
+| **elif** — Güçlü — yüksek tasarruf, 6+ ay güvence, borçsuz | **90** | 88–92 | 94,6 | 74,0 | 0,98 | Güçlü |
+| **burak** — Taksit yüklü — nakit akışı iyi görünüyor, taahhüt ağır | **60** | 58–62 | 57,4 | 46,0 | 0,97 | Gelişiyor |
+| **deniz** — Öğrenci — düşük gelir, yüksek disiplin, borçsuz | **78** | 76–80 | 83,5 | 74,0 | 0,84 | Dengeli |
+| **selin** — Yüksek gelir, sıfır tampon — gizli risk | **40** | 38–42 | 32,8 | 37,0 | 0,98 | Dikkat |
+| **ahmet** — Emekli — düşük gelir, borçsuz, enflasyona yeniliyor | **83** | 81–85 | 86,8 | 74,0 | 0,83 | Dengeli |
+| **merve** — Gün 25 — geçiş dönemi, kısmi veri | **50** | 44–55 | 59,1 | 39,0 | 0,54 | Dikkat |
+| **okan** — Taksitle yaşayan — aynı borç hacmi, faizsiz | **69** | 67–71 | 68,8 | 46,0 | 0,97 | Gelişiyor |
+| **pelin** — Kart döneri — aynı borç hacmi, yıllık %65 faiz | **66** | 64–68 | 66,2 | 46,0 | 0,97 | Gelişiyor |
+| **kerem** — Ev sahibi — net varlık yüksek, nakit akışı negatif | **46** | 44–48 | 33,5 | 46,0 | 0,98 | Dikkat |
 <!-- /OTOMATIK:sm-golden-senaryo -->
 
 Üç profil doğrudan modelin iddialarını sınar:
@@ -559,31 +562,35 @@ alınamaz, ama kriz gizlenmez.
 
 ```
 Finansal Sağlık Skoru: 73/100  (Gelişiyor)
-  ham=75.0  öncül=46.0  karma=72.3  güven C=0.91  band=71-75
-  [ 79.2] Nakit Akışı              19.80 / 25.0 puan
-        · Net nakit akışı marjı         89.9  ×0.60   m=+24.9%
-        · Gelir istikrarı (CV)          92.5  ×0.13   cv=0.08
-        · Kısa vadeli likidite          52.5  ×0.20   18 gün
+  ham=74.7  öncül=46.0  karma=71.9  güven C=0.90  band=71-75
+  [ 78.6] Nakit Akışı              19.64 / 25.0 puan
+        · Net nakit akışı marjı         89.9  ×0.56   m=+24.9%
+        · Gelir istikrarı (CV)          92.5  ×0.12   cv=0.08
+        · Kısa vadeli likidite          52.5  ×0.18   18 gün
+        · Ödeme zamanlaması             69.6  ×0.07   12 gün taşıma
         · Gelir çeşitliliği             40.0  ×0.07   ana kaynak %84
-  [ 87.0] Borç Yükü                17.41 / 20.0 puan
-        · Aylık borç servisi / gelir    88.1  ×0.38   DSR=%14.8
-        · Kart kullanım oranı           80.0  ×0.22   %34
-        · Toplam taahhüt / yıllık gelir  99.2  ×0.25   %5
-        · Borç trendi (3 ay)            74.3  ×0.15   -6.0%
-  [ 60.9] Tasarruf & Güvence       12.18 / 20.0 puan
-        · Kasıtlı tasarruf oranı        84.5  ×0.33   %18.6
-        · Acil durum fonu               34.1  ×0.34   0.5 ay
-        · Tasarruf sürekliliği          66.7  ×0.23   4/6 ay
+  [ 87.3] Borç Yükü                17.46 / 20.0 puan
+        · Aylık borç servisi / gelir    88.1  ×0.32   DSR=%14.8
+        · Kart kullanım oranı           80.0  ×0.18   %34
+        · Toplam taahhüt / yıllık gelir  99.2  ×0.22   %5
+        · Borcun ortalama faizi        —      (veri yok)
+        · Borç trendi (3 ay)            74.3  ×0.12   -6.0%
+  [ 60.0] Tasarruf & Güvence       12.01 / 20.0 puan
+        · Kasıtlı tasarruf oranı        84.5  ×0.30   %18.6
+        · Acil durum fonu               34.1  ×0.31   0.5 ay
+        · Tasarruf sürekliliği          66.7  ×0.20   4/6 ay
+        · Net varlık                    53.8  ×0.10   yıllık gelirin 0.3 katı
         · Enflasyona karşı koruma      —      (veri yok)
   [ 82.1] Harcama Disiplini        12.31 / 15.0 puan
         · Bütçe uyumu                   93.1  ×0.38   aşım 1,380/20,000
         · Kategori limitlerine uyum     75.0  ×0.20   1/4 aşıldı
         · İsteğe bağlı harcama payı     75.0  ×0.27   %30
         · Kategori oynaklığı            76.4  ×0.15   cv=0.28
-  [ 71.3] Hedef Devamlılığı         7.13 / 10.0 puan
-        · Hedeflerin ilerleme durumu    62.0  ×0.45   %62
-        · Katkı sürekliliği             67.0  ×0.35   %67
-        · Hedef gerçekçiliği           100.0  ×0.20
+  [ 71.5] Hedef Devamlılığı         7.15 / 10.0 puan
+        · Hedeflerin ilerleme durumu    62.0  ×0.38   %62
+        · Katkı sürekliliği             67.0  ×0.28   %67
+        · Plana uyum                    71.4  ×0.17   planın %80'si
+        · Hedef gerçekçiliği           100.0  ×0.17
   [ 61.6] Finansal Davranış         6.16 / 10.0 puan
         · Plansız harcama oranı         48.6  ×0.35   %23
         · Duygusal harcama payı         74.1  ×0.25   %10
@@ -628,10 +635,10 @@ Yukarıdaki tablo **davranışı** anlatır; aşağıdaki blok o davranışın
 
 | Durum | Skor | Band | C | Seviye | Devre dışı |
 |---|---|---|---|---|---|
-| Sıfır gelir (işsiz) | **56** | 52–60 | 0,70 | Dikkat | — |
-| Gider > gelir (negatif marj) | **34** | 31–38 | 0,70 | Riskli | — |
-| Hiç borç verisi yok | **67** | 64–71 | 0,71 | Gelişiyor | Borç Yükü |
-| Veri bütünlüğü şüphesi | **83** | 76–90 | 0,45 | Dengeli | — |
+| Sıfır gelir (işsiz) | **56** | 52–60 | 0,69 | Dikkat | — |
+| Gider > gelir (negatif marj) | **34** | 30–38 | 0,69 | Riskli | — |
+| Hiç borç verisi yok | **67** | 63–71 | 0,70 | Gelişiyor | Borç Yükü |
+| Veri bütünlüğü şüphesi | **83** | 76–90 | 0,44 | Dengeli | — |
 <!-- /OTOMATIK:sm-sinir-durumlari -->
 
 ---
@@ -698,21 +705,20 @@ Mockup'taki *"geçen aya göre +4 puan"* satırı `attribute()`'tan gelir:
 ```
 Mevcut durum: 72/100  (Gelişiyor)
 
-  Restoran limiti (aylık -600 TL gider)      → 74/100  (+2)
+  Restoran limiti (aylık -600 TL gider)      → 73/100  (+1)
   + Acil durum fonuna aylık 1.500 TL         → 76/100  (+4)
-  + Plansız harcama %23 → %15                → 78/100  (+6)
+  + Plansız harcama %23 → %15                → 77/100  (+5)
 
-3 ay sonunda beklenen skor: 78 (Dengeli), band 76–80
+3 ay sonunda beklenen skor: 77 (Dengeli), band 75–79
 ```
 
 Katkı ayrıştırma (mevcut → plan sonu) — toplam gösterilen farkı **tam olarak** kapatır, artık kalemi yuvarlamadır:
 
 ```
-   +2.73  Tasarruf & Güvence   60.9 → 76.0
-   +1.35  Finansal Davranış   61.6 → 76.4
+   +2.38  Tasarruf & Güvence   60.0 → 73.3
+   +1.34  Finansal Davranış   61.6 → 76.4
    +1.02  Harcama Disiplini   82.1 → 89.6
-   +0.63  Yumuşatma / yuvarlama
-   +0.27  Nakit Akışı   79.2 → 80.4
+   +0.25  Nakit Akışı   78.6 → 79.7
 ```
 <!-- /OTOMATIK:sm-simulasyon -->
 
@@ -779,18 +785,18 @@ Parametre kararları `engine/tune.py` duyarlılık analiziyle ölçülerek veril
 Yüksek etkili olanlar beraber ayarlanır; kalanlar varsayılanda bırakılır.
 
 <!-- OTOMATIK:tune-etki -->
-*`tune.py` çalıştırılarak üretildi — 96 parametre, 15 golden profil, 7 nokta.*
+*`tune.py` çalıştırılarak üretildi — 108 parametre, 18 golden profil, 7 nokta.*
 
 | Etki | Parametre | Ölçüt |
 |---|---|---|
-| **Yüksek** | **28** | aralığın uçları arasında en az bir profilin gösterilen skoru ≥3 puan oynuyor |
-| Orta | 58 | 1–3 puan |
-| Düşük | 4 | <1 puan, ham skorda ölçülebilir |
+| **Yüksek** | **26** | aralığın uçları arasında en az bir profilin gösterilen skoru ≥3 puan oynuyor |
+| Orta | 65 | 1–3 puan |
+| Düşük | 11 | <1 puan, ham skorda ölçülebilir |
 | **Ölçülemedi** | **1** | hiçbir golden profil o kod yolundan geçmiyor — *etkisiz değil, tetiklenmemiş* |
 
 Ölçülemeyenler: `infer.cikarim_kapsam` — bunları "önemsiz" saymak, ölçüm eksikliğini bulgu gibi sunmak olur.
 
-En etkili parametre: `s.alpha_maddi` (16.0 puan, en çok `selin` profilinde).
+En etkili parametre: `prior.baz` (16.0 puan, en çok `can` profilinde).
 <!-- /OTOMATIK:tune-etki -->
 
 ---

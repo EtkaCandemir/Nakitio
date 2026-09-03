@@ -364,7 +364,7 @@ isteğe bağlıdır. İkili bayrak gri bölgede sistematik hata üretir ve hem
 `tune.py` ile ölçülen etkiler için `Docs/DECISIONS.md` §3.
 
 <!-- OTOMATIK:params-tablosu -->
-*96 parametre. `params.py`'den üretildi — elle düzenleme.*
+*108 parametre. `params.py`'den üretildi — elle düzenleme.*
 
 ### Bileşen
 
@@ -381,10 +381,11 @@ isteğe bağlıdır. İkili bayrak gri bölgede sistematik hata üretir ve hem
 
 | Anahtar | Değer | Aralık | Tür | Açıklama |
 |---|---|---|---|---|
-| `p1.marj.w` | **0,6** | 0,3–0,75 | weight | Marj alt ağırlığı |
-| `p1.istikrar.w` | **0,13** | 0,05–0,35 | weight | Gelir istikrarı ağırlığı |
-| `p1.tampon.w` | **0,195** | 0,05–0,35 | weight | Likidite tamponu ağırlığı |
-| `p1.cesitlilik.w` | **0,075** | 0–0,25 | weight | Gelir çeşitliliği ağırlığı |
+| `p1.marj.w` | **0,56** | 0,3–0,75 | weight | Marj alt ağırlığı |
+| `p1.istikrar.w` | **0,12** | 0,05–0,35 | weight | Gelir istikrarı ağırlığı |
+| `p1.tampon.w` | **0,18** | 0,05–0,35 | weight | Likidite tamponu ağırlığı |
+| `p1.cesitlilik.w` | **0,07** | 0–0,25 | weight | Gelir çeşitliliği ağırlığı |
+| `p1.zamanlama.w` | **0,07** | 0–0,2 | weight | Ödeme zamanlaması ağırlığı — KARAR: 0,07. Aynı marjda çok farklı kırılganlık: maaşı 1'inde gelip kartı 5'inde ödey… |
 | `p1.breakeven` | **20** | 0–40 | shape | Başabaş puanı — Gelir=gider noktası. 0 yaparsan başabaş 'kötü' olur |
 | `p1.marj.k` | **0,12** | 0,06–0,25 | shape | Marj doygunluk sabiti — Küçültürsen düşük marj bile yüksek puan alır |
 | `p1.marj.neg_sifir` | **0,1** | 0,05–0,25 | threshold | Negatif marj sıfır noktası |
@@ -392,6 +393,8 @@ isteğe bağlıdır. İkili bayrak gri bölgede sistematik hata üretir ve hem
 | `p1.istikrar.yuz` | **0,05** | 0–0,2 | threshold | Gelir CV tam puan eşiği |
 | `p1.tampon.tam_gun` | **45** | 20–90 | threshold | Likidite tam puan (gün) |
 | `p1.tampon.us` | **0,7** | 0,4–1 | shape | Likidite eğri üssü |
+| `p1.zamanlama.sifir` | **28** | 20–30 | threshold | Taşıma süresi sıfır eşiği (gün) — KARAR: 28. Neredeyse tam ay taşımak. |
+| `p1.zamanlama.yuz` | **5** | 0–12 | threshold | Taşıma süresi tam puan eşiği (gün) — KARAR: 5. Gelirden hemen sonra ödeme. |
 | `p1.cesitlilik.sifir` | **1** | 0,85–1 | threshold | Tek kaynak eşiği |
 | `p1.cesitlilik.yuz` | **0,6** | 0,3–0,8 | threshold | Çeşitlilik tam puan |
 
@@ -399,10 +402,11 @@ isteğe bağlıdır. İkili bayrak gri bölgede sistematik hata üretir ve hem
 
 | Anahtar | Değer | Aralık | Tür | Açıklama |
 |---|---|---|---|---|
-| `p2.dsr.w` | **0,38** | 0,2–0,6 | weight | DSR ağırlığı |
-| `p2.kart.w` | **0,22** | 0,05–0,4 | weight | Kart kullanımı ağırlığı |
-| `p2.taahhut.w` | **0,25** | 0,1–0,4 | weight | Taahhüt yükü ağırlığı |
-| `p2.trend.w` | **0,15** | 0,05–0,3 | weight | Borç trendi ağırlığı |
+| `p2.dsr.w` | **0,32** | 0,2–0,6 | weight | DSR ağırlığı |
+| `p2.kart.w` | **0,18** | 0,05–0,4 | weight | Kart kullanımı ağırlığı |
+| `p2.taahhut.w` | **0,22** | 0,1–0,4 | weight | Taahhüt yükü ağırlığı |
+| `p2.trend.w` | **0,12** | 0,05–0,3 | weight | Borç trendi ağırlığı |
+| `p2.maliyet.w` | **0,16** | 0,05–0,35 | weight | Borç maliyeti ağırlığı — KARAR: 0,16. Borcun FİYATI, hacminden bağımsız bir olgudur ve motor onu hiç ölçmüyord… |
 | `p2.dsr.sifir` | **0,5** | 0,35–0,7 | threshold | DSR sıfır eşiği — Bu orandan sonra borç bileşeni sıfırlanır |
 | `p2.dsr.yuz` | **0,1** | 0–0,25 | threshold | DSR tam puan eşiği |
 | `p2.kart.sifir` | **0,9** | 0,7–1 | threshold | Kart kullanımı sıfır eşiği |
@@ -411,6 +415,8 @@ isteğe bağlıdır. İkili bayrak gri bölgede sistematik hata üretir ve hem
 | `p2.taahhut.yuz` | **0,05** | 0–0,2 | threshold | Taahhüt tam puan |
 | `p2.trend.sifir` | **0,2** | 0,08–0,4 | threshold | Borç artışı sıfır eşiği |
 | `p2.trend.yuz` | **−0,15** | −0,35–−0,05 | threshold | Borç azalışı tam puan |
+| `p2.maliyet.sifir` | **0,8** | 0,4–1,2 | threshold | Borç maliyeti sıfır eşiği (yıllık nominal) — KARAR: 0,80. Yayılım şöyle olsun istendi — %0 taksit 100, ~%30 konut/taşıt 62, ~%42 n… |
+| `p2.maliyet.yuz` | **0** | 0–0,25 | threshold | Borç maliyeti tam puan eşiği — KARAR: 0,00. Faizsiz borç bir yük değildir; taksitin kendisi P2'nin taahhüt alt metri… |
 
 ### P2 ceza
 
@@ -426,13 +432,16 @@ isteğe bağlıdır. İkili bayrak gri bölgede sistematik hata üretir ve hem
 
 | Anahtar | Değer | Aralık | Tür | Açıklama |
 |---|---|---|---|---|
-| `p3.oran.w` | **0,33** | 0,15–0,55 | weight | Tasarruf oranı ağırlığı |
-| `p3.guvence.w` | **0,34** | 0,15–0,55 | weight | Acil fon ağırlığı |
-| `p3.sureklilik.w` | **0,23** | 0,05–0,4 | weight | Süreklilik ağırlığı |
-| `p3.reel.w` | **0,1** | 0–0,25 | weight | Enflasyon koruması ağırlığı |
+| `p3.oran.w` | **0,3** | 0,15–0,55 | weight | Tasarruf oranı ağırlığı |
+| `p3.guvence.w` | **0,31** | 0,15–0,55 | weight | Acil fon ağırlığı |
+| `p3.sureklilik.w` | **0,2** | 0,05–0,4 | weight | Süreklilik ağırlığı |
+| `p3.reel.w` | **0,09** | 0–0,25 | weight | Enflasyon koruması ağırlığı |
+| `p3.net_varlik.w` | **0,1** | 0–0,3 | weight | Net varlık ağırlığı — KARAR: 0,10. DECISIONS §6'nın v2.1'e ertelediği boyut, bileşen eklemeden. Ağırlık DÜŞ… |
 | `p3.oran.k` | **0,1** | 0,05–0,22 | shape | Tasarruf doygunluk sabiti — 0,10 → %10 tasarruf 63 puan, %20 → 86 |
 | `p3.guvence.tam_ay` | **3** | 3–12 | threshold | Acil fon hedefi (ay) — KARAR: 6 → 3. Kullanıcıya GÖSTERİLEN hedefle SKORUN hedefi aynı olmalı; aksi hâlde gö… |
 | `p3.guvence.us` | **0,6** | 0,35–1 | shape | Acil fon eğri üssü — Düşürürsen ilk ay daha çok ödüllenir |
+| `p3.net_varlik.sifir` | **−0,5** | −1,5–0 | threshold | Net varlık sıfır eşiği (yıllık gelir katı) — KARAR: -0,50. Sıfır net varlık NÖTRdür (33 puan), ceza değil: borcu da varlığı da olm… |
+| `p3.net_varlik.yuz` | **1** | 0,5–3 | threshold | Net varlık tam puan eşiği — KARAR: 1,00 yıllık gelir. |
 | `p3.reel.sifir` | **−0,25** | −0,5–−0,1 | threshold | Enflasyon farkı sıfır |
 | `p3.reel.yuz` | **0** | −0,05–0,1 | threshold | Enflasyon farkı tam puan |
 
@@ -453,9 +462,12 @@ isteğe bağlıdır. İkili bayrak gri bölgede sistematik hata üretir ve hem
 
 | Anahtar | Değer | Aralık | Tür | Açıklama |
 |---|---|---|---|---|
-| `p5.ontrack.w` | **0,45** | 0,25–0,65 | weight | Hedef ilerlemesi ağırlığı |
-| `p5.tutarlilik.w` | **0,35** | 0,15–0,55 | weight | Katkı sürekliliği ağırlığı |
-| `p5.gercekcilik.w` | **0,2** | 0–0,4 | weight | Hedef gerçekçiliği ağırlığı |
+| `p5.ontrack.w` | **0,38** | 0,25–0,65 | weight | Hedef ilerlemesi ağırlığı |
+| `p5.tutarlilik.w` | **0,28** | 0,15–0,55 | weight | Katkı sürekliliği ağırlığı |
+| `p5.gercekcilik.w` | **0,17** | 0–0,4 | weight | Hedef gerçekçiliği ağırlığı |
+| `p5.plan_uyumu.w` | **0,17** | 0–0,35 | weight | Plana uyum ağırlığı — KARAR: 0,17. `ontrack` hedefe YAKLAŞMAYI ölçer, bu SÖZE UYMAYI. İkisi ayrışır: fazla … |
+| `p5.plan_uyumu.sifir` | **0,3** | 0–0,6 | threshold | Plana uyum sıfır eşiği — KARAR: 0,30. Planın üçte birinden azı gerçekleştiyse plan yaşamıyor demektir. |
+| `p5.plan_uyumu.yuz` | **1** | 0,85–1,3 | threshold | Plana uyum tam puan eşiği — KARAR: 1,00. Planı AŞMAK ek puan getirmez; fazla katkı zaten `ontrack`ta görünür. |
 | `p5.gercekcilik.sifir` | **1,6** | 1,2–2,5 | threshold | Gerçekçilik sıfır eşiği |
 | `p5.gercekcilik.yuz` | **0,8** | 0,5–1 | threshold | Gerçekçilik tam puan |
 | `p5.hedefsiz_puan` | **45** | 0–70 | gate | Hedefsizlik puanı — 60 gün sonra hedef yoksa verilen nötr puan |

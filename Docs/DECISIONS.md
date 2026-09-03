@@ -175,6 +175,8 @@ yazılmaz, çünkü golden profil kümesi büyüdükçe dağılım değişir (ni
 
 | Parametre | Eski → Yeni | Ölçülen etki | Gerekçe |
 |---|---|---|---|
+| `p2.maliyet.w` | — → **0,16** | okan/pelin çifti 3 puan ayrıştı (v2'de 0) | Motor borcun HACMİNİ ölçüyor, FİYATINI ölçmüyordu. Ağırlığı 0,28'e çıkarmak çifti yalnız 1 puan daha ayırıyor — kaldıraç ağırlık değil eşik. Ölçülerek 0,16'da bırakıldı |
+| `p2.maliyet.sifir` | — → **0,80** | ham oynama 1,47 puan | Yıllık nominal. NOMİNAL olması enflasyon rejimine bağımlılık demektir; N5 (TÜFE) beslenince metrik reel orana çevrilmeli. Reel'e bugün bağlansaydı TÜFE stub olduğu için metrik herkeste kapanırdı |
 | `p1.istikrar.w` | 0,20 → **0,13** | zeynep 79 → 82 | Gelir dalgalanmasına karşı tutulan fon zaten P3'te ödüllendiriliyor. 0,20'de **aynı risk iki kez** cezalandırılıyordu |
 | `prior.baz` | 50 → **40** | orta cevap 56 → 46 | Ölçmediğimiz şey hakkında iyimser iddiada bulunmuyoruz; düşük başlangıç ekstre yüklemeyi teşvik eder |
 | `prior.min` | 40 → **28** | zayıf/kötü ayrıştı | 40 tabanında "zayıf" (ham 29) ve "kötü" (ham 10) **aynı skoru** alıyordu; anket ayırt etmiyordu |
@@ -183,6 +185,10 @@ yazılmaz, çünkü golden profil kümesi büyüdükçe dağılım değişir (ni
 | `s.alpha_maddi` | 0,70 → **0,70** | — | 1,0 tek ayda −10 puanlık şok verir; 0,70 iki ayda gerçeğe oturur. Etik karar |
 | `s.max_hareket` | 8 → **8** | — | Ölçümde **hiçbir senaryoda devreye girmediği** görüldü; tıkayan EWMA'ydı. Önerilen 10'a çıkarma geri çekildi |
 | Bileşen ağırlıkları | **değişmedi** | ±5 → max 2 puan | Bileşenler korele; ağırlık kaydırmak toplamı oynatmıyor. Sezgisel olarak en önemli görünen, pratikte en az önemli |
+| `p1.zamanlama.w` | — → **0,07** | azami 1 puan, ham 2,15 (mehmet) | Aynı marjda farklı kırılganlık: maaşı 1'inde gelip kartı 5'inde ödeyen taze parayla öder, 20'sinde gelip 5'inde ödeyen bir önceki ayın artığından. Gerçek ama ikincil eksen |
+| `p3.net_varlik.w` | — → **0,10** | azami 2 puan, ham 5,62 (kerem) | DECISIONS §6'nın v2.1'e ertelediği net worth boyutu, bileşen eklemeden. Ağırlık DÜŞÜK çünkü `tampon`/`guvence` ile kısmen örtüşüyor. Ölçüldü: kerem'de stok, akışı yalnız 1 puan maskeliyor |
+| `p3.net_varlik.sifir` | — → **−0,50** | ham 1,30 (selin) | Sıfır net varlık NÖTRdür (33 puan), ceza değil — borcu da varlığı da olmayan genç kullanıcı cezalandırılmamalı. Ceza yalnız net BORÇLU olmakla başlar |
+| `p5.plan_uyumu.w` | — → **0,17** | azami 1 puan, ham 1,50 (burak) | `ontrack` hedefe YAKLAŞMAYI, bu SÖZE UYMAYI ölçer. Fazla iyimser hedef koymuş biri plana harfiyen uysa da `ontrack`ta geride görünür; P5'in adı zaten "söylediğini yapma" |
 
 ### Duyarlılık sıralaması (ilk 10)
 

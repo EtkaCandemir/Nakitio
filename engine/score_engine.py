@@ -26,7 +26,7 @@ from typing import Optional, Dict, List, Tuple
 
 from params import P
 
-MODEL_VERSION = "2.0.0"
+MODEL_VERSION = "3.0.0"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -123,6 +123,19 @@ class Features:
     #: aylık süreklilik ölçülemez" değildir. İkisi karıştırılınca yeni
     #: kullanıcı hiç birikim yapmamış gibi 0 puan alır.
     s_consistency_months: Optional[int] = None
+
+    #: Toplam varlık − toplam borç (TL). None = varlık tablosu çıkarılamadı.
+    #:
+    #: `DECISIONS.md` §6 net worth boyutunu v2.1'e ertelemişti: skor tamamen
+    #: AKIŞ odaklıydı, birikmiş varlık hiç sayılmıyordu. Bileşen eklemeden,
+    #: P3'ün içinde bir alt metrik olarak ölçülür — ağırlık kaydırmanın işe
+    #: yaramadığı ölçülmüştü (±5 kaydırma en fazla 2 puan).
+    #:
+    #: `tampon`/`guvence` ile ÖRTÜŞME riski bilinçli olarak kabul edildi:
+    #: onlar likiditeyi ve şok dayanıklılığını ölçer, bu ise net pozisyonu.
+    #: 3 aylık acil fonu olup 200.000 TL borcu olan kullanıcı ilkinde iyi,
+    #: bunda kötüdür — ayırt ettiği şey budur. Ağırlığı bu yüzden düşük.
+    net_worth: Optional[float] = None
     real_return_gap: Optional[float] = None   # yıllık (birikim getirisi − TÜFE)
 
     # ── Borç ──────────────────────────────────────────────────────────────
@@ -133,10 +146,36 @@ class Features:
     installment_remaining: float = 0.0    # kalan toplam taksit taahhüdü
     card_balance: Optional[float] = None
     card_limit: Optional[float] = None
+    #: Anapara ağırlıklı ortalama YILLIK nominal faiz oranı [0,1+].
+    #:
+    #: Motor bugüne kadar borcun HACMİNİ ölçtü, FİYATINI ölçmedi: %0 taksitli
+    #: bir telefon ile %60 faizli bir KMH, aynı DSR ve aynı taahhüt oranıyla
+    #: birebir aynı puanı alıyordu. Oysa ikisi arasındaki fark, kullanıcının
+    #: alabileceği en yüksek getirili tek finansal karardır.
+    #:
+    #: Yalnız oranı BİLİNEN borçlardan hesaplanır; hiçbiri bilinmiyorsa None
+    #: (alt metrik kapanır, ceza yoktur).
+    #:
+    #: NOMİNAL, reel değil. Doğrusu reel orandır (nominal − TÜFE) — bir borcun
+    #: enflasyonun altında olması onu gerçekten ucuzlatır ve P3'ün `reel` alt
+    #: metriği tasarrufta tam bunu ölçer. Ama TÜFE beslemesi hâlâ stub
+    #: (`veri-katmani-v1.md` §N5); reel orana bağlansaydı metrik BUGÜN
+    #: herkeste kapanırdı. N5 gerçek veriyle beslendiğinde bu alan reele
+    #: çevrilmeli ve eşikler yeniden kalibre edilmelidir.
+    debt_avg_rate: Optional[float] = None
     debt_trend_3m: Optional[float] = None     # (anapara_now/anapara_3ay_önce)-1
     days_past_due: int = 0
     min_payment_only_months: int = 0      # üst üste sadece asgari ödenen ay
     kmh_active: bool = False
+
+    #: Ödeme gününe kadar parayı kaç gün taşımak zorunda [0,30].
+    #:
+    #: `(son_ödeme_günü − gelir_günü) mod 30`. Aynı DSR'ye sahip iki kullanıcı
+    #: bu eksende çok farklı kırılganlıkta olabilir: maaşı 1'inde gelip kartı
+    #: 5'inde ödeyen taze parayla öder; maaşı 20'sinde gelip kartı 5'inde
+    #: ödeyen bir önceki ayın artığından öder ve ay boyunca o parayı korumak
+    #: zorundadır. Plansız harcamanın aşındırdığı şey tam olarak budur.
+    payment_carry_days: Optional[float] = None
 
     # ── Harcama disiplini ─────────────────────────────────────────────────
     budget_planned: Optional[float] = None    # bütçelenen toplam
@@ -150,6 +189,13 @@ class Features:
     goal_ontrack: Optional[float] = None      # 0-1, hedef büyüklüğüne göre ağırlıklı
     goal_consistency: Optional[float] = None  # 0-1, son 3 ayda plana uyan hedef oranı
     goal_required_monthly: Optional[float] = None  # tüm hedefler için gereken aylık katkı
+    #: Planlanan aylık katkının ne kadarı gerçekleşti [0,1+].
+    #:
+    #: `ontrack` hedefe ne kadar yaklaşıldığını ölçer; bu ise SÖZE UYMAYI.
+    #: İkisi ayrışabilir: hedefini fazla iyimser koymuş biri plana harfiyen
+    #: uyduğu hâlde geride görünür. `Goal.monthly_plan` sözleşmede vardı ve
+    #: motorda hiç okunmuyordu.
+    goal_plan_adherence: Optional[float] = None
 
     # ── Davranış ──────────────────────────────────────────────────────────
     beh_coverage: float = 0.0             # etiketlenmiş/sınıflanmış harcama oranı (TL bazlı)
@@ -264,6 +310,13 @@ class Features:
         if self.e_total <= 0:
             return 90.0
         return self.liquid_balance / (self.e_total / 30.0)
+
+    @property
+    def net_worth_ratio(self) -> Optional[float]:
+        """Net varlık / yıllık gelir. Gelir yoksa oran TANIMSIZ."""
+        if self.net_worth is None or self.i_net <= 0:
+            return None
+        return self.net_worth / (self.i_net * 12)
 
     @property
     def disc_share(self) -> Optional[float]:
@@ -523,6 +576,12 @@ def pillar_cashflow(f: Features) -> Pillar:
     rw = f.runway_days
     tampon = None if rw is None else concave(rw, P["p1.tampon.tam_gun"], P["p1.tampon.us"])
 
+    # ÖDEME ZAMANLAMASI. Parayı kaç gün taşımak zorunda olduğu; marjın
+    # ölçmediği bir kırılganlık eksenidir (bkz. `payment_carry_days`).
+    pcd = f.payment_carry_days
+    zamanlama = None if pcd is None else lin(pcd, P["p1.zamanlama.sifir"],
+                                             P["p1.zamanlama.yuz"])
+
     cesitlilik = None
     if f.i_primary_share is not None:
         # Tek gelir kaynağına bağımlılık bir kırılganlıktır, ama maaşlı
@@ -539,6 +598,9 @@ def pillar_cashflow(f: Features) -> Pillar:
         SubScore("tampon", "Kısa vadeli likidite", tampon, P["p1.tampon.w"],
                  "" if rw is None else f"{rw:.0f} gün",
                  requires=("liquid_balance",)),
+        SubScore("zamanlama", "Ödeme zamanlaması", zamanlama, P["p1.zamanlama.w"],
+                 "" if pcd is None else f"{pcd:.0f} gün taşıma",
+                 requires=("payment_carry_days",)),
         SubScore("cesitlilik", "Gelir çeşitliliği", cesitlilik, P["p1.cesitlilik.w"],
                  "" if f.i_primary_share is None else f"ana kaynak %{f.i_primary_share*100:.0f}",
                  requires=("i_primary_share",)),
@@ -576,6 +638,13 @@ def pillar_debt(f: Features) -> Pillar:
     cr = f.commit_ratio
     taahhut = None if cr is None else lin(cr, P["p2.taahhut.sifir"], P["p2.taahhut.yuz"])
 
+    # BORCUN FİYATI. Hacimden bağımsız bir olgu: aynı DSR ve aynı taahhüt
+    # oranıyla %0 taksitli bir alışveriş ile %60 faizli bir KMH birebir aynı
+    # puanı alıyordu. Faizsiz borç yük değildir — taksitin kendisi zaten
+    # `taahhut`ta ölçülüyor, burada ikinci kez sayılmaz.
+    ar = f.debt_avg_rate
+    maliyet = None if ar is None else lin(ar, P["p2.maliyet.sifir"], P["p2.maliyet.yuz"])
+
     trend = None
     if f.debt_trend_3m is not None:
         # Borç azalıyorsa 100, sabitse ~55, artıyorsa düşer.
@@ -591,6 +660,9 @@ def pillar_debt(f: Features) -> Pillar:
         SubScore("taahhut", "Toplam taahhüt / yıllık gelir", taahhut, P["p2.taahhut.w"],
                  "" if cr is None else f"%{cr*100:.0f}",
                  requires=("i_net",)),
+        SubScore("maliyet", "Borcun ortalama faizi", maliyet, P["p2.maliyet.w"],
+                 "" if ar is None else f"yıllık %{ar*100:.0f}",
+                 requires=("debt_avg_rate",)),
         SubScore("trend", "Borç trendi (3 ay)", trend, P["p2.trend.w"],
                  "" if f.debt_trend_3m is None else f"{f.debt_trend_3m:+.1%}",
                  requires=("debt_trend_3m",)),
@@ -623,6 +695,12 @@ def pillar_savings(f: Features) -> Pillar:
     scm = f.s_consistency_months
     sureklilik = None if scm is None else 100.0 * clamp(scm / 6.0)
 
+    # NET VARLIK. Akış değil STOK: 3 aylık acil fonu olup 200.000 TL borcu
+    # olan kullanıcıyı, aynı fona sahip borçsuz kullanıcıdan ayırır.
+    nwr = f.net_worth_ratio
+    net_varlik = None if nwr is None else lin(nwr, P["p3.net_varlik.sifir"],
+                                              P["p3.net_varlik.yuz"])
+
     reel = None
     if f.real_return_gap is not None:
         # Enflasyonun altında kalmak bir kayıptır ama davranış hatası
@@ -639,6 +717,10 @@ def pillar_savings(f: Features) -> Pillar:
         SubScore("sureklilik", "Tasarruf sürekliliği", sureklilik, P["p3.sureklilik.w"],
                  "" if scm is None else f"{scm}/6 ay",
                  requires=("s_consistency_months",)),
+        SubScore("net_varlik", "Net varlık", net_varlik, P["p3.net_varlik.w"],
+                 # -0.0 gösterimini önle: sıfıra çok yakın oran "0,0" yazılır.
+                 "" if nwr is None else f"yıllık gelirin {nwr + 0.0:.1f} katı".replace("-0.0", "0.0"),
+                 requires=("net_worth", "i_net")),
         SubScore("reel", "Enflasyona karşı koruma", reel, P["p3.reel.w"],
                  "" if f.real_return_gap is None else f"{f.real_return_gap:+.1%}",
                  requires=("real_return_gap",)),
@@ -703,6 +785,11 @@ def pillar_goals(f: Features) -> Pillar:
     ontrack = None if f.goal_ontrack is None else 100.0 * clamp(f.goal_ontrack)
     tutarlilik = None if f.goal_consistency is None else 100.0 * clamp(f.goal_consistency)
 
+    # PLANA UYUM. `ontrack` hedefe yaklaşmayı ölçer, bu söze uymayı.
+    gpa = f.goal_plan_adherence
+    plan_uyumu = None if gpa is None else lin(gpa, P["p5.plan_uyumu.sifir"],
+                                              P["p5.plan_uyumu.yuz"])
+
     gercekcilik = None
     if f.goal_required_monthly is not None:
         surplus = f.i_net - f.e_total
@@ -720,6 +807,9 @@ def pillar_goals(f: Features) -> Pillar:
         SubScore("tutarlilik", "Katkı sürekliliği", tutarlilik, P["p5.tutarlilik.w"],
                  "" if tutarlilik is None else f"%{f.goal_consistency*100:.0f}",
                  requires=("goal_consistency",)),
+        SubScore("plan_uyumu", "Plana uyum", plan_uyumu, P["p5.plan_uyumu.w"],
+                 "" if gpa is None else f"planın %{gpa*100:.0f}'si",
+                 requires=("goal_plan_adherence",)),
         SubScore("gercekcilik", "Hedef gerçekçiliği", gercekcilik, P["p5.gercekcilik.w"], "",
                  requires=("goal_required_monthly",)),
     ]
