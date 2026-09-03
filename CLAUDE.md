@@ -67,6 +67,7 @@ app/                   ← Doğrulama prototipi. Sevk edilecek uygulama DEĞİL.
 | `metinler.py` | Kullanıcıya gösterilen tüm metinler |
 | `screen_data.py` | Kanonik ekran veri seti üreteci (3 durum × 6 ekran) |
 | `tune.py` | Parametre duyarlılık analizi |
+| `algoritma_pdf.py` | Algoritma + karar motoru belgesi. Her sayı motordan üretilir |
 | `fixture_didem.py` | 281 işlemlik uçtan uca sentetik fixture |
 | `golden_profiles.py` | 15 kullanıcı profili (10 senaryo + 5 kapsam) |
 | `test_*.py` | Test süitleri (§6) |
