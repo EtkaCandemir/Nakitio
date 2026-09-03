@@ -27,6 +27,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
 from coach_tools import CoachContext, Kind, NumberLedger
+from score_engine import LEVELS
 
 GUARD_VERSION = "1.0.0"
 
@@ -320,6 +321,14 @@ def _scan_unless_refusal(text_n: str, patterns) -> List[Tuple[str, str]]:
     return hits
 
 
+#: "Düşük skor" sınırı. Sabit 60 yazılıydı; oysa bu sayı bir tercih değil,
+#: `LEVELS` tablosundaki "Gelişiyor" bandının alt ucudur. İkisi ayrı yerlerde
+#: yazılınca banda dokunan biri guard'ı sessizce eskitirdi — ve kural
+#: (CONVENTIONS S3) "sınırın altındaki skor adımsız sunulmaz" der, "60'ın
+#: altındaki" demez. Değerden değil KURALDAN türetilir.
+LOW_SCORE = next(lo for lo, _hi, ad, _m in LEVELS if ad == "Gelişiyor")
+
+
 def check_content(ctx: CoachContext, text: str,
                  projecting: bool = False,
                  reporting_category_change: bool = False) -> List[Violation]:
@@ -348,7 +357,7 @@ def check_content(ctx: CoachContext, text: str,
                                f"kesin bir sayı gibi sunulmuş"))
 
     # Düşük skor daima somut bir sonraki adımla birlikte gösterilir.
-    if ctx.score.score < 60 and not any(a in t for a in ACTION_HINTS):
+    if ctx.score.score < LOW_SCORE and not any(a in t for a in ACTION_HINTS):
         v.append(Violation("missing_next_step", "blocker",
                            "düşük skor somut bir adım önerilmeden sunulmuş"))
 

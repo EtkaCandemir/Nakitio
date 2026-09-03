@@ -56,7 +56,7 @@ app/                   ← Doğrulama prototipi. Sevk edilecek uygulama DEĞİL.
 | Dosya | Sorumluluk |
 |---|---|
 | `params.py` | **96 ayarlanabilir parametrenin tamamı.** Kodda gömülü literal yok |
-| `data_model.py` | Ham veri sözleşmesi, 25 kategorilik taksonomi |
+| `data_model.py` | Ham veri sözleşmesi, 26 kategorilik taksonomi |
 | `score_engine.py` | Skor motoru. Saf fonksiyon: `Features → ScoreResult` |
 | `normalize.py` | N1–N9 normalizasyon + `Features` türetme |
 | `statement_ingest.py` | Ekstre ayrıştırma, tekilleştirme, kapsam |
@@ -164,11 +164,11 @@ değişiklik modeli bozar. Ayrıntı: `Docs/CONVENTIONS.md`.
 
 | Süit | Kontrol | Ne garanti eder |
 |---|---|---|
-| `test_invariants.py` | **240** | Yapısal kurallar — determinizm, monotonluk, süreklilik, anti-gaming, adalet |
-| `test_normalize.py` | **124** | N1–N9 normalizasyon kuralları |
+| `test_invariants.py` | **264** | Yapısal kurallar — determinizm, monotonluk, süreklilik, anti-gaming, adalet |
+| `test_normalize.py` | **138** | N1–N9 normalizasyon kuralları |
 | `test_ingest.py` | **109** | Ekstre ayrıştırma, tekilleştirme, davranış çıkarımı |
 | `coach_eval.py` | **77** | Koç sayı sadakati, SPK sınırı, ton, akışlar |
-| | **550** | |
+| | **588** | |
 <!-- /OTOMATIK:test-sayilari -->
 
 **Golden vs invariant farkı:** golden testler "bu profil bu skoru alır"
@@ -217,6 +217,11 @@ Her biri gerçekten yaşandı, testle yakalandı ve düzeltildi. Yeniden
 | **Bayat `.pyc`** | `params.py`'de 0,10 yazarken 0,14 import ediliyor | Python önbellek geçerliliğini (mtime **saniye**, boyut) ile ölçer. Aynı boyutta ve aynı saniyede yapılan düzenleme önbelleği tazelemez. `docs_sync.py` her çalıştığında `__pycache__`'i siler |
 | **Bakiye yokluğu sıfır sayılıyor** | Bakiye tutmayan kaynakta `tampon`/`guvence` 0 puan; sağlıklı kullanıcı −7,3, riskli +3,4 (r=−0,93) | `liquid_balance`/`ef_liquid` **Optional**. `sum([])` yokluğu ölçülmüş sıfır gibi gösterir — ayrımı `normalize` yapar. Ölçüt hesabın VARLIĞI, bakiyenin büyüklüğü değil |
 | **Güven alt metrik körlüğü** | Girdi yüzeyinin %37'sini kaybeden kaynak yalnızca 0,09 güven kaybediyor | Kural 2 ÜÇ şey ister: bileşeni kapat, ağırlığı normalize et, **güveni düşür**. `c_pillar` artık açık bileşenin içindeki kapalı alt metriği de sayar |
+| **Yazıldı ama bağlanmadı** | `confidence`ın ekstre kademesi ve `smoothing_anchor` üretim yolunda ölüydü | Mekanizma yazmak yetmez, `derive_features` onu ÜRETMELİ. Yeni bir `Features` alanı eklerken "gerçek hat bunu dolduruyor mu" sorusu testle sorulur |
+| **Paydası bilinmeyen oran** | Gelir yoksa `dsr=1,0`, gider yoksa `disc_share=0` → disiplinden **100 puan** | Oran ölçülemiyorsa `None`. Ama PAYI sıfırsa oran sıfırdır: `s_deliberate=0` gelirden bağımsız ölçülmüştür — aksi hâlde geliri gizlemek olumsuz bulguyu siler |
+| **Sabit sayı iki yerde** | Guard `score < 60` yazıyordu, oysa bu `LEVELS`teki bandın alt ucu | Kural değerden değil KAYNAĞINDAN türetilir. İki yerde yazılan sayı sessizce ayrışır |
+| **Ölçüm iddiası elle yazılmış** | "96 parametreden 27'si yüksek etkili" — profil sayısı 10→15 olunca bayatladı, kimse fark etmedi | Ölçüm sonucu `docs_sync` bloğundan üretilir. Ölçüm aracının kendi kapsamı hakkında yanlış konuşması ölçtüğü şeye güveni bozar |
+| **Aynı fonksiyon iki kez tanımlı** | `_fold_upper`/`_rule_blob` `normalize.py`de 56 satır birebir iki kez | Python ikincisini geçerli sayar; iki kopya sessizce ayrışır. Hem de en pahalı hata sınıfının (Türkçe katlama) ortasında |
 | **Tek seferlik olay eğilim gibi** | "Giyim +%148" — oysa tek taksitli alışveriş | Farkındalık kartında yeni taksit planı olan kategoriler ve "Diğer" elenir; sıralama mutlak reel TL artışına göre |
 
 ---
@@ -267,7 +272,8 @@ Her biri gerçekten yaşandı, testle yakalandı ve düzeltildi. Yeniden
 - **Sayı uydurma.** Bir rakam vereceksen önce hesapla. Bu depodaki
   dokümanların tamamı bu kurala uyar.
 - **Parametre değiştirmeden önce ölç.** `tune.py --set` ile etkisini gör.
-  96 parametrenin 27'si yüksek etkili, gerisi gürültü.
+  Parametrelerin küçük bir kısmı yüksek etkili, gerisi gürültü — güncel
+  dağılım `Docs/skor-modeli-v2.md`'de `tune.py`'den üretilir.
 - **Test yazmadan davranış değiştirme.** Özellikle §8'deki hata
   sınıflarına dokunuyorsan.
 - Kullanıcı Türkçe yazar ve Türkçe yanıt bekler.

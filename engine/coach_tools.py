@@ -188,7 +188,8 @@ def get_score_change(ctx: CoachContext) -> Dict[str, Any]:
 
 #: Kullanıcıya anlatılabilir metrik sözlüğü. Anahtar → (etiket, tür, çıkarıcı)
 METRICS: Dict[str, Tuple[str, str, Callable[[Features], Optional[float]]]] = {
-    "tasarruf_orani":     ("tasarruf oranı", Kind.PERCENT, lambda f: f.s_rate * 100),
+    "tasarruf_orani":     ("tasarruf oranı", Kind.PERCENT,
+                           lambda f: None if f.s_rate is None else f.s_rate * 100),
     "nakit_akisi_marji":  ("nakit akışı marjı", Kind.PERCENT, lambda f: f.cf_margin * 100),
     "acil_fon_ay":        ("acil durum fonu süresi", Kind.MONTHS,
                            lambda f: None if f.ef_months is None else round(f.ef_months, 1)),
@@ -198,7 +199,8 @@ METRICS: Dict[str, Tuple[str, str, Callable[[Features], Optional[float]]]] = {
     "zorunlu_gider":      ("aylık zorunlu gider", Kind.CURRENCY, lambda f: f.e_essential),
     "korunan_tutar":      ("aylık korunan tutar", Kind.CURRENCY, lambda f: f.i_net - f.e_total),
     "kasitli_tasarruf":   ("aylık kasıtlı birikim", Kind.CURRENCY, lambda f: f.s_deliberate),
-    "borc_orani":         ("borç ödeme oranı", Kind.PERCENT, lambda f: f.dsr * 100),
+    "borc_orani":         ("borç ödeme oranı", Kind.PERCENT,
+                           lambda f: None if f.dsr is None else f.dsr * 100),
     "borc_anapara":       ("toplam borç", Kind.CURRENCY, lambda f: f.debt_principal),
     "taksit_kalan":       ("kalan taksit taahhüdü", Kind.CURRENCY, lambda f: f.installment_remaining),
     "taksit_aylik":       ("aylık taksit yükü", Kind.CURRENCY, lambda f: f.installment_monthly),
@@ -211,7 +213,7 @@ METRICS: Dict[str, Tuple[str, str, Callable[[Features], Optional[float]]]] = {
     "gece_orani":         ("gece harcama yoğunlaşması", Kind.PERCENT,
                            lambda f: None if f.night_conc is None else f.night_conc * 100),
     "istege_bagli_pay":   ("isteğe bağlı harcama payı", Kind.PERCENT,
-                           lambda f: f.disc_share * 100),
+                           lambda f: None if f.disc_share is None else f.disc_share * 100),
     "butce_asimi":        ("bütçe aşımı", Kind.CURRENCY, lambda f: f.budget_overrun),
 }
 
@@ -320,11 +322,14 @@ def get_risks(ctx: CoachContext) -> Dict[str, Any]:
             add("acil_fon", "orta", "acil durum fonu 3 ayın altında",
                 m, Kind.MONTHS, "acil durum fonu süresi")
 
-    dsr = round(f.dsr * 100, 1)
-    if f.dsr > 0.40:
-        add("borc", "yuksek", "borç ödeme oranı yüksek", dsr, Kind.PERCENT, "borç ödeme oranı")
-    elif f.dsr > 0.25:
-        add("borc", "orta", "borç ödeme oranı izlenmeli", dsr, Kind.PERCENT, "borç ödeme oranı")
+    # Gelir bilinmiyorsa DSR ölçülemez; risk BİLDİRİLMEZ (bkz. acil fon,
+    # aynı kural: ölçülmemiş bir şeyi rapor etmek sayı uydurmakla aynı sınıf).
+    if f.dsr is not None:
+        dsr = round(f.dsr * 100, 1)
+        if f.dsr > 0.40:
+            add("borc", "yuksek", "borç ödeme oranı yüksek", dsr, Kind.PERCENT, "borç ödeme oranı")
+        elif f.dsr > 0.25:
+            add("borc", "orta", "borç ödeme oranı izlenmeli", dsr, Kind.PERCENT, "borç ödeme oranı")
 
     if f.card_utilization is not None and f.card_utilization > 0.70:
         add("kart", "orta", "kart kullanım oranı yüksek",
@@ -438,7 +443,10 @@ def _a_emergency_fund(f: Features, p: Dict[str, float]) -> Dict[str, Any]:
     # kalır ve güvence alt metriği kapalı kalmaya devam eder.
     return {"s_deliberate": f.s_deliberate + m,
             "ef_liquid": None if f.ef_liquid is None else f.ef_liquid + m * months,
-            "s_consistency_months": min(6, f.s_consistency_months + 1)}
+            # Süreklilik ölçülemediyse simülasyon onu ÜRETMEZ; alan None
+            # kalır ve alt metrik kapalı kalmaya devam eder.
+            "s_consistency_months": (None if f.s_consistency_months is None
+                                     else min(6, f.s_consistency_months + 1))}
 
 
 def _a_reduce_impulse(f: Features, p: Dict[str, float]) -> Dict[str, Any]:
@@ -642,6 +650,9 @@ TOOL_SCHEMA: List[Dict[str, Any]] = [
     {"name": "get_metric", "description": "Tek bir finansal metriği adıyla getirir.",
      "input_schema": {"type": "object", "required": ["name"], "properties": {
          "name": {"type": "string", "enum": sorted(METRICS)}}}},
+    {"name": "get_metrics", "description": "Birden çok metriği tek çağrıda getirir.",
+     "input_schema": {"type": "object", "required": ["names"], "properties": {
+         "names": {"type": "array", "items": {"type": "string", "enum": sorted(METRICS)}}}}},
     {"name": "get_top_categories", "description": "En yüksek harcama kategorileri; nominal ve REEL değişim.",
      "input_schema": {"type": "object", "properties": {
          "n": {"type": "integer", "default": 5}}}},

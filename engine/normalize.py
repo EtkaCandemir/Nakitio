@@ -27,6 +27,7 @@ from data_model import (
     CategorySource, CPISeries, DEFAULT_CATEGORY, EMOTIONAL_TAGS,
     EXPENSE_KINDS, Goal, InstallmentPlan, LIQUID_TYPES, Liability,
     RawData, SAVINGS_TYPES, Transaction, TxnKind, _add_months,
+    statement_coverage,
 )
 from score_engine import Features
 
@@ -361,61 +362,12 @@ def categorize(txns: List[Transaction],
     return stats
 
 
-def _fold_upper(s: str) -> str:
-    """ASCII katlama + büyük harf. Desen eşleştirmesinin ortak zemini.
-
-    Türkçe'de `.upper()` YETMEZ: "İ".upper() yine "İ"dir, "I" olmaz. Bu
-    yüzden ASCII yazılmış bir desen aksanlı metinle sessizce eşleşmez —
-    "ALIŞVERİŞ FAİZİ" satırı `ALISVERIS FAIZI` desenini kaçırır ve faiz
-    harcama sanılır.
-
-    Bu hata bu depoda ÜÇ ayrı katmanda ortaya çıktı: ekstre ayrıştırmada
-    (`statement_ingest._fold`), kategorizasyonda ve tür sınıflandırmada.
-    Kural tablolarındaki "MAAS|MAAŞ" gibi çift yazımlar da aynı eksikliğin
-    izidir — katlama yapılınca gereksizleşirler.
-    """
-    s = unicodedata.normalize("NFKD", s)
-    s = "".join(c for c in s if not unicodedata.combining(c))
-    return s.replace("ı", "i").replace("İ", "I").upper()
-
-
-def _rule_blob(merchant: Optional[str], desc: Optional[str]) -> str:
-    """Kural eşleştirmesi için normalleştirilmiş metin.
-
-    İKİ İŞ YAPAR:
-
-    1. ASCII KATLAMA. Kural tablosu aksansız yazılıdır ("PETROL OFISI")
-       ama banka aksanlı yazabilir ("PETROL OFİSİ A.Ş."). Yalnız `.upper()`
-       yapmak yetmez: "İ".upper() yine "İ"dir, "I" olmaz — eşleşme sessizce
-       kaçar. Gerçek bir ekstrede sigorta ve akaryakıt satırları tam olarak
-       bu yüzden "diğer"e düşüyordu.
-
-       `statement_ingest._fold` ile aynı felsefe, aynı gerekçe: burada da
-       Türkçe'ye özgü `I → ı` eşlemesi KULLANILMAZ, ASCII'ye düşürülür.
-
-    2. ARACI SOYMA. "IYZICO/AMAZON.COM.TR" satırında kategoriyi belirleyen
-       şey aracı değil, arkasındaki işyeridir.
-    """
-    blob = _fold_upper(f"{merchant or ''} {desc or ''}")
-
-    # "IYZICO/AMAZON.COM.TR" → "AMAZON.COM.TR" (aracı önekini at)
-    #
-    # Ayırıcı, ARACININ KENDİSİNDEN sonraki '/' olmalı — ilk '/' değil.
-    # "İADE/ IYZICO/AMAZON.COM.TR" satırında ilk '/' iade işaretinden
-    # sonradır; oradan bölmek aracıyı metinde bırakır ve soymayı işlevsiz
-    # kılar. Aracının konumundan sonrasına bakmak bu tuzağı kapatır.
-    for araci in PAYMENT_INTERMEDIARIES:
-        i = blob.find(araci)
-        if i < 0:
-            continue
-        j = blob.find("/", i + len(araci))
-        if j >= 0:
-            arka = blob[j + 1:].strip()
-            if arka:
-                return arka
-        break
-    return blob
-
+# NOT: `_fold_upper` ve `_rule_blob` burada İKİNCİ KEZ birebir tanımlıydı
+# (56 satır). Python ikinciyi geçerli sayar — yani yukarıdaki tanım ölü
+# koddu ve iki kopya sessizce ayrışabilirdi. Hem de bu dosyadaki en
+# pahalı hata sınıfının (Türkçe harf katlama, bkz. CONVENTIONS V2) tam
+# ortasında: birini düzeltip diğerini unutmak hiçbir test kırmadan
+# kategorizasyonu bozardı. Tek tanım yukarıdadır (satır ~201).
 
 def category_fingerprint() -> str:
     """Kategorizasyonu etkileyen HER ŞEYİN içerik özeti.
@@ -1265,9 +1217,15 @@ def derive_features(ledger: Ledger) -> Features:
     positive = sum(1 for x in sav_w if x > 0)
     # 6'lık ölçeğe MEVCUT pencere sayısı üzerinden yansıtılır: 5 aylık
     # bir kullanıcı, her ay biriktirmiş olsa bile 5/6'da takılı kalmamalı.
-    # 3 pencereden az veri varsa yansıtma yapılmaz (aşırı iyimser olurdu).
+    #
+    # 3 pencereden az veri varsa SÜREKLİLİK ÖLÇÜLEMEZ → None.
+    # Eskiden ham `positive` sayısı dönüyordu (çoğunlukla 0) ve alt metrik
+    # 0 puan alıyordu: iki aylık kullanıcı "altı ayın hiçbirinde birikim
+    # yapmadı" sayılıyordu. Süreklilik tanımı gereği ZAMAN gerektirir;
+    # zaman yoksa ölçüm de yoktur. Yansıtma da yapılmaz — aşırı iyimser
+    # olurdu ve K6'yı (beyan bileşeni yükseltemez) zorlardı.
     s_consistency = (round(6 * positive / len(sav_w)) if len(sav_w) >= 3
-                     else positive)
+                     else None)
 
     # ── Borç ───────────────────────────────────────────────────────────
     cards = [a for a in raw.accounts if a.type == AccountType.CREDIT_CARD]
@@ -1354,6 +1312,30 @@ def derive_features(ledger: Ledger) -> Features:
     linked = sum(1 for a in raw.accounts if a.is_linked)
     manual = linked == 0
 
+    # ── Veri kaynağı kademesi ──────────────────────────────────────────
+    #
+    # Bu üç satır olmadan `score_engine.confidence` içindeki "statement"
+    # kademesi ÜRETİM YOLUNDA ERİŞİLEMEZ: alanı yalnızca golden profiller
+    # ve ekran fixture'ı elle set ediyordu, gerçek hat hiç doldurmuyordu.
+    # Sonuç: ekstre yükleyen kullanıcı ya "linked" (hesabı bağlıysa,
+    # kapsam tavanı yok) ya "manual" (tavan 0,45) sayılıyordu — ikisi de
+    # yanlış. Ekstre BANKA kaynaklıdır ama SÜREKLİ değildir; kendi
+    # kademesi vardır (tavan 0,85 × kapsam × kategorize).
+    #
+    # Kademe sırası kanıta göredir: ekstre kanıtı bağlı hesap kanıtını
+    # EZER, çünkü yüklenmiş dönem ölçülmüş bir olgudur, "hesap bağlı"
+    # işareti ise yalnızca bir niyet beyanıdır (bkz. c_cover yorumu).
+    periods = list(raw.statement_periods)
+    if periods:
+        data_source = "statement"
+        stmt_coverage = statement_coverage(periods, as_of)
+    elif not manual:
+        data_source = "linked"
+        stmt_coverage = None
+    else:
+        data_source = "manual"
+        stmt_coverage = None
+
     first_ts = min((t.ts.date() for t in raw.transactions), default=as_of)
     days_of_data = max(0, (as_of - first_ts).days)
 
@@ -1387,8 +1369,14 @@ def derive_features(ledger: Ledger) -> Features:
         categorized_ratio=categorized / total0,
         manual_entry=manual,
         integrity_flag=raw.deleted_txn_ratio > 0.10,
+        data_source=data_source,
+        statement_coverage=stmt_coverage,
         onboarding=raw.onboarding,
         prev_score=raw.prev_score,
+        # Yumuşatmanın çapası için gerekli. Bunlarsız `smoothing_anchor`
+        # her zaman "eski davranış"a düşer ve güven artışı da yumuşatılır.
+        prev_raw_score=raw.prev_raw_score,
+        prev_confidence=raw.prev_confidence,
     )
 
 

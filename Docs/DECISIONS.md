@@ -167,8 +167,11 @@ borç sarmalının en güçlü sinyali için çok hafif.
 
 ## 3. Parametre kararları (12 Ağu 2026)
 
-`tune.py` duyarlılık analiziyle ölçülerek verildi. 96 parametreden 27'si
-yüksek etkili; kalanlar varsayılanda bırakıldı.
+`tune.py` duyarlılık analiziyle ölçülerek verildi; yüksek etkili olanlar
+beraber ayarlandı, kalanlar varsayılanda bırakıldı. Güncel etki dağılımı
+`Docs/skor-modeli-v2.md` §14'te `tune.py`'den ÜRETİLİR — buraya sayı
+yazılmaz, çünkü golden profil kümesi büyüdükçe dağılım değişir (nitekim
+"27" rakamı profil sayısı 10'dan 15'e çıkınca sessizce bayatlamıştı).
 
 | Parametre | Eski → Yeni | Ölçülen etki | Gerekçe |
 |---|---|---|---|

@@ -930,6 +930,100 @@ def t_bakiye_yoklugu_none_gecer():
           f"C {r_var.confidence:.3f} -> {r_yok.confidence:.3f}")
 
 
+def t_kaynak_kademesi_ve_capa_canli():
+    """`derive_features` veri kaynağını ve önceki ölçümü ÜRETMELİ."""
+    # Bu iki mekanizma motorda yazılıydı ama gerçek hatta hiç doldurulmuyordu:
+    #   · `data_source`/`statement_coverage` yalnız golden profiller ve ekran
+    #     fixture'ı tarafından elle set ediliyordu → `confidence`ın "statement"
+    #     kademesi (tavan 0,85) ÜRETİM YOLUNDA ERİŞİLEMEZDİ. Ekstre yükleyen
+    #     kullanıcı manuel girişle aynı güveni görüyordu.
+    #   · `prev_raw_score`/`prev_confidence` hiç taşınmıyordu → `smoothing_anchor`
+    #     her zaman "eski davranış"a düşüyor, güven artışı da yumuşatılıyordu (K8).
+    txns = [T("ch", d, -900, "MIGROS TIC", "POS") for d in (5, 12, 20, 34, 48, 62)] + \
+           [T("ch", d, 30_000, "ACME", "MAAS ODEMESI") for d in (3, 33, 63)]
+
+    # (a) Ekstre kanıtı yok, bağlı hesap da yok → manuel
+    ch_manuel = Account("ch", AccountType.CHECKING, balance=10_000, is_linked=False)
+    f_man, _ = build_features(RD([ch_manuel], txns, accounts_declared=1), AS_OF)
+    check("kaynak: ekstre dönemi yoksa manuel", f_man.data_source == "manual",
+          f"={f_man.data_source!r}")
+    check("kaynak: manuelde kapsam None", f_man.statement_coverage is None)
+
+    # (b) Bağlı hesap var, ekstre yok → linked  (CH zaten is_linked=True)
+    ch_linked = CH
+    f_lnk, _ = build_features(RD([ch_linked], txns, accounts_declared=1), AS_OF)
+    check("kaynak: bağlı hesap varsa linked", f_lnk.data_source == "linked")
+
+    # (c) Ekstre dönemi var → statement, kapsam ölçülür.
+    #     Ekstre kanıtı bağlı hesap kanıtını EZER: yüklenmiş dönem ölçülmüş
+    #     bir olgudur, "hesap bağlı" işareti yalnızca bir beyandır.
+    raw = RD([ch_linked], txns, accounts_declared=1)
+    raw.statement_periods = [(date(2026, 5, 1), date(2026, 5, 31)),
+                             (date(2026, 6, 1), date(2026, 6, 30)),
+                             (date(2026, 7, 1), date(2026, 7, 31))]
+    f_st, _ = build_features(raw, AS_OF)
+    check("kaynak: ekstre dönemi varsa statement", f_st.data_source == "statement")
+    check("kaynak: ekstre kanıtı bağlı hesap kanıtını ezer",
+          f_st.data_source != "linked")
+    check("kaynak: kapsam ölçülür (3/6 ay)",
+          abs(f_st.statement_coverage - 0.5) < 1e-9,
+          f"={f_st.statement_coverage}")
+
+    # (d) TAM KAPSAMDA ekstre kademesi manuelden yüksek güven verir.
+    #
+    # DİKKAT — çaprazlama: `c_cover` manuelde sabit tavan 0,45, ekstrede
+    # 0,85 × kapsam × kategorize. Kapsam 0,53'ün altına indiğinde ekstre
+    # kullanıcısı manuel kullanıcıdan DAHA DÜŞÜK güven alır (3/6 ayda
+    # 0,425 < 0,45). Ekstre verisi hiçbir zaman manuelden düşük kaliteli
+    # olmadığı için bu muhtemelen bir taban eksikliğidir; ama davranışı
+    # değiştirmek model kararıdır, düzeltme değil. Test bugünkü sözleşmeyi
+    # kayıt altına alır ki karar bilinçli verilsin.
+    tam = dataclasses.replace(f_st, statement_coverage=1.0)
+    check("kaynak: tam kapsamda ekstre güveni manuelden yüksek",
+          compute_score(tam).confidence > compute_score(f_man).confidence)
+    check("kaynak: düşük kapsamda ekstre manuelin ALTINA inebiliyor "
+          "(bilinen sınır — taban yok)",
+          compute_score(f_st).confidence < compute_score(f_man).confidence,
+          "davranış değiştiyse bu satır gözden geçirilmeli")
+
+    # (e) Çapa girdileri taşınır
+    raw.prev_score, raw.prev_raw_score, raw.prev_confidence = 55.0, 74.0, 0.20
+    f_capa, _ = build_features(raw, AS_OF)
+    check("çapa: prev_raw_score taşınır", f_capa.prev_raw_score == 74.0)
+    check("çapa: prev_confidence taşınır", f_capa.prev_confidence == 0.20)
+    check("çapa: güven düzeltmesi canlı hatta devreye girer",
+          compute_score(f_capa).smoothing.get("guven_duzeltmesi") is True)
+
+
+def t_import_statement_donemi_kaydeder():
+    """İçe aktarma dönemi `RawData`ya yazmalı ve idempotent olmalı."""
+    # Dönem yalnızca `ImportResult`a konuyor ve orada kalıyordu; hattın geri
+    # kalanı ekstrenin varlığını hiç göremiyordu.
+    from statement_ingest import import_statement, parse_statement
+
+    def csv(ay):
+        satir = ["Tarih;Açıklama;Tutar"]
+        for g, d, t in [(3, "MAAS ODEMESI", "30.000,00"),
+                        (10, "MIGROS TIC", "-4.200,00")]:
+            satir.append(f"{g:02d}.{ay:02d}.2026;{d};{t}")
+        return "\n".join(satir)
+
+    raw = RD([CH], [])
+    for ay in (5, 6):
+        pr = parse_statement(csv(ay), "tr_generic_account_csv")
+        pr.period_start, pr.period_end = date(2026, ay, 1), date(2026, ay, 28)
+        import_statement(raw, pr, "ch")
+    check("içe aktarma: dönem RawData'ya yazıldı",
+          len(raw.statement_periods) == 2, f"={raw.statement_periods}")
+
+    pr = parse_statement(csv(6), "tr_generic_account_csv")
+    pr.period_start, pr.period_end = date(2026, 6, 1), date(2026, 6, 28)
+    r2 = import_statement(raw, pr, "ch")
+    check("içe aktarma: aynı ekstre işlem eklemez", r2.added == 0)
+    check("içe aktarma: aynı dönem iki kez yazılmaz",
+          len(raw.statement_periods) == 2, f"={raw.statement_periods}")
+
+
 TESTS = [t_n1_internal_transfer, t_n1_no_false_match,
          t_n2_linked_card_no_double_count, t_n2_unlinked_card_is_proxy,
          t_n3_installments, t_n3_followups_not_double_counted,
@@ -949,6 +1043,7 @@ TESTS = [t_n1_internal_transfer, t_n1_no_false_match,
          t_kategori_telemetrisi_tutar_agirlikli,
          t_short_history_not_penalized,
          t_bakiye_yoklugu_none_gecer,
+         t_kaynak_kademesi_ve_capa_canli, t_import_statement_donemi_kaydeder,
          t_end_to_end_determinism, t_end_to_end_sanity]
 
 

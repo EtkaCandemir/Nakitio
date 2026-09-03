@@ -553,8 +553,6 @@ isteğe bağlıdır. İkili bayrak gri bölgede sistematik hata üretir ve hem
 | `OUTLIER_INCOME_MULTIPLE` | **3** | `normalize` | Aykırı değer eşiği (gelir katı) |
 | `RECURRING_MIN_SEEN` | **3** | `behavior_infer` | Yinelenen sayılmak için görülme |
 | `RECURRING_AMOUNT_TOL` | **0,2** | `behavior_infer` | Yinelenen tutar toleransı |
-| `REFUND_WINDOW_DAYS` | **YOK** | `statement_ingest` | ⚠ sabit bulunamadı |
-| `OUTLIER_INCOME_MULTIPLE` | **YOK** | `statement_ingest` | ⚠ sabit bulunamadı |
 | `GUVENCE_ILERI_AY` | **6** | `screen_data` | Rozet hedefi — skor DIŞI (ay) |
 | `STRUCTURAL_MAX` | **31** | `coach_guard` | Yapısal sayılan azami tam sayı |
 | `REFUSAL_WINDOW` | **40** | `coach_guard` | Reddetme eki arama penceresi (karakter) |

@@ -355,7 +355,9 @@ def screen_analysis(ctx: CoachContext, ledger: Optional[Ledger]) -> Dict[str, An
     est = None
     if ledger is not None:
         W = active_windows(ledger, windows(ledger.as_of, 6))
-        if W:
+        # Gider yoksa `disc_share` ölçülemez ve davranış ölçekleme dayanağı
+        # kalmaz — çıkarım hiç çalıştırılmaz.
+        if W and f.disc_share is not None:
             est = estimate_behavior(ledger, W[0], f.disc_share)
 
     davranis = None
@@ -380,7 +382,7 @@ def screen_analysis(ctx: CoachContext, ledger: Optional[Ledger]) -> Dict[str, An
     return {
         "genel_bakis": {
             "skor": ctx.score.score,
-            "tasarruf_orani": pct(f.s_rate * 100, 1),
+            "tasarruf_orani": None if f.s_rate is None else pct(f.s_rate * 100, 1),
             "korunan_tutar": tl(f.i_net - f.e_total),
             "guvence_suresi_ay": None if f.ef_months is None else round(f.ef_months, 1),
         },
@@ -398,7 +400,7 @@ def screen_analysis(ctx: CoachContext, ledger: Optional[Ledger]) -> Dict[str, An
         "riskler": get_risks(ctx)["riskler"],
         "borc": {
             "anapara": tl(f.debt_principal),
-            "dsr": pct(f.dsr * 100, 1),
+            "dsr": None if f.dsr is None else pct(f.dsr * 100, 1),
             "taksit_aylik": tl(f.installment_monthly),
             "taksit_kalan": tl(f.installment_remaining),
             "kart_kullanimi": (pct(f.card_utilization * 100)

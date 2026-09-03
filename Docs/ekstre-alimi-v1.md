@@ -66,7 +66,8 @@ BankProfile(
 
 Ayrıştırıcı jeneriktir: `parse_delimited` ve `parse_pdf_text`.
 
-> ⚠ Repodaki 3 profil **şemayı** gösterir. Üretime alınmadan önce her biri
+> ⚠ Repodaki 4 profilden yalnızca biri (`tr_vakifbank_card_pdf`) gerçek
+> bir ekstreyle doğrulanmıştır; diğer üçü **şemayı** gösterir. Üretime alınmadan önce her biri
 > ilgili bankadan alınmış **gerçek örnek dosyalarla** doğrulanmalıdır;
 > sütun adları, tarih biçimleri ve satır düzenleri bankadan bankaya ve
 > sürümden sürüme değişir.

@@ -262,7 +262,7 @@ EXPENSE_KINDS = {PURCHASE, FEE, INTEREST}
 ### `Category`
 
 `key`, `label`, `essential_weight ∈ [0,1]`, `cpi_group` (TÜİK COICOP).
-25 kategori. Tablo: `Docs/FORMULAS.md` §7.
+26 kategori. Tablo: `Docs/FORMULAS.md` §7.
 
 ### `InstallmentPlan`
 

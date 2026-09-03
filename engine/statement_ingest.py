@@ -30,7 +30,12 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
-from data_model import Account, AccountType, RawData, Transaction
+from data_model import (
+    Account, AccountType, RawData, Transaction,
+    # yeniden dışa aktarılır — bkz. 'Kapsam ve boşluk tespiti' notu
+    covered_months, effective_as_of, missing_months, month_key,
+    statement_coverage,
+)
 
 INGEST_VERSION = "1.0.0"
 
@@ -508,6 +513,16 @@ def import_statement(raw: RawData, parsed: ParsedStatement,
                        warnings=list(parsed.warnings))
     if parsed.period_start and parsed.period_end:
         res.period = (parsed.period_start, parsed.period_end)
+        # Dönem RawData'ya YAZILIR. İlk sürümde yalnızca ImportResult'a
+        # konuyordu ve orada kalıyordu; `derive_features` ekstre dönemlerini
+        # göremediği için `data_source`/`statement_coverage` hiç üretilmiyor,
+        # güvenin "statement" kademesi (tavan 0,85) üretim yolunda ÖLÜ
+        # kalıyordu. Tek ekstre yüklemiş kullanıcı manuel girişle aynı
+        # güveni görüyordu.
+        #
+        # İçe aktarma idempotent olduğu için burası da idempotent olmalı.
+        if res.period not in raw.statement_periods:
+            raw.statement_periods.append(res.period)
 
     for i, r in enumerate(parsed.rows):
         fp = txn_fingerprint(account_id, r.d, r.amount, r.description)
@@ -549,53 +564,10 @@ def import_statement(raw: RawData, parsed: ParsedStatement,
 # Kapsam ve boşluk tespiti
 # ─────────────────────────────────────────────────────────────────────────────
 
-def month_key(d: date) -> str:
-    return f"{d.year:04d}-{d.month:02d}"
+# Bu bölümün fonksiyonları `data_model`e taşındı: saf dönem aritmetiğidir,
+# ayrıştırmayla ilgisi yoktur ve `normalize` de onlara ihtiyaç duyar.
+# `normalize → statement_ingest` bağımlılığı mimariyi ters çevirirdi
+# (çekirdek katman, dosya ayrıştırma katmanına bağımlı olurdu). İkisinin de
+# zaten bağımlı olduğu yaprak modülde dururlar; buradan yeniden dışa
+# aktarılırlar ki mevcut çağıranlar (`screen_data`, `test_ingest`) bozulmasın.
 
-
-def covered_months(periods: Sequence[Tuple[date, date]]) -> set:
-    out = set()
-    for s, e in periods:
-        cur = date(s.year, s.month, 1)
-        while cur <= e:
-            out.add(month_key(cur))
-            cur = date(cur.year + (cur.month // 12), cur.month % 12 + 1, 1)
-    return out
-
-
-def statement_coverage(periods: Sequence[Tuple[date, date]], as_of: date,
-                       months: int = 6) -> float:
-    """Son `months` ayın kaçında ekstre var. Güven (C) hesabına girer."""
-    have = covered_months(periods)
-    want, cur = [], date(as_of.year, as_of.month, 1)
-    for _ in range(months):
-        want.append(month_key(cur))
-        cur = (date(cur.year - 1, 12, 1) if cur.month == 1
-               else date(cur.year, cur.month - 1, 1))
-    return sum(1 for m in want if m in have) / len(want)
-
-
-def missing_months(periods: Sequence[Tuple[date, date]], as_of: date,
-                   months: int = 6) -> List[str]:
-    have = covered_months(periods)
-    out, cur = [], date(as_of.year, as_of.month, 1)
-    for _ in range(months):
-        if month_key(cur) not in have:
-            out.append(month_key(cur))
-        cur = (date(cur.year - 1, 12, 1) if cur.month == 1
-               else date(cur.year, cur.month - 1, 1))
-    return sorted(out)
-
-
-def effective_as_of(periods: Sequence[Tuple[date, date]],
-                    today: date) -> date:
-    """Hesaplama tarihi BUGÜN değil, SON EKSTRE tarihidir.
-
-    Ekstre ayın 18'inde kesiliyorsa, 20'sinde yüklendiğinde son 10 günün
-    verisi yoktur. `as_of = bugün` alınırsa o 10 gün "sıfır harcama"
-    sayılır ve nakit akışı marjı yapay olarak yükselir — kullanıcıya
-    gerçekte var olmayan bir iyileşme gösterilir.
-    """
-    if not periods:
-        return today
-    return min(today, max(e for _, e in periods))

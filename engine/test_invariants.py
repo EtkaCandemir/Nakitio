@@ -272,6 +272,126 @@ def t_absent_balance_is_not_zero():
 
 
 
+def t_undefined_ratios_disable_submetrics():
+    """Paydası bilinmeyen ORAN ölçülememiştir — 0 puan değil, devre dışı."""
+    # Bakiye düzeltmesinin (bkz. `t_absent_balance_is_not_zero`) aynı hatası
+    # beş alt metrikte daha duruyordu: bunlar yapısal olarak `None` DÖNEMİYOR,
+    # eksik veriyi sessizce bir sayıya çeviriyorlardı.
+    def sub(res, pk, sk):
+        pl = [p for p in res.pillars if p.key == pk][0]
+        return pl, [x for x in pl.subs if x.key == sk][0]
+
+    # ── A. Gider yok → isteğe bağlı pay ÖLÇÜLEMEZ ────────────────────────
+    #
+    # En görünür hâliydi: `disc_share` 0,0 dönüyor, `lin(0; 0,60 → 0,20)`
+    # 100 puan veriyordu. Yani hiç gider verisi olmayan kullanıcı Harcama
+    # Disiplini'nden TAM PUAN alıyordu — ölçülmemiş bir şey için ödül.
+    nogider = base_user(e_total=0.0, e_essential=0.0, budget_planned=None,
+                        budget_overrun=None, limit_categories=None,
+                        limit_breached=None, cat_volatility=None)
+    check("gider yok: disc_share None döner", nogider.disc_share is None)
+    r = compute_score(nogider)
+    p4, ib = sub(r, "discipline", "istege_bagli")
+    check("gider yok: isteğe bağlı pay devre dışı", ib.value is None)
+    check("gider yok: disiplin bileşeni TAM PUAN vermez",
+          not p4.enabled or (p4.score_100 or 0) < 100.0,
+          f"enabled={p4.enabled} score={p4.score_100}")
+    check("gider yok: uydurma açıklama metni yok", ib.detail == "")
+
+    # ── B. Gelir yok → gelire oranlanan hiçbir metrik ölçülemez ──────────
+    nogelir = base_user(i_net=0.0)
+    check("gelir yok: s_rate None", nogelir.s_rate is None)
+    check("gelir yok: dsr None", nogelir.dsr is None)
+    check("gelir yok: commit_ratio None", nogelir.commit_ratio is None)
+    r = compute_score(nogelir)
+    for pk, sk, ad in (("debt", "dsr", "DSR"),
+                       ("debt", "taahhut", "taahhüt"),
+                       ("savings", "oran", "tasarruf oranı")):
+        _, sc = sub(r, pk, sk)
+        check(f"gelir yok: {ad} devre dışı (0 puan değil)", sc.value is None)
+        check(f"gelir yok: {ad} açıklaması uydurmaz", sc.detail == "")
+
+    # Gelirsizliğin GERÇEK riski susturulmaz — başka kanaldan bildirilir.
+    check("gelir yok: maddi olay yine de bildirilir",
+          any("gelir" in e for e in r.material_events), str(r.material_events))
+
+    # ── C. Kısa geçmiş → süreklilik ölçülemez ────────────────────────────
+    kisa = base_user(s_consistency_months=None)
+    r = compute_score(kisa)
+    _, su = sub(r, "savings", "sureklilik")
+    check("kısa geçmiş: süreklilik devre dışı", su.value is None)
+    check("kısa geçmiş: '0/6 ay' uydurulmaz", su.detail == "")
+
+    # ── D. Ölçememek, ölçülmüş kötü değerden KÖTÜ olamaz ─────────────────
+    for ad, yok_kw, sifir_kw in (
+        ("isteğe bağlı pay", dict(e_total=0.0, e_essential=0.0, budget_planned=None,
+                                  budget_overrun=None, limit_categories=None,
+                                  limit_breached=None, cat_volatility=None),
+                             dict(e_total=1.0, e_essential=0.0, budget_planned=None,
+                                  budget_overrun=None, limit_categories=None,
+                                  limit_breached=None, cat_volatility=None)),
+        ("süreklilik", dict(s_consistency_months=None),
+                       dict(s_consistency_months=0)),
+    ):
+        yok = compute_score(base_user(**yok_kw))
+        sifir = compute_score(base_user(**sifir_kw))
+        check(f"{ad}: 'ölçülemedi' >= 'ölçüldü, en kötü'",
+              yok.score >= sifir.score, f"yok={yok.score} sifir={sifir.score}")
+
+    # ── E. Geliri GİZLEMEK skoru yükseltmemeli (anti-gaming, K6 ruhu) ────
+    borclu = base_user(i_net=20_000, i_declared=20_000, e_total=19_000,
+                       e_essential=13_000, s_deliberate=0,
+                       debt_principal=180_000, debt_monthly_service=9_000,
+                       card_balance=40_000, card_limit=50_000)
+    check("geliri gizlemek skoru yükseltmez",
+          compute_score(dataclasses.replace(borclu, i_net=0.0)).score
+          <= compute_score(borclu).score)
+
+
+def t_smoothing_anchor_uses_measurement():
+    """Yumuşatmanın çapası GÖSTERİLEN skor değil, bugünkü güvenle
+    değerlendirilmiş ÖLÇÜMdür."""
+    # M6 kararı. Mekanizma `smoothing_anchor`da yazılıydı ama `derive_features`
+    # `prev_raw_score`/`prev_confidence` üretmediği için canlı hatta HİÇ
+    # devreye girmiyordu; her zaman "eski davranış"a düşüyordu.
+    f = base_user(prev_score=55.0, prev_raw_score=None, prev_confidence=None)
+    eski = compute_score(f)
+    yeni = compute_score(dataclasses.replace(
+        f, prev_raw_score=74.0, prev_confidence=0.20))
+
+    check("çapa: girdi yoksa eski davranış (gösterilen skora sabitlenir)",
+          eski.smoothing.get("guven_duzeltmesi") is False)
+    check("çapa: girdi varsa güven düzeltmesi uygulanır",
+          yeni.smoothing.get("guven_duzeltmesi") is True,
+          str(yeni.smoothing))
+    # Ölçümü öncülünden yüksek olan kullanıcı, güven arttığında saklanan
+    # puanı ANINDA görmeli — bu bir finansal değişiklik değil, bizim
+    # ölçümümüzün düzelmesidir (K8).
+    check("çapa: güven artışı yumuşatılmaz, anında yansır",
+          yeni.score > eski.score, f"{eski.score} -> {yeni.score}")
+
+
+def t_pillar_weights_come_from_params():
+    """Hiçbir bileşen nominal ağırlığını literal olarak taşımaz."""
+    # `pillar_goals`ın aktif-hedef dalı `P["p5.weight"]` yerine literal 10.0
+    # okuyordu. Değerler eşit olduğu için sessizdi; `p5.weight` değişince
+    # `tune.py` P5'i yanlış ölçecek ve toplam 100 garantisi kırılacaktı.
+    import score_engine as SE
+    orig = SE.P["p5.weight"]
+    try:
+        SE.P["p5.weight"] = 14.0
+        r = compute_score(base_user(goals_active=2, goal_ontrack=0.6,
+                                    goal_consistency=0.6, goal_required_monthly=4_000))
+        p5 = [p for p in r.pillars if p.key == "goals"][0]
+        check("P5 nominal ağırlığı params'tan okunur",
+              p5.weight_nominal == 14.0, f"={p5.weight_nominal}")
+        check("ağırlık değişince toplam yine 100",
+              abs(sum(p.weight_effective for p in r.pillars) - 100.0) < 1e-9)
+    finally:
+        SE.P["p5.weight"] = orig
+
+
+
 # ── 5. Güven ve karma ────────────────────────────────────────────────────────
 
 def t_confidence_blending():
@@ -527,6 +647,8 @@ def t_math_helpers():
 
 TESTS = [t_determinism, t_monotonicity, t_continuity,
          t_missing_data_never_punishes, t_absent_balance_is_not_zero,
+         t_undefined_ratios_disable_submetrics,
+         t_smoothing_anchor_uses_measurement, t_pillar_weights_come_from_params,
          t_confidence_blending, t_bounds,
          t_level_bands, t_no_engagement_inputs,
          t_self_report_cannot_raise_pillars, t_asymmetric_smoothing,

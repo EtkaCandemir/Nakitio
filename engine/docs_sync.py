@@ -137,8 +137,12 @@ NORM_SABITLERI: List[Tuple[str, str, str]] = [
     ("normalize", "OUTLIER_INCOME_MULTIPLE", "Aykırı değer eşiği (gelir katı)"),
     ("behavior_infer", "RECURRING_MIN_SEEN", "Yinelenen sayılmak için görülme"),
     ("behavior_infer", "RECURRING_AMOUNT_TOL", "Yinelenen tutar toleransı"),
-    ("statement_ingest", "REFUND_WINDOW_DAYS", "Ekstre iade penceresi (gün)"),
-    ("statement_ingest", "OUTLIER_INCOME_MULTIPLE", "Ekstre aykırı değer eşiği"),
+    # NOT: Bu listede bir süre `statement_ingest.REFUND_WINDOW_DAYS` ve
+    # `OUTLIER_INCOME_MULTIPLE` de vardı ve blok her çalıştığında
+    # "⚠ sabit bulunamadı" basıyordu. Bu sabitler `statement_ingest`te
+    # HİÇ OLMADI — iade eşleştirme ve aykırı değer eleme normalizasyon
+    # kurallarıdır (N7, N8), ayrıştırma katmanının işi değildir. Aracın
+    # kendi uyarısını aylarca dokümanda taşımak, uyarıyı gürültüye çevirir.
     ("screen_data", "GUVENCE_ILERI_AY", "Rozet hedefi — skor DIŞI (ay)"),
     ("coach_guard", "STRUCTURAL_MAX", "Yapısal sayılan azami tam sayı"),
     ("coach_guard", "REFUSAL_WINDOW", "Reddetme eki arama penceresi (karakter)"),
@@ -410,6 +414,49 @@ def _test_sayisi(dosya: str):
     return "?"
 
 
+def blok_tune_etki() -> str:
+    """Parametre etki dağılımı — `tune.py` çalıştırılarak üretilir.
+
+    Bu blok bir hatanın karşılığıdır: "96 parametreden 27'si yüksek etkili"
+    cümlesi dokümanlara ELLE yazılmıştı. Tek bir çalıştırmanın çıktısıydı,
+    testi yoktu, ve golden profil sayısı 10'dan 15'e çıkınca sessizce
+    bayatladı. Ölçüm iddiası ölçümün kendisinden üretilmelidir.
+    """
+    import tune
+    rows = tune.rank()
+    kova = {
+        "yüksek": [r for r in rows if r[1]["azami_oynama"] >= 3],
+        "orta":   [r for r in rows if 1 <= r[1]["azami_oynama"] < 3],
+        "düşük":  [r for r in rows if r[1]["azami_oynama"] < 1
+                   and r[1]["ham_oynama"] >= 0.05],
+    }
+    olculemedi = [r for r in rows
+                  if r[1]["azami_oynama"] == 0 and r[1]["ham_oynama"] == 0
+                  and r[1]["band_oynama"] == 0
+                  and r[1]["etiket_degisimi"] == 0]
+    n = len(tune.P)
+    out = [f"*`tune.py` çalıştırılarak üretildi — {n} parametre, "
+           f"{len(tune._profiles())} golden profil, {tune.STEPS} nokta.*", "",
+           "| Etki | Parametre | Ölçüt |", "|---|---|---|",
+           f"| **Yüksek** | **{len(kova['yüksek'])}** | aralığın uçları arasında "
+           "en az bir profilin gösterilen skoru ≥3 puan oynuyor |",
+           f"| Orta | {len(kova['orta'])} | 1–3 puan |",
+           f"| Düşük | {len(kova['düşük'])} | <1 puan, ham skorda ölçülebilir |",
+           f"| **Ölçülemedi** | **{len(olculemedi)}** | hiçbir golden profil o kod "
+           "yolundan geçmiyor — *etkisiz değil, tetiklenmemiş* |"]
+    if olculemedi:
+        adlar = ", ".join(f"`{k}`" for k, _ in olculemedi[:8])
+        out += ["", f"Ölçülemeyenler: {adlar}"
+                + (" …" if len(olculemedi) > 8 else "")
+                + " — bunları \"önemsiz\" saymak, ölçüm eksikliğini bulgu "
+                  "gibi sunmak olur."]
+    en_ust = rows[0]
+    out += ["", f"En etkili parametre: `{en_ust[0]}` "
+            f"({en_ust[1]['azami_oynama']:.1f} puan, en çok "
+            f"`{en_ust[1]['en_cok_etkilenen']}` profilinde)."]
+    return "\n".join(out)
+
+
 BLOKLAR: Dict[str, Callable[[], str]] = {
     "params-tablosu": blok_params_tablosu,
     "norm-sabitleri": blok_norm_sabitleri,
@@ -417,6 +464,7 @@ BLOKLAR: Dict[str, Callable[[], str]] = {
     "kategori-tablosu": blok_kategori_tablosu,
     "golden-skorlar": blok_golden_skorlar,
     "test-sayilari": blok_test_sayilari,
+    "tune-etki": blok_tune_etki,
     # skor-modeli-v2.md — bkz. üreticilerin üstündeki gerekçe
     "sm-sureklilik": blok_sm_sureklilik,
     "sm-belirsizlik-bandi": blok_sm_belirsizlik_bandi,

@@ -65,8 +65,8 @@
           },
           {
             "bilesen": "Borç Yükü",
-            "puan": 36.4,
-            "azami": 36.4,
+            "puan": 50.0,
+            "azami": 50.0,
             "yuzde": 100.0,
             "alt_metrikler": [
               {
@@ -80,35 +80,21 @@
           {
             "bilesen": "Tasarruf & Güvence",
             "puan": 0.0,
-            "azami": 36.4,
+            "azami": 50.0,
             "yuzde": 0.0,
             "alt_metrikler": [
               {
                 "ad": "Kasıtlı tasarruf oranı",
                 "deger": 0.0,
                 "detay": "%0.0"
-              },
-              {
-                "ad": "Tasarruf sürekliliği",
-                "deger": 0.0,
-                "detay": "0/6 ay"
               }
             ],
             "uyarilar": []
           },
           {
             "bilesen": "Harcama Disiplini",
-            "puan": 27.3,
-            "azami": 27.3,
-            "yuzde": 100.0,
-            "alt_metrikler": [
-              {
-                "ad": "İsteğe bağlı harcama payı",
-                "deger": 100.0,
-                "detay": "%0"
-              }
-            ],
-            "uyarilar": []
+            "durum": "devre dışı",
+            "neden": "hiçbir alt metrik hesaplanamadı"
           },
           {
             "bilesen": "Hedef Devamlılığı",
@@ -141,17 +127,10 @@
         },
         "kategoriler": null,
         "davranis": null,
-        "riskler": [
-          {
-            "alan": "borc",
-            "seviye": "yuksek",
-            "aciklama": "borç ödeme oranı yüksek",
-            "deger": 100.0
-          }
-        ],
+        "riskler": [],
         "borc": {
           "anapara": "₺0",
-          "dsr": "%100,0",
+          "dsr": "%0,0",
           "taksit_aylik": "₺0",
           "taksit_kalan": "₺0",
           "kart_kullanimi": null
@@ -186,14 +165,14 @@
           "skor": 69,
           "band": [
             64,
-            74
+            75
           ],
-          "goster": "64–74",
+          "goster": "64–75",
           "seviye_goster": false,
           "seviye": "Gelişiyor",
           "mesaj": "İyi bir başlangıç var, düzenli devam etmek önemli.",
           "degisim": null,
-          "guven": 0.58,
+          "guven": 0.57,
           "guven_etiketi": "Orta",
           "alt_not": "Veri arttıkça bu aralık daralacak.",
           "bant_aciklama": "Skorunu tek sayı yerine aralık olarak gösteriyoruz, çünkü elimizdeki veri henüz kesin bir sonuç için yeterli değil.",
@@ -294,11 +273,11 @@
         "skor": 69,
         "band": [
           64,
-          74
+          75
         ],
         "seviye": "Gelişiyor",
         "asama": "Geçiş Skoru",
-        "guven": 0.58,
+        "guven": 0.57,
         "veri_yeterliligi": "Orta",
         "hesaplama_notu": "30 günlük veriye göre hesaplandı",
         "bilesenler": [
@@ -352,9 +331,9 @@
           },
           {
             "bilesen": "Tasarruf & Güvence",
-            "puan": 10.2,
+            "puan": 12.5,
             "azami": 20.0,
-            "yuzde": 50.9,
+            "yuzde": 62.7,
             "alt_metrikler": [
               {
                 "ad": "Kasıtlı tasarruf oranı",
@@ -365,11 +344,6 @@
                 "ad": "Acil durum fonu",
                 "deger": 41.6,
                 "detay": "0.7 ay"
-              },
-              {
-                "ad": "Tasarruf sürekliliği",
-                "deger": 16.7,
-                "detay": "1/6 ay"
               }
             ],
             "uyarilar": []
@@ -452,7 +426,7 @@
             "uyarilar": []
           }
         ],
-        "en_zayif": "Tasarruf & Güvence",
+        "en_zayif": "Harcama Disiplini",
         "maddi_olaylar": []
       },
       "analiz": {
@@ -506,8 +480,8 @@
           {
             "aksiyon": "Kategori limiti koy",
             "zorluk": 2,
-            "kumulatif_skor": 70,
-            "ek_etki": 1,
+            "kumulatif_skor": 71,
+            "ek_etki": 2,
             "parametreler": {
               "aylik_tasarruf": 590.0
             }
@@ -516,7 +490,7 @@
             "aksiyon": "Acil durum fonuna düzenli katkı",
             "zorluk": 2,
             "kumulatif_skor": 72,
-            "ek_etki": 2,
+            "ek_etki": 1,
             "parametreler": {
               "aylik_katki": 1730.0,
               "ay": 3
@@ -545,19 +519,19 @@
             "kategori": "Giyim",
             "tutar": 900,
             "tarih": "2026-07-20",
-            "tahmin_plansiz": 0.61,
-            "bilgi_degeri": 0.061,
+            "tahmin_plansiz": 0.42,
+            "bilgi_degeri": 0.0658,
             "neden": "ilk kez görülen bir yer · bu kategoride alışılmışın üzerinde · taksitle alınmış"
           },
           {
-            "txn_id": "t0040",
-            "merchant": "NET ODEME SISTEMI",
-            "kategori": "Diğer",
-            "tutar": 919,
-            "tarih": "2026-07-14",
-            "tahmin_plansiz": 0.25,
-            "bilgi_degeri": 0.0401,
-            "neden": "bu kategoride alışılmışın üzerinde"
+            "txn_id": "t0016",
+            "merchant": "YEMEKSEPETI ONLINE",
+            "kategori": "Restoran & Kafe",
+            "tutar": 315,
+            "tarih": "2026-07-09",
+            "tahmin_plansiz": 0.44,
+            "bilgi_degeri": 0.024,
+            "neden": "ilk kez görülen bir yer"
           },
           {
             "txn_id": "t0021",
@@ -565,9 +539,19 @@
             "kategori": "Restoran & Kafe",
             "tutar": 376,
             "tarih": "2026-07-01",
-            "tahmin_plansiz": 0.53,
-            "bilgi_degeri": 0.0307,
+            "tahmin_plansiz": 0.34,
+            "bilgi_degeri": 0.0225,
             "neden": "kategori eğilimine göre"
+          },
+          {
+            "txn_id": "t0040",
+            "merchant": "NET ODEME SISTEMI",
+            "kategori": "Diğer",
+            "tutar": 919,
+            "tarih": "2026-07-14",
+            "tahmin_plansiz": 0.13,
+            "bilgi_degeri": 0.0215,
+            "neden": "bu kategoride alışılmışın üzerinde"
           },
           {
             "txn_id": "t0032",
@@ -575,8 +559,8 @@
             "kategori": "Ulaşım",
             "tutar": 456,
             "tarih": "2026-07-04",
-            "tahmin_plansiz": 0.38,
-            "bilgi_degeri": 0.0304,
+            "tahmin_plansiz": 0.22,
+            "bilgi_degeri": 0.0178,
             "neden": "ilk kez görülen bir yer · hafta sonu"
           },
           {
@@ -585,8 +569,8 @@
             "kategori": "Diğer",
             "tutar": 505,
             "tarih": "2026-07-04",
-            "tahmin_plansiz": 0.33,
-            "bilgi_degeri": 0.0291,
+            "tahmin_plansiz": 0.19,
+            "bilgi_degeri": 0.0164,
             "neden": "hafta sonu"
           },
           {
@@ -595,8 +579,8 @@
             "kategori": "İnternet / Telefon",
             "tutar": 700,
             "tarih": "2026-07-19",
-            "tahmin_plansiz": 0.19,
-            "bilgi_degeri": 0.0237,
+            "tahmin_plansiz": 0.1,
+            "bilgi_degeri": 0.0123,
             "neden": "ilk kez görülen bir yer · hafta sonu"
           },
           {
@@ -605,19 +589,9 @@
             "kategori": "Faturalar",
             "tutar": 844,
             "tarih": "2026-07-16",
-            "tahmin_plansiz": 0.16,
-            "bilgi_degeri": 0.0237,
+            "tahmin_plansiz": 0.08,
+            "bilgi_degeri": 0.012,
             "neden": "aynı gün 3 isteğe bağlı harcama"
-          },
-          {
-            "txn_id": "t0016",
-            "merchant": "YEMEKSEPETI ONLINE",
-            "kategori": "Restoran & Kafe",
-            "tutar": 315,
-            "tarih": "2026-07-09",
-            "tahmin_plansiz": 0.63,
-            "bilgi_degeri": 0.0205,
-            "neden": "ilk kez görülen bir yer"
           },
           {
             "txn_id": "t0033",
@@ -625,8 +599,8 @@
             "kategori": "Ulaşım",
             "tutar": 286,
             "tarih": "2026-07-06",
-            "tahmin_plansiz": 0.29,
-            "bilgi_degeri": 0.0145,
+            "tahmin_plansiz": 0.16,
+            "bilgi_degeri": 0.008,
             "neden": "kategori eğilimine göre"
           },
           {
@@ -635,8 +609,8 @@
             "kategori": "Market",
             "tutar": 249,
             "tarih": "2026-07-21",
-            "tahmin_plansiz": 0.32,
-            "bilgi_degeri": 0.0138,
+            "tahmin_plansiz": 0.18,
+            "bilgi_degeri": 0.0077,
             "neden": "ilk kez görülen bir yer"
           }
         ],
@@ -1229,8 +1203,8 @@
             "kategori": "Giyim",
             "tutar": 900,
             "tarih": "2026-07-20",
-            "tahmin_plansiz": 0.67,
-            "bilgi_degeri": 0.0521,
+            "tahmin_plansiz": 0.58,
+            "bilgi_degeri": 0.066,
             "neden": "ilk kez görülen bir yer · bu kategoride alışılmışın üzerinde · taksitle alınmış"
           },
           {
@@ -1239,9 +1213,29 @@
             "kategori": "Diğer",
             "tutar": 919,
             "tarih": "2026-07-14",
-            "tahmin_plansiz": 0.31,
-            "bilgi_degeri": 0.0489,
+            "tahmin_plansiz": 0.23,
+            "bilgi_degeri": 0.037,
             "neden": "bu kategoride alışılmışın üzerinde"
+          },
+          {
+            "txn_id": "t0026",
+            "merchant": "DOMINO PIZZA",
+            "kategori": "Restoran & Kafe",
+            "tutar": 414,
+            "tarih": "2026-07-26",
+            "tahmin_plansiz": 0.49,
+            "bilgi_degeri": 0.0355,
+            "neden": "hafta sonu"
+          },
+          {
+            "txn_id": "t0021",
+            "merchant": "GETIR YEMEK",
+            "kategori": "Restoran & Kafe",
+            "tutar": 376,
+            "tarih": "2026-07-01",
+            "tahmin_plansiz": 0.44,
+            "bilgi_degeri": 0.0291,
+            "neden": "kategori eğilimine göre"
           },
           {
             "txn_id": "t0029",
@@ -1249,8 +1243,8 @@
             "kategori": "Diğer",
             "tutar": 505,
             "tarih": "2026-07-04",
-            "tahmin_plansiz": 0.37,
-            "bilgi_degeri": 0.0327,
+            "tahmin_plansiz": 0.29,
+            "bilgi_degeri": 0.0254,
             "neden": "hafta sonu"
           },
           {
@@ -1259,29 +1253,9 @@
             "kategori": "Market",
             "tutar": 727,
             "tarih": "2026-07-02",
-            "tahmin_plansiz": 0.24,
-            "bilgi_degeri": 0.0304,
+            "tahmin_plansiz": 0.18,
+            "bilgi_degeri": 0.0225,
             "neden": "kategori eğilimine göre"
-          },
-          {
-            "txn_id": "t0021",
-            "merchant": "GETIR YEMEK",
-            "kategori": "Restoran & Kafe",
-            "tutar": 376,
-            "tarih": "2026-07-01",
-            "tahmin_plansiz": 0.54,
-            "bilgi_degeri": 0.0301,
-            "neden": "kategori eğilimine göre"
-          },
-          {
-            "txn_id": "t0026",
-            "merchant": "DOMINO PIZZA",
-            "kategori": "Restoran & Kafe",
-            "tutar": 414,
-            "tarih": "2026-07-26",
-            "tahmin_plansiz": 0.59,
-            "bilgi_degeri": 0.0298,
-            "neden": "hafta sonu"
           },
           {
             "txn_id": "t0032",
@@ -1289,8 +1263,8 @@
             "kategori": "Ulaşım",
             "tutar": 456,
             "tarih": "2026-07-04",
-            "tahmin_plansiz": 0.27,
-            "bilgi_degeri": 0.0217,
+            "tahmin_plansiz": 0.2,
+            "bilgi_degeri": 0.0162,
             "neden": "hafta sonu"
           },
           {
@@ -1299,8 +1273,8 @@
             "kategori": "Market",
             "tutar": 249,
             "tarih": "2026-07-21",
-            "tahmin_plansiz": 0.32,
-            "bilgi_degeri": 0.0138,
+            "tahmin_plansiz": 0.24,
+            "bilgi_degeri": 0.0105,
             "neden": "ilk kez görülen bir yer"
           },
           {
@@ -1309,8 +1283,8 @@
             "kategori": "Ulaşım",
             "tutar": 493,
             "tarih": "2026-07-23",
-            "tahmin_plansiz": 0.15,
-            "bilgi_degeri": 0.0131,
+            "tahmin_plansiz": 0.11,
+            "bilgi_degeri": 0.0094,
             "neden": "bu kategoride alışılmışın üzerinde"
           },
           {
@@ -1319,8 +1293,8 @@
             "kategori": "Faturalar",
             "tutar": 587,
             "tarih": "2026-07-17",
-            "tahmin_plansiz": 0.08,
-            "bilgi_degeri": 0.0085,
+            "tahmin_plansiz": 0.06,
+            "bilgi_degeri": 0.006,
             "neden": "kategori eğilimine göre"
           }
         ],

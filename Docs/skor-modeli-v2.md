@@ -628,8 +628,8 @@ Yukarıdaki tablo **davranışı** anlatır; aşağıdaki blok o davranışın
 
 | Durum | Skor | Band | C | Seviye | Devre dışı |
 |---|---|---|---|---|---|
-| Sıfır gelir (işsiz) | **55** | 51–58 | 0,71 | Dikkat | — |
-| Gider > gelir (negatif marj) | **34** | 31–38 | 0,71 | Riskli | — |
+| Sıfır gelir (işsiz) | **56** | 52–60 | 0,70 | Dikkat | — |
+| Gider > gelir (negatif marj) | **34** | 31–38 | 0,70 | Riskli | — |
 | Hiç borç verisi yok | **67** | 64–71 | 0,71 | Gelişiyor | Borç Yükü |
 | Veri bütünlüğü şüphesi | **83** | 76–90 | 0,45 | Dengeli | — |
 <!-- /OTOMATIK:sm-sinir-durumlari -->
@@ -776,7 +776,22 @@ Katkı ayrıştırma (mevcut → plan sonu) — toplam gösterilen farkı **tam 
 | 12 Ağu 2026 | Bileşen ağırlıkları | değişmedi | ±5 kaydırma hiçbir profilde 2 puandan fazla oynatmıyor; bileşenler korele |
 
 Parametre kararları `engine/tune.py` duyarlılık analiziyle ölçülerek verildi.
-96 parametreden 27'si yüksek etkili; kalanlar varsayılanda bırakıldı.
+Yüksek etkili olanlar beraber ayarlanır; kalanlar varsayılanda bırakılır.
+
+<!-- OTOMATIK:tune-etki -->
+*`tune.py` çalıştırılarak üretildi — 96 parametre, 15 golden profil, 7 nokta.*
+
+| Etki | Parametre | Ölçüt |
+|---|---|---|
+| **Yüksek** | **28** | aralığın uçları arasında en az bir profilin gösterilen skoru ≥3 puan oynuyor |
+| Orta | 58 | 1–3 puan |
+| Düşük | 4 | <1 puan, ham skorda ölçülebilir |
+| **Ölçülemedi** | **1** | hiçbir golden profil o kod yolundan geçmiyor — *etkisiz değil, tetiklenmemiş* |
+
+Ölçülemeyenler: `infer.cikarim_kapsam` — bunları "önemsiz" saymak, ölçüm eksikliğini bulgu gibi sunmak olur.
+
+En etkili parametre: `s.alpha_maddi` (16.0 puan, en çok `selin` profilinde).
+<!-- /OTOMATIK:tune-etki -->
 
 ---
 

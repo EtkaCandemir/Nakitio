@@ -315,15 +315,20 @@ def main() -> None:
         ("ana gelir kaynağı payı", f"%{feats.i_primary_share*100:.0f}" if feats.i_primary_share else "—"),
         ("gider (e_total, nakit görünüm)", f"{feats.e_total:,.0f} TL"),
         ("zorunlu gider (e_essential)", f"{feats.e_essential:,.0f} TL"),
-        ("isteğe bağlı pay", f"%{feats.disc_share*100:.0f}"),
+        ("isteğe bağlı pay",
+         "veri yok" if feats.disc_share is None else f"%{feats.disc_share*100:.0f}"),
         ("nakit akışı marjı", f"%{feats.cf_margin*100:.1f}"),
-        ("kasıtlı tasarruf", f"{feats.s_deliberate:,.0f} TL  (oran %{feats.s_rate*100:.1f})"),
+        ("kasıtlı tasarruf",
+         f"{feats.s_deliberate:,.0f} TL" + ("" if feats.s_rate is None
+                                            else f"  (oran %{feats.s_rate*100:.1f})")),
         ("acil durum fonu",
          "veri yok" if feats.ef_liquid is None
          else f"{feats.ef_liquid:,.0f} TL  ({feats.ef_months:.2f} ay)"),
-        ("tasarruf sürekliliği", f"{feats.s_consistency_months}/6 ay"),
+        ("tasarruf sürekliliği",
+         "veri yok" if feats.s_consistency_months is None
+         else f"{feats.s_consistency_months}/6 ay"),
         ("borç anaparası", f"{feats.debt_principal:,.0f} TL"),
-        ("DSR", f"%{feats.dsr*100:.1f}"),
+        ("DSR", "veri yok" if feats.dsr is None else f"%{feats.dsr*100:.1f}"),
         ("aylık taksit / kalan", f"{feats.installment_monthly:,.0f} / {feats.installment_remaining:,.0f} TL"),
         ("kart kullanımı", f"%{feats.card_utilization*100:.0f}" if feats.card_utilization else "—"),
         ("bütçe aşımı", f"{feats.budget_overrun:,.0f} / {feats.budget_planned:,.0f} TL"

@@ -17,7 +17,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Sequence, Tuple
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -376,6 +376,24 @@ class RawData:
     deleted_txn_ratio: float = 0.0    # bütünlük sinyali
     prev_score: Optional[float] = None
 
+    #: Önceki dönemin HAM skoru ve GÜVENİ.
+    #:
+    #: `score_engine.smoothing_anchor` bunlarsız "eski davranış"a düşer ve
+    #: yumuşatmanın çapasını GÖSTERİLEN önceki skora sabitler. O zaman
+    #: ölçümümüzün düzelmesi (güven artışı) de yumuşatılır — yani yanlış
+    #: olduğunu bildiğimiz bir sayıyı bile bile göstermeye devam ederiz.
+    #: M6 kararının canlı hatta çalışması için bu ikisi taşınmalıdır.
+    prev_raw_score: Optional[float] = None
+    prev_confidence: Optional[float] = None
+
+    #: Yüklenmiş ekstrelerin kapsadığı dönemler: [(başlangıç, bitiş)].
+    #:
+    #: `import_statement` her yüklemede buraya yazar. `derive_features`
+    #: bundan `data_source` ve `statement_coverage` türetir; ikisi de
+    #: güven (C) hesabına girer. Boşsa veri kaynağı ekstre DEĞİLDİR —
+    #: bağlı hesap varsa "linked", yoksa "manual".
+    statement_periods: List["tuple"] = field(default_factory=list)
+
     #: Ekstre/bakiye anlık görüntülerinden gelen borç anaparası geçmişi.
     #: [(tarih, toplam_anapara)]. Borç trendi YALNIZCA buradan hesaplanır.
     #: Yoksa trend alt metriği devre dışı kalır — işlem akışından tahmin
@@ -401,6 +419,67 @@ class RawData:
             if a.id == aid:
                 return a
         return None
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 5b. Ekstre kapsamı — dönem aritmetiği
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# `RawData.statement_periods` üzerinde çalışan saf fonksiyonlar. Burada
+# dururlar çünkü HEM `statement_ingest` (dönemi üretir) HEM `normalize`
+# (kapsamı güvene çevirir) kullanır; ayrıştırma katmanında dursalardı
+# çekirdek katman dosya ayrıştırıcıya bağımlı olurdu.
+
+def month_key(d: date) -> str:
+    return f"{d.year:04d}-{d.month:02d}"
+
+
+def covered_months(periods: Sequence[Tuple[date, date]]) -> set:
+    out = set()
+    for s, e in periods:
+        cur = date(s.year, s.month, 1)
+        while cur <= e:
+            out.add(month_key(cur))
+            cur = date(cur.year + (cur.month // 12), cur.month % 12 + 1, 1)
+    return out
+
+
+def statement_coverage(periods: Sequence[Tuple[date, date]], as_of: date,
+                       months: int = 6) -> float:
+    """Son `months` ayın kaçında ekstre var. Güven (C) hesabına girer."""
+    have = covered_months(periods)
+    want, cur = [], date(as_of.year, as_of.month, 1)
+    for _ in range(months):
+        want.append(month_key(cur))
+        cur = (date(cur.year - 1, 12, 1) if cur.month == 1
+               else date(cur.year, cur.month - 1, 1))
+    return sum(1 for m in want if m in have) / len(want)
+
+
+def missing_months(periods: Sequence[Tuple[date, date]], as_of: date,
+                   months: int = 6) -> List[str]:
+    have = covered_months(periods)
+    out, cur = [], date(as_of.year, as_of.month, 1)
+    for _ in range(months):
+        if month_key(cur) not in have:
+            out.append(month_key(cur))
+        cur = (date(cur.year - 1, 12, 1) if cur.month == 1
+               else date(cur.year, cur.month - 1, 1))
+    return sorted(out)
+
+
+def effective_as_of(periods: Sequence[Tuple[date, date]],
+                    today: date) -> date:
+    """Hesaplama tarihi BUGÜN değil, SON EKSTRE tarihidir.
+
+    Ekstre ayın 18'inde kesiliyorsa, 20'sinde yüklendiğinde son 10 günün
+    verisi yoktur. `as_of = bugün` alınırsa o 10 gün "sıfır harcama"
+    sayılır ve nakit akışı marjı yapay olarak yükselir — kullanıcıya
+    gerçekte var olmayan bir iyileşme gösterilir.
+    """
+    if not periods:
+        return today
+    return min(today, max(e for _, e in periods))
 
 
 # ─────────────────────────────────────────────────────────────────────────────

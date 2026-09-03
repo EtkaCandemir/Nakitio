@@ -97,7 +97,7 @@ mu, alt ağırlık grupları 1,0 ediyor mu.
 Ham veri sözleşmesi: `Account`, `Transaction`, `InstallmentPlan`,
 `Liability`, `Goal`, `Budget`, `BehaviorTag`, `CPISeries`, `RawData`.
 
-25 kategorilik taksonomi. Her kategorinin `essential_weight ∈ [0,1]`
+26 kategorilik taksonomi. Her kategorinin `essential_weight ∈ [0,1]`
 değeri var — ikili bayrak değil, çünkü "market" ne tamamen zorunlu ne
 tamamen isteğe bağlıdır.
 

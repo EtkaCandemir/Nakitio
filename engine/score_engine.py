@@ -115,7 +115,13 @@ class Features:
     #: `Optional` — yokluğu `guvence` alt metriğini devre dışı bırakır, 0 puan
     #: vermez.
     ef_liquid: Optional[float] = None
-    s_consistency_months: int = 0         # son 6 ayın kaçında s_deliberate > 0
+    #: Son 6 ayın kaçında `s_deliberate > 0`. **None = ölçülemedi.**
+    #:
+    #: `0` ile `None` farkı burada da kritiktir: "altı ayın hiçbirinde
+    #: birikim yapmadı" ölçülmüş bir olgudur, "üç aylık geçmişi var, altı
+    #: aylık süreklilik ölçülemez" değildir. İkisi karıştırılınca yeni
+    #: kullanıcı hiç birikim yapmamış gibi 0 puan alır.
+    s_consistency_months: Optional[int] = None
     real_return_gap: Optional[float] = None   # yıllık (birikim getirisi − TÜFE)
 
     # ── Borç ──────────────────────────────────────────────────────────────
@@ -187,9 +193,23 @@ class Features:
         return (self.i_net - self.e_total) / self.i_net
 
     @property
-    def s_rate(self) -> float:
-        if self.i_net <= 0:
+    def s_rate(self) -> Optional[float]:
+        """Kasıtlı tasarruf / gelir. Gelir bilinmiyorsa ORAN TANIMSIZDIR.
+
+        Eskiden 0,0 dönüyordu ve P3'ün `oran` alt metriği 0 puan alıyordu —
+        yani gelir kaydı olmayan kullanıcı "hiç birikim yapmıyor" sayılıyordu.
+        Paydası olmayan bir oran ölçülememiştir; ceza verilmez, alt metrik
+        devre dışı kalır ve güven düşer.
+        """
+        # PAYI SIFIR OLAN ORAN TANIMSIZ DEĞİL, SIFIRDIR. `s_deliberate`
+        # işlemlerden doğrudan ölçülür ve gelire ihtiyaç duymaz: "hiç
+        # birikim yapmadı" gelir bilinmese de bilinen bir olgudur. Aksi
+        # hâlde geliri gizlemek ölçülmüş bir olumsuzluğu siler — oyunlama
+        # kapısı açılır (bkz. t_undefined_ratios_disable_submetrics/E).
+        if self.s_deliberate <= 0:
             return 0.0
+        if self.i_net <= 0:
+            return None
         return self.s_deliberate / self.i_net
 
     @property
@@ -203,18 +223,31 @@ class Features:
         return self.ef_liquid / base
 
     @property
-    def dsr(self) -> float:
-        """Debt Service Ratio — taksit dahil aylık borç yükü / net gelir."""
+    def dsr(self) -> Optional[float]:
+        """Borç servisi / net gelir. Gelir bilinmiyorsa TANIMSIZ (bkz. `s_rate`).
+
+        Eskiden 1,0 (en kötü) dönüyordu. Bu bir ölçüm değil varsayımdı:
+        "geliri yok, demek ki borcu ağır". Gelirsizliğin gerçek riski
+        `detect_material_events`'in "gelir kaydı yok" olayıyla ve P1'in
+        marj dalıyla zaten bildiriliyor; burada ikinci kez cezalandırmak
+        hem çift sayım hem eksik veriye ceza olurdu.
+        """
+        servis = self.debt_monthly_service + self.installment_monthly
+        if servis <= 0:
+            return 0.0            # payı sıfır → oran sıfır (bkz. `s_rate`)
         if self.i_net <= 0:
-            return 1.0
-        return (self.debt_monthly_service + self.installment_monthly) / self.i_net
+            return None
+        return servis / self.i_net
 
     @property
-    def commit_ratio(self) -> float:
-        """Toplam taahhüt (anapara + kalan taksit) / yıllık net gelir."""
+    def commit_ratio(self) -> Optional[float]:
+        """Toplam taahhüt / yıllık net gelir. Gelir yoksa TANIMSIZ (bkz. `dsr`)."""
+        taahhut = self.debt_principal + self.installment_remaining
+        if taahhut <= 0:
+            return 0.0            # payı sıfır → oran sıfır (bkz. `s_rate`)
         if self.i_net <= 0:
-            return 1.0
-        return (self.debt_principal + self.installment_remaining) / (self.i_net * 12)
+            return None
+        return taahhut / (self.i_net * 12)
 
     @property
     def card_utilization(self) -> Optional[float]:
@@ -232,9 +265,16 @@ class Features:
         return self.liquid_balance / (self.e_total / 30.0)
 
     @property
-    def disc_share(self) -> float:
+    def disc_share(self) -> Optional[float]:
+        """İsteğe bağlı harcamanın payı. Gider yoksa TANIMSIZ.
+
+        Bu, hatanın en görünür olduğu yerdi: `e_total <= 0` iken 0,0
+        dönüyordu ve `lin(0; 0,60 → 0,20)` = **100 puan** veriyordu. Yani
+        hiç gider verisi olmayan kullanıcı Harcama Disiplini'nden tam puan
+        alıyordu — ölçülmemiş bir şey için ÖDÜL.
+        """
         if self.e_total <= 0:
-            return 0.0
+            return None
         return max(0.0, (self.e_total - self.e_essential) / self.e_total)
 
 
@@ -374,7 +414,15 @@ MODIFIER_KEYS = {
     "sadece_asgari_kronik": "mod.asgari_kronik",   # 3+ ay üst üste
     "kmh_aktif": "mod.kmh",
 }
-MODIFIERS = {k: P[v] for k, v in MODIFIER_KEYS.items()}   # yalnızca gösterim
+def modifiers_now() -> Dict[str, float]:
+    """Ceza çarpanlarının ŞU ANKİ değerleri.
+
+    Eskiden bu bir modül düzeyi sözlüktü ve import anında snapshot alıyordu.
+    `tune.py` çalışma anında `P`yi değiştirdiğinde sözlük eski değerleri
+    göstermeye devam ediyordu — yani parametre taramasında yalan söylüyordu.
+    Parametreler ÇALIŞMA ANINDA okunur (CONVENTIONS §5).
+    """
+    return {k: P[v] for k, v in MODIFIER_KEYS.items()}
 
 
 # ── P1: Nakit Akışı (nominal 25) ─────────────────────────────────────────────
@@ -447,12 +495,16 @@ def pillar_debt(f: Features) -> Pillar:
 
     # DSR: %10 altı tam puan, %50'de sıfır. Sıfır borç ile %20 DSR'yi
     # ayırt eder (v1 modelindeki hata buydu).
-    dsr = lin(f.dsr, P["p2.dsr.sifir"], P["p2.dsr.yuz"])
+    # Gelir bilinmiyorsa DSR ve taahhüt oranı ölçülemez; ağırlıkları
+    # `kart` ve `trend` arasında yeniden dağıtılır (bkz. `Features.dsr`).
+    dsr_v = f.dsr
+    dsr = None if dsr_v is None else lin(dsr_v, P["p2.dsr.sifir"], P["p2.dsr.yuz"])
 
     cu = f.card_utilization
     kart = None if cu is None else lin(cu, P["p2.kart.sifir"], P["p2.kart.yuz"])
 
-    taahhut = lin(f.commit_ratio, P["p2.taahhut.sifir"], P["p2.taahhut.yuz"])
+    cr = f.commit_ratio
+    taahhut = None if cr is None else lin(cr, P["p2.taahhut.sifir"], P["p2.taahhut.yuz"])
 
     trend = None
     if f.debt_trend_3m is not None:
@@ -460,11 +512,12 @@ def pillar_debt(f: Features) -> Pillar:
         trend = lin(f.debt_trend_3m, P["p2.trend.sifir"], P["p2.trend.yuz"])
 
     subs = [
-        SubScore("dsr", "Aylık borç servisi / gelir", dsr, P["p2.dsr.w"], f"DSR=%{f.dsr*100:.1f}"),
+        SubScore("dsr", "Aylık borç servisi / gelir", dsr, P["p2.dsr.w"],
+                 "" if dsr_v is None else f"DSR=%{dsr_v*100:.1f}"),
         SubScore("kart", "Kart kullanım oranı", kart, P["p2.kart.w"],
                  "" if cu is None else f"%{cu*100:.0f}"),
         SubScore("taahhut", "Toplam taahhüt / yıllık gelir", taahhut, P["p2.taahhut.w"],
-                 f"%{f.commit_ratio*100:.0f}"),
+                 "" if cr is None else f"%{cr*100:.0f}"),
         SubScore("trend", "Borç trendi (3 ay)", trend, P["p2.trend.w"],
                  "" if f.debt_trend_3m is None else f"{f.debt_trend_3m:+.1%}"),
     ]
@@ -487,11 +540,14 @@ def pillar_debt(f: Features) -> Pillar:
 # ── P3: Tasarruf & Güvence (nominal 20) ──────────────────────────────────────
 
 def pillar_savings(f: Features) -> Pillar:
-    oran = sat(f.s_rate, P["p3.oran.k"]) if f.s_rate > 0 else 0.0   # %10 -> 63, %20 -> 86
+    sr = f.s_rate
+    # Gelir yoksa oran tanımsızdır → alt metrik kapanır, 0 puan verilmez.
+    oran = None if sr is None else (sat(sr, P["p3.oran.k"]) if sr > 0 else 0.0)  # %10 -> 63, %20 -> 86
     # Acil fon verisi yoksa güvence ÖLÇÜLEMEZ (bkz. `tampon`, aynı hata).
     efm = f.ef_months
     guvence = None if efm is None else concave(efm, P["p3.guvence.tam_ay"], P["p3.guvence.us"])   # 1 ay -> 46, 3 ay -> 76
-    sureklilik = 100.0 * clamp(f.s_consistency_months / 6.0)
+    scm = f.s_consistency_months
+    sureklilik = None if scm is None else 100.0 * clamp(scm / 6.0)
 
     reel = None
     if f.real_return_gap is not None:
@@ -500,11 +556,12 @@ def pillar_savings(f: Features) -> Pillar:
         reel = lin(f.real_return_gap, P["p3.reel.sifir"], P["p3.reel.yuz"])
 
     subs = [
-        SubScore("oran", "Kasıtlı tasarruf oranı", oran, P["p3.oran.w"], f"%{f.s_rate*100:.1f}"),
+        SubScore("oran", "Kasıtlı tasarruf oranı", oran, P["p3.oran.w"],
+                 "" if sr is None else f"%{sr*100:.1f}"),
         SubScore("guvence", "Acil durum fonu", guvence, P["p3.guvence.w"],
                  "" if efm is None else f"{efm:.1f} ay"),
         SubScore("sureklilik", "Tasarruf sürekliliği", sureklilik, P["p3.sureklilik.w"],
-                 f"{f.s_consistency_months}/6 ay"),
+                 "" if scm is None else f"{scm}/6 ay"),
         SubScore("reel", "Enflasyona karşı koruma", reel, P["p3.reel.w"],
                  "" if f.real_return_gap is None else f"{f.real_return_gap:+.1%}"),
     ]
@@ -527,7 +584,9 @@ def pillar_discipline(f: Features) -> Pillar:
     # P6'da değil. P6 davranış oranları e_total paydası kullandığı için
     # zorunlu gider payından etkilenir; o etki tam olarak burada
     # nötrlenir. Aynı olguyu iki bileşende ölçmek v1'in temel hatasıydı.
-    istege_bagli = lin(f.disc_share, P["p4.istege_bagli.sifir"], P["p4.istege_bagli.yuz"])
+    ds = f.disc_share
+    istege_bagli = None if ds is None else lin(ds, P["p4.istege_bagli.sifir"],
+                                               P["p4.istege_bagli.yuz"])
 
     oynaklik = None if f.cat_volatility is None else lin(f.cat_volatility, P["p4.oynaklik.sifir"], P["p4.oynaklik.yuz"])
 
@@ -536,8 +595,8 @@ def pillar_discipline(f: Features) -> Pillar:
                  "" if butce is None else f"aşım {f.budget_overrun:,.0f}/{f.budget_planned:,.0f}"),
         SubScore("limit", "Kategori limitlerine uyum", limit, P["p4.limit.w"],
                  "" if limit is None else f"{f.limit_breached}/{f.limit_categories} aşıldı"),
-        SubScore("istege_bagli", "İsteğe bağlı harcama payı", istege_bagli, P["p4.istege_bagli.w"],
-                 f"%{f.disc_share*100:.0f}"),
+        SubScore("istege_bagli", "İsteğe bağlı harcama payı", istege_bagli,
+                 P["p4.istege_bagli.w"], "" if ds is None else f"%{ds*100:.0f}"),
         SubScore("oynaklik", "Kategori oynaklığı", oynaklik, P["p4.oynaklik.w"],
                  "" if f.cat_volatility is None else f"cv={f.cat_volatility:.2f}"),
     ]
@@ -579,7 +638,11 @@ def pillar_goals(f: Features) -> Pillar:
                  "" if tutarlilik is None else f"%{f.goal_consistency*100:.0f}"),
         SubScore("gercekcilik", "Hedef gerçekçiliği", gercekcilik, P["p5.gercekcilik.w"], ""),
     ]
-    return _assemble("goals", "Hedef Devamlılığı", 10.0, subs)
+    # Nominal ağırlık `P`den okunur. Literal `10.0` yazılıydı: değer bugün
+    # eşit olduğu için sessizdi, ama `p5.weight` değiştirildiğinde bu dal
+    # eski değeri kullanacak, `tune.py` P5'i yanlış ölçecek ve `check()`in
+    # "bileşenler 100'e toplanır" garantisi kırılacaktı.
+    return _assemble("goals", "Hedef Devamlılığı", P["p5.weight"], subs)
 
 
 # ── P6: Finansal Davranış (nominal 10) ───────────────────────────────────────

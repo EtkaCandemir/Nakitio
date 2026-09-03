@@ -1,14 +1,19 @@
 """
 Nakitio — Parametre Duyarlılık Analizi
 
-"Skorlama tablosunu ayarlayalım" demek 85 sayıyı tartışmak demektir.
-Ama bu 85 sayının hepsi eşit önemde DEĞİLDİR. Bazılarını iki katına
-çıkarsan hiçbir kullanıcının skoru 1 puan bile oynamaz; bazılarında
-%10'luk bir değişiklik herkesi bir seviye kaydırır.
+"Skorlama tablosunu ayarlayalım" demek `params.P`deki her sayıyı
+tartışmak demektir. Ama hepsi eşit önemde DEĞİLDİR: bazılarını iki
+katına çıkarsan hiçbir kullanıcının skoru 1 puan bile oynamaz;
+bazılarında %10'luk bir değişiklik herkesi bir seviye kaydırır.
 
-Bu araç her parametreyi makul aralığında tarar, 10 golden profilin
+Bu araç her parametreyi makul aralığında tarar, golden profillerin
 skorunu yeniden hesaplar ve **etkiyi ölçer**. Sonuç: hangi sayıları
 tartışmaya değer, hangilerini varsayılanda bırakabiliriz.
+
+Sayılar burada YAZILMAZ. Docstring'e "85 parametre · 10 profil" diye
+sabit yazılmıştı ve ikisi de bayatlamıştı (gerçekte 96 ve 15). Ölçüm
+aracının kendi kapsamı hakkında yanlış konuşması, ölçtüğü şeye olan
+güveni de bozar — sayılar `len(P)` ve `len(_profiles())`ten okunur.
 
 Çalıştırma:
     python3 engine/tune.py                 # duyarlılık sıralaması
@@ -210,8 +215,8 @@ def rank() -> List[Tuple[str, Dict[str, float]]]:
 
 def report() -> None:
     print("NAKITIO — PARAMETRE DUYARLILIK ANALİZİ")
-    print(f"{len(P)} parametre · 10 golden profil · her parametre "
-          f"{STEPS} noktada tarandı")
+    print(f"{len(P)} parametre · {len(_profiles())} golden profil · "
+          f"her parametre {STEPS} noktada tarandı")
     print("=" * 92)
     print("Aşağıdaki 'oynama', parametre makul aralığının bir ucundan diğerine")
     print("götürüldüğünde bir kullanıcının skorunun kaç puan değiştiğidir.\n")

@@ -400,9 +400,20 @@ def select_for_triage(ledger, window, k: int = 10) -> List[Dict]:
         return []
 
     total = sum(s.amount for _, s in sig) or 1.0
-    labeled = [(s, True) for t, s in build_signals(ledger, window)
-               if t.id in {x.txn_id for x in ledger.raw.behavior_tags}]
-    b0 = W["b0"] if not labeled else W["b0"]
+
+    # KALİBRE EDİLMİŞ KESİŞİM. Eskiden burada `b0 = W["b0"] if not labeled
+    # else W["b0"]` yazıyordu — iki dal da aynı değeri döndürüyordu, yani
+    # kalibrasyon triyajda HİÇ kullanılmıyordu. Üstelik `labeled` listesi
+    # için `build_signals` ikinci kez çalıştırılıp sonuç atılıyordu.
+    #
+    # Doğrusu: etiketlenmiş işlemler varsa kesişim onlara göre kaydırılır,
+    # çünkü triyaj sıralaması olasılığa dayanır ve olasılık kullanıcının
+    # kendi plansızlık düzeyine göre kalibre edilmiş olmalıdır.
+    tagged = {x.txn_id: x.planned for x in ledger.raw.behavior_tags
+              if x.planned is not None}
+    pairs = [(s, not tagged[t.id]) for t, s in build_signals(ledger, window)
+             if t.id in tagged]
+    b0 = calibrate_intercept(pairs) if pairs else W["b0"]
 
     scored = []
     for t, s in sig:

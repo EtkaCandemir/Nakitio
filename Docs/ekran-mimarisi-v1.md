@@ -321,8 +321,11 @@ yüzdeye değil **mutlak reel TL artışına** göre yapılır — ₺1.200'de %
    olmayan bir vaat. Hibrit akışta hızlı ekleme günlük teması taşıyabilir
    ama seri mekaniği yeniden düşünülmeli.
 
-4. **Boş durum metinleri yazılmalı.** `gun0` ekranında ne yazacağı hâlâ
-   belirsiz; skor bandı ve CTA hazır, metin değil.
+4. **Boş durum metinleri yazıldı.** `metinler.GUN0` yedi metni taşıyor
+   (`skor_ustu`, `skor_alti`, `kart_baslik`, `kart_govde`, `cta`, `ikincil`,
+   `guven_notu`) ve `screen_data.screen_home` `days_of_data == 0` olduğunda
+   bunları ekliyor. Bu madde bir süre "hâlâ belirsiz" yazılı kaldı; ürünün
+   kendi karar kaydıyla (`DECISIONS.md` §7) çelişiyordu.
 
 5. **Erişilebilirlik.** Skor rengi tek başına anlam taşımamalı (renk körlüğü),
    bant gösterimi ekran okuyucuda anlaşılır olmalı.
