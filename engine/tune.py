@@ -181,18 +181,33 @@ def sensitivity_derivation(key: str) -> Dict[str, float]:
     from fixture_didem import AS_OF, build_raw
     from normalize import build_features
 
+    # İKİ FIXTURE VARYANTI ÜZERİNDEN ÖLÇÜLÜR.
+    #
+    # `infer.cikarim_kapsam` yalnız etiket ağırlığı DÜŞÜKKEN bağlayıcıdır
+    # (`coverage = max(kapsam, n/40)`). Didem'in 21 etiketiyle parametre hiç
+    # tetiklenmiyor ve araç onu doğru biçimde "ölçülemedi" diye
+    # raporluyordu. Ölçüm eksikliğini bulgu gibi sunmamak için varyant
+    # eklemek gerekiyordu — parametreyi ölçülebilir kılmak için modeli
+    # ayarlamak değil.
+    VARYANTLAR = (None, 6)          # tam etiketli · az etiketli
     meta, orig = M[key], P[key]
-    skorlar, hamlar, impler = [], [], []
+    en_iyi = None
     try:
-        for i in range(5):
-            P[key] = meta.lo + (meta.hi - meta.lo) * i / 4
-            f, _ = build_features(build_raw(), AS_OF)
-            r = compute_score(f)
-            skorlar.append(r.score)
-            hamlar.append(r.raw_score)
-            impler.append((f.imp_rate or 0) * 100)
+        for azami in VARYANTLAR:
+            skorlar, hamlar, impler = [], [], []
+            for i in range(5):
+                P[key] = meta.lo + (meta.hi - meta.lo) * i / 4
+                f, _ = build_features(build_raw(azami_etiket=azami), AS_OF)
+                r = compute_score(f)
+                skorlar.append(r.score)
+                hamlar.append(r.raw_score)
+                impler.append((f.imp_rate or 0) * 100)
+            oynama = (max(skorlar) - min(skorlar), max(hamlar) - min(hamlar))
+            if en_iyi is None or oynama > en_iyi[0]:
+                en_iyi = (oynama, skorlar, hamlar, impler, azami)
     finally:
         P[key] = orig
+    _, skorlar, hamlar, impler, azami = en_iyi
     return {
         "azami_oynama": max(skorlar) - min(skorlar),
         "ortalama_oynama": float(max(skorlar) - min(skorlar)),
@@ -203,7 +218,8 @@ def sensitivity_derivation(key: str) -> Dict[str, float]:
         # anlamı tamamen farklı.
         "metrik_oynama": max(impler) - min(impler),
         "band_oynama": 0.0, "etiket_degisimi": 0,
-        "en_cok_etkilenen": "didem (fixture)",
+        "en_cok_etkilenen": ("didem (fixture)" if azami is None
+                             else f"didem ({azami} etiket)"),
         "etkilenen_profil": 1 if max(skorlar) != min(skorlar) else 0,
     }
 
@@ -282,11 +298,19 @@ def report() -> None:
         print(f"    {k:<26} {' · '.join(parts)}")
     print()
 
-    print(f"── ⚠ ÖLÇÜLEMEDİ ({len(olculemedi)}) " + "─" * 54)
-    print("  Bu parametreler HİÇ TETİKLENMEDİ: golden profillerden hiçbiri")
-    print("  ilgili kod yolundan geçmiyor. 'Etkisiz' DEĞİL, 'ölçülemedi'.")
-    print("  Bunları ayarlamadan önce golden sete uygun profil eklenmeli.")
-    print("  " + ", ".join(k for k, _ in olculemedi))
+    if olculemedi:
+        print(f"── ⚠ ÖLÇÜLEMEDİ ({len(olculemedi)}) " + "─" * 54)
+        print("  Bu parametreler HİÇ TETİKLENMEDİ: golden profillerden hiçbiri")
+        print("  ilgili kod yolundan geçmiyor. 'Etkisiz' DEĞİL, 'ölçülemedi'.")
+        print("  Bunları ayarlamadan önce golden sete uygun profil eklenmeli.")
+        print("  " + ", ".join(k for k, _ in olculemedi))
+    else:
+        # Bu satır bir dönüm noktasıdır: parametrelerin TAMAMI en az bir
+        # golden profil ya da fixture varyantı tarafından tetikleniyor.
+        # Ölçülemeyen parametre, ayarlanamayan parametredir.
+        print("── ✓ ÖLÇÜLEMEYEN PARAMETRE YOK " + "─" * 48)
+        print("  Her parametre en az bir profil ya da fixture varyantı")
+        print("  tarafından tetikleniyor; hepsinin etkisi ÖLÇÜLDÜ.")
     print()
     print("=" * 92)
     print(f"ÖZET: {len(onemli)} yüksek · {len(orta)} orta · {len(kucuk)} düşük "

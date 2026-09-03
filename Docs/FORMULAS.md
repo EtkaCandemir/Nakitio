@@ -364,7 +364,7 @@ isteğe bağlıdır. İkili bayrak gri bölgede sistematik hata üretir ve hem
 `tune.py` ile ölçülen etkiler için `Docs/DECISIONS.md` §3.
 
 <!-- OTOMATIK:params-tablosu -->
-*108 parametre. `params.py`'den üretildi — elle düzenleme.*
+*109 parametre. `params.py`'den üretildi — elle düzenleme.*
 
 ### Bileşen
 
@@ -490,6 +490,7 @@ isteğe bağlıdır. İkili bayrak gri bölgede sistematik hata üretir ve hem
 | `p6.pismanlik.sifir` | **0,5** | 0,3–0,75 | threshold | Pişmanlık sıfır eşiği |
 | `p6.pismanlik.yuz` | **0,05** | 0–0,2 | threshold | Pişmanlık tam puan |
 | `p6.min_kapsam` | **0,25** | 0,1–0,5 | gate | Davranış min. kapsam — Altındaysa bileşen devre dışı |
+| `p6.tam_kapsam` | **0,5** | 0,3–0,9 | threshold | Davranış tam kapsam eşiği — KARAR: 0,50. Bileşen bu kapsamda TAM ağırlığına ulaşır; min_kapsam ile arasında ağırl… |
 
 ### Güven
 

@@ -405,6 +405,45 @@ P("kerem", "Ev sahibi — net varlık yüksek, nakit akışı negatif", "44-54",
   accounts_declared=4, accounts_linked=4, categorized_ratio=0.91,
   manual_entry=False, onboarding=ONB["orta"], prev_score=52)
 
+# ── 19. Yasemin — MANUEL GİRİŞ YÜZEYİ ───────────────────────────────────────
+# Bu profil bir arketip değil, bir VERİ KAYNAĞINI temsil eder: ekstre değil
+# manuel giriş. Ölçüldü — Ahmet'in Flutter uygulamasının üretebildiği veri
+# motorun 49 `Features` alanının yalnızca 31'ini karşılıyor; bakiye,
+# çok pencereli oynaklık/trend, kart limiti ve taksit planı yok.
+#
+# Neden GOLDEN sete giriyor: kaynak uyarlanabilirliği artık yapısal bir
+# iddia (`SubScore.requires`, Faz 1) ve yapısal iddialar regresyon testine
+# bağlanmadıkça çürür. Yeni bir alt metrik eklendiğinde bu profil, o
+# metriğin manuel kullanıcıyı CEZALANDIRMADIĞINI kanıtlar.
+#
+# Beklenti bilinçli olarak GENİŞ: bu profilin işi belli bir skoru tutturmak
+# değil, skorun ÇÖKMEDİĞİNİ ve belirsizliğin GÜVENE yansıdığını göstermek.
+P("yasemin", "Manuel giriş — bakiye yok, tek pencere, kullanıcı etiketli", "55-75",
+  days_of_data=95,
+  # Gelir ve gider manuel girilebiliyor; oynaklık için 6 pencere yok.
+  i_net=26_000, i_cv=None, i_primary_share=0.90, i_declared=25_000,
+  e_total=21_500, e_essential=13_800,
+  # Bakiye YOK — uygulamada hesap bakiyesi hiç tutulmuyor.
+  liquid_balance=None, ef_liquid=None,
+  s_deliberate=2_200, s_consistency_months=None,
+  # Borç var ama faiz oranı ve kart limiti girilmemiş, trend için geçmiş yok.
+  debt_principal=32_000, debt_monthly_service=2_600,
+  debt_avg_rate=None, debt_trend_3m=None,
+  card_balance=None, card_limit=None,
+  net_worth=None, payment_carry_days=None,
+  # Kategori limiti uygulamada var; toplam bütçe yok.
+  budget_planned=None, budget_overrun=None,
+  limit_categories=3, limit_breached=1, cat_volatility=None,
+  goals_active=2, goal_ontrack=0.58, goal_consistency=None,
+  goal_required_monthly=2_800, goal_plan_adherence=0.70,
+  # Davranış KULLANICI ETİKETİNDEN geliyor — çıkarım değil (uygulamanın
+  # asıl ayrışma noktası; motorun ikinci iddiasının tersi).
+  beh_coverage=0.80, imp_rate=0.24, emo_rate=0.12,
+  night_conc=0.19, regret_rate=0.21,
+  accounts_declared=0, accounts_linked=0, categorized_ratio=1.0,
+  manual_entry=True, data_source="manual",
+  onboarding=ONB["orta"], prev_score=None)
+
 KAPSAM_PROFILLERI = ("emre", "hakan", "sibel", "tolga", "nur")
 
 

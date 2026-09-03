@@ -190,14 +190,14 @@ v1'in üç ayrı formülü kaldırıldı. Aynı formül, farklı `C` değerlerin
 | gün | C | ham | öncül | karma | skor | aşama |
 |---|---|---|---|---|---|---|
 | 10 | 0,21 | 60,1 | 39,0 | 43,4 | **43** | Farkındalık Başlangıç |
-| 15 | 0,34 | 59,1 | 39,0 | 45,8 | **46** | Geçiş |
-| 20 | 0,47 | 59,1 | 39,0 | 48,5 | **48** | Geçiş |
-| 25 | 0,52 | 59,1 | 39,0 | 49,4 | **49** | Geçiş |
-| 28 | 0,53 | 59,1 | 39,0 | 49,6 | **50** | Geçiş |
-| **30** | 0,54 | 59,1 | 39,0 | 49,8 | **50** | Geçiş |
-| **31** | 0,54 | 59,1 | 39,0 | 49,9 | **50** | Geçiş |
-| 35 | 0,56 | 59,1 | 39,0 | 50,2 | **50** | Geçiş |
-| 40 | 0,58 | 59,1 | 39,0 | 50,7 | **51** | Geçiş |
+| 15 | 0,33 | 60,0 | 39,0 | 45,9 | **46** | Geçiş |
+| 20 | 0,46 | 59,9 | 39,0 | 48,6 | **49** | Geçiş |
+| 25 | 0,51 | 59,7 | 39,0 | 49,5 | **50** | Geçiş |
+| 28 | 0,52 | 59,6 | 39,0 | 49,8 | **50** | Geçiş |
+| **30** | 0,53 | 59,5 | 39,0 | 49,9 | **50** | Geçiş |
+| **31** | 0,54 | 59,5 | 39,0 | 50,0 | **50** | Geçiş |
+| 35 | 0,56 | 59,3 | 39,0 | 50,3 | **50** | Geçiş |
+| 40 | 0,58 | 59,2 | 39,0 | 50,7 | **51** | Geçiş |
 | 60 | 0,67 | 59,1 | 39,0 | 52,4 | **52** | Finansal Sağlık |
 | 90 | 0,80 | 59,1 | 39,0 | 55,0 | **55** | Finansal Sağlık |
 <!-- /OTOMATIK:sm-sureklilik -->
@@ -529,18 +529,19 @@ alınamaz, ama kriz gizlenmez.
 | Profil | Skor | Band | Ham | Öncül | C | Seviye |
 |---|---|---|---|---|---|---|
 | **didem** — Mockup kullanıcısı — maaşlı, dengeli, orta borç | **73** | 71–75 | 74,7 | 46,0 | 0,90 | Gelişiyor |
-| **mehmet** — Kart sarmalı — asgari ödeme, gecikme, KMH | **33** | 31–35 | 26,8 | 28,0 | 0,86 | Riskli |
+| **mehmet** — Kart sarmalı — asgari ödeme, gecikme, KMH | **33** | 31–35 | 27,2 | 28,0 | 0,85 | Riskli |
 | **zeynep** — Serbest çalışan — yüksek gelir oynaklığı, borçsuz, iyi birikim | **83** | 81–85 | 83,4 | 74,0 | 0,97 | Dengeli |
 | **can** — 12 günlük yeni kullanıcı — veri yok denecek kadar az | **39** | 30–49 | 48,3 | 37,0 | 0,21 | Riskli |
 | **elif** — Güçlü — yüksek tasarruf, 6+ ay güvence, borçsuz | **90** | 88–92 | 94,6 | 74,0 | 0,98 | Güçlü |
 | **burak** — Taksit yüklü — nakit akışı iyi görünüyor, taahhüt ağır | **60** | 58–62 | 57,4 | 46,0 | 0,97 | Gelişiyor |
 | **deniz** — Öğrenci — düşük gelir, yüksek disiplin, borçsuz | **78** | 76–80 | 83,5 | 74,0 | 0,84 | Dengeli |
 | **selin** — Yüksek gelir, sıfır tampon — gizli risk | **40** | 38–42 | 32,8 | 37,0 | 0,98 | Dikkat |
-| **ahmet** — Emekli — düşük gelir, borçsuz, enflasyona yeniliyor | **83** | 81–85 | 86,8 | 74,0 | 0,83 | Dengeli |
-| **merve** — Gün 25 — geçiş dönemi, kısmi veri | **50** | 44–55 | 59,1 | 39,0 | 0,54 | Dikkat |
+| **ahmet** — Emekli — düşük gelir, borçsuz, enflasyona yeniliyor | **83** | 80–85 | 86,1 | 74,0 | 0,81 | Dengeli |
+| **merve** — Gün 25 — geçiş dönemi, kısmi veri | **50** | 44–56 | 59,7 | 39,0 | 0,53 | Dikkat |
 | **okan** — Taksitle yaşayan — aynı borç hacmi, faizsiz | **69** | 67–71 | 68,8 | 46,0 | 0,97 | Gelişiyor |
 | **pelin** — Kart döneri — aynı borç hacmi, yıllık %65 faiz | **66** | 64–68 | 66,2 | 46,0 | 0,97 | Gelişiyor |
 | **kerem** — Ev sahibi — net varlık yüksek, nakit akışı negatif | **46** | 44–48 | 33,5 | 46,0 | 0,98 | Dikkat |
+| **yasemin** — Manuel giriş — bakiye yok, tek pencere, kullanıcı etiketli | **66** | 64–69 | 71,2 | 46,0 | 0,80 | Gelişiyor |
 <!-- /OTOMATIK:sm-golden-senaryo -->
 
 Üç profil doğrudan modelin iddialarını sınar:
@@ -785,16 +786,14 @@ Parametre kararları `engine/tune.py` duyarlılık analiziyle ölçülerek veril
 Yüksek etkili olanlar beraber ayarlanır; kalanlar varsayılanda bırakılır.
 
 <!-- OTOMATIK:tune-etki -->
-*`tune.py` çalıştırılarak üretildi — 108 parametre, 18 golden profil, 7 nokta.*
+*`tune.py` çalıştırılarak üretildi — 109 parametre, 19 golden profil, 7 nokta.*
 
 | Etki | Parametre | Ölçüt |
 |---|---|---|
-| **Yüksek** | **26** | aralığın uçları arasında en az bir profilin gösterilen skoru ≥3 puan oynuyor |
-| Orta | 65 | 1–3 puan |
-| Düşük | 11 | <1 puan, ham skorda ölçülebilir |
-| **Ölçülemedi** | **1** | hiçbir golden profil o kod yolundan geçmiyor — *etkisiz değil, tetiklenmemiş* |
-
-Ölçülemeyenler: `infer.cikarim_kapsam` — bunları "önemsiz" saymak, ölçüm eksikliğini bulgu gibi sunmak olur.
+| **Yüksek** | **33** | aralığın uçları arasında en az bir profilin gösterilen skoru ≥3 puan oynuyor |
+| Orta | 60 | 1–3 puan |
+| Düşük | 12 | <1 puan, ham skorda ölçülebilir |
+| **Ölçülemedi** | **0** | hiçbir golden profil o kod yolundan geçmiyor — *etkisiz değil, tetiklenmemiş* |
 
 En etkili parametre: `prior.baz` (16.0 puan, en çok `can` profilinde).
 <!-- /OTOMATIK:tune-etki -->

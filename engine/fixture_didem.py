@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import random
 from datetime import date, datetime, timedelta
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from data_model import (
     Account, AccountType, BehaviorTag, Budget, CPISeries, Goal,
@@ -115,7 +115,16 @@ UNKNOWN_MERCHANTS = ["OZKAN GIDA SAN", "MERKEZ BUFE", "SIMIT EVI 34",
                      "PLATFORM ODEME", "ISYERI TAHSILAT", "NET ODEME SISTEMI"]
 
 
-def build_raw() -> RawData:
+def build_raw(azami_etiket: Optional[int] = None) -> RawData:
+    """281 işlemlik uçtan uca fixture.
+
+    `azami_etiket` verilirse davranış etiketleri o sayıda kesilir. Bu bir
+    kolaylık değil, ÖLÇÜM GEREKLİLİĞİ: `infer.cikarim_kapsam` yalnız etiket
+    ağırlığı düşükken bağlayıcı olur (`coverage = max(kapsam, n/40)`).
+    Didem'in 21 etiketiyle parametre hiç tetiklenmiyor ve `tune.py` onu
+    haklı olarak "ölçülemedi" diye raporluyordu — ölçüm eksikliğini bulgu
+    gibi sunmamak için.
+    """
     # Her çağrıda sıfırlanır: fixture'ın kendisi de deterministik olmalı,
     # yoksa "aynı girdi → aynı skor" testi anlamını yitirir.
     global _seq
@@ -266,7 +275,7 @@ def build_raw() -> RawData:
     return RawData(
         user_id="didem", accounts=accounts, transactions=txns,
         liabilities=liabilities, goals=goals, budgets=budgets,
-        behavior_tags=tags,
+        behavior_tags=tags if azami_etiket is None else tags[:azami_etiket],
         income_declaration=IncomeDeclaration(monthly_net=28_000),
         onboarding={"zorluk": "nereye_gidiyor", "ay_sonu": "bazen",
                     "takip": "bazen", "borc_durumu": "yonetilebilir",

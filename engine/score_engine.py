@@ -385,6 +385,18 @@ class Pillar:
     modifiers: List[str] = field(default_factory=list)
     disabled_reason: str = ""
 
+    #: `params.py`de BEYAN EDİLEN ağırlık — kapsam rampasıyla ölçeklenmez.
+    #:
+    #: `weight_nominal` kısmi kapsamda küçülebilir (bkz. `pillar_behavior`).
+    #: Güven hesabı payda olarak BEYAN EDİLENİ kullanmak zorundadır: aksi
+    #: hâlde kapsam düştükçe payda da küçülür ve oran "tam kapsam" der —
+    #: yani ölçemediğimiz şey güveni YÜKSELTİR. Ters yön.
+    weight_declared: float = 0.0
+
+    def __post_init__(self):
+        if not self.weight_declared:
+            self.weight_declared = self.weight_nominal
+
 
 
 def _yokluk_degeri(alan: str) -> object:
@@ -826,10 +838,30 @@ BEH_MIN_COVERAGE = P["p6.min_kapsam"]
 
 
 def pillar_behavior(f: Features) -> Pillar:
-    if f.beh_coverage < P["p6.min_kapsam"]:
-        return Pillar("behavior", "Finansal Davranış", P["p6.weight"], 0.0, None, 0.0,
+    # KAPSAM RAMPASI — sert eşik değil.
+    #
+    # İlk sürümde `beh_coverage < min_kapsam` ise bileşen tamamen kapanıyor,
+    # değilse TAM ağırlıkla açılıyordu. Ölçüldü: kapsam %24,9'dan %25,1'e
+    # çıkınca ham skor 1,07 puan sıçrıyordu — yani kullanıcı BİR işlem daha
+    # etiketlediği için skoru bir puan oynuyordu. K3'ün ("süreksizlik yasak")
+    # doğrudan ihlali; `t_continuity` `beh_coverage`i taramadığı için yıllarca
+    # görünmedi.
+    #
+    # `confidence` aynı sorunu ilk üç hafta için zaten çözmüştü ve gerekçesi
+    # oraya yazılıydı: "sert bir eşik, tam da kaldırmaya çalıştığımız türden
+    # bir süreksizlik yaratır". Aynı çözüm buraya da uygulanır.
+    #
+    # Yan kazanç: `infer.cikarim_kapsam` artık ÖLÇÜLEBİLİR. Aralığı
+    # (0,30–0,80) tamamen eşiğin üstünde kaldığı için `tune.py` onu
+    # "hiç tetiklenmedi" diye raporluyordu.
+    kapsam = clamp((f.beh_coverage - P["p6.min_kapsam"])
+                   / max(1e-9, P["p6.tam_kapsam"] - P["p6.min_kapsam"]))
+    if kapsam <= 0.0:
+        return Pillar("behavior", "Finansal Davranış", 0.0, 0.0, None, 0.0,
                       False, [], [],
-                      f"etiketleme kapsamı yetersiz (%{f.beh_coverage*100:.0f} < %{P['p6.min_kapsam']*100:.0f})")
+                      f"etiketleme kapsamı yetersiz (%{f.beh_coverage*100:.0f} "
+                      f"< %{P['p6.min_kapsam']*100:.0f})",
+                      weight_declared=P["p6.weight"])
 
     impuls = None if f.imp_rate is None else lin(f.imp_rate, P["p6.impuls.sifir"], P["p6.impuls.yuz"])
     duygusal = None if f.emo_rate is None else lin(f.emo_rate, P["p6.duygusal.sifir"], P["p6.duygusal.yuz"])
@@ -850,7 +882,9 @@ def pillar_behavior(f: Features) -> Pillar:
                  "" if f.regret_rate is None else f"%{f.regret_rate*100:.0f}",
                  requires=("regret_rate",)),
     ]
-    return _assemble("behavior", "Finansal Davranış", P["p6.weight"], subs)
+    pl = _assemble("behavior", "Finansal Davranış", P["p6.weight"] * kapsam, subs)
+    pl.weight_declared = P["p6.weight"]
+    return pl
 
 
 PILLARS = [pillar_cashflow, pillar_debt, pillar_savings,
@@ -917,7 +951,7 @@ def confidence(f: Features, pillars: List[Pillar]) -> Tuple[float, Dict[str, flo
     # 2. kural üç şey ister: bileşeni devre dışı bırak, ağırlıkları yeniden
     # normalize et, GÜVENİ DÜŞÜR. İlk ikisi `_assemble`da yapılıyordu;
     # üçüncüsü burada eksikti.
-    total_w = sum(p.weight_nominal for p in pillars)
+    total_w = sum(p.weight_declared for p in pillars)
     covered_w = 0.0
     for p_ in pillars:
         if not p_.enabled:

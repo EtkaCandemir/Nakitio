@@ -267,6 +267,12 @@ def t_absent_balance_is_not_zero():
     import statistics as _st
     xs, ys = [], []
     for _k, (_f, _n, _e) in PROFILES.items():
+        # Bakiyesi ZATEN olmayan profil (manuel giriş yüzeyi) bu iddianın
+        # kapsamı dışındadır: olmayan veriyi kaldırmak hiçbir şeyi değiştirmez.
+        # Bunu "güven düşmedi" diye kırık saymak, testi yanlış yerde
+        # sıkılaştırmak olur.
+        if _f.liquid_balance is None and _f.ef_liquid is None:
+            continue
         t = compute_score(_f)
         u = compute_score(dataclasses.replace(_f, liquid_balance=None, ef_liquid=None))
         xs.append(t.score); ys.append(u.score - t.score)
@@ -645,6 +651,57 @@ def t_projection_never_invents_a_trend():
 
 
 
+def t_manual_surface_is_defensible():
+    """Manuel giriş yüzeyi: metrikler kapanır, skor ÇÖKMEZ, güven düşer."""
+    # `yasemin` bir arketip değil, bir VERİ KAYNAĞINI temsil eder. Kaynak
+    # uyarlanabilirliği Faz 1'de yapısal bir iddia hâline geldi
+    # (`SubScore.requires`); yapısal iddialar regresyon testine bağlanmadıkça
+    # çürür. Yeni bir alt metrik eklendiğinde bu test, o metriğin manuel
+    # kullanıcıyı CEZALANDIRMADIĞINI kanıtlar.
+    from golden_profiles import PROFILES
+    f = PROFILES["yasemin"][0]
+    r = compute_score(f)
+
+    kapali = [x for p in r.pillars for x in p.subs if x.value is None]
+    toplam = sum(len(p.subs) for p in r.pillars)
+    check("manuel: alt metriklerin önemli kısmı kapanıyor",
+          len(kapali) >= toplam // 3, f"{len(kapali)}/{toplam}")
+    check("manuel: hiçbir bileşen ÇÖKMÜYOR",
+          all(p.enabled for p in r.pillars),
+          str([p.key for p in r.pillars if not p.enabled]))
+    check("manuel: ağırlıklar 100'e normalize kalıyor",
+          abs(sum(p.weight_effective for p in r.pillars) - 100.0) < 1e-9)
+    check("manuel: kapanan hiçbir alt metrik 0 puan almıyor",
+          all(x.value is None for x in kapali))
+    check("manuel: kapalı alt metrikler sayı uydurmuyor",
+          all(not re.search(r"\d", x.detail or "") for x in kapali))
+
+    # Belirsizlik CEZAYA değil GÜVENE yansır. Aynı kullanıcı ekstre
+    # yüklemiş olsaydı: güven yükselir, skor çökmez.
+    ekstre = dataclasses.replace(
+        f, data_source="statement", statement_coverage=1.0, manual_entry=False)
+    re_ = compute_score(ekstre)
+    check("manuel: güven ekstre kademesinden düşük",
+          r.confidence < re_.confidence,
+          f"manuel {r.confidence:.3f} vs ekstre {re_.confidence:.3f}")
+    check("manuel: skor makul aralıkta kalıyor (çökmüyor)",
+          40 <= r.score <= 85, f"skor={r.score}")
+
+    # KAYNAK, SKORU BELİRLEMEZ. Aynı finansal durum, iki kaynak: skor
+    # yakın kalmalı, ayrışan şey GÜVEN olmalı. Aksi hâlde motor kullanıcıyı
+    # kendi seçmediği bir veri kaynağı yüzünden cezalandırır.
+    check("manuel: kaynak değişimi skoru 5 puandan fazla oynatmaz",
+          abs(r.score - re_.score) <= 5,
+          f"manuel {r.score} vs ekstre {re_.score}")
+
+    # Her yeni alt metrik bu profilde `None` dönebilmeli — yani manuel
+    # kullanıcı yeni metrik eklendikçe daha da cezalanmamalı.
+    for alan in ("debt_avg_rate", "net_worth", "payment_carry_days"):
+        check(f"manuel: v3 alanı '{alan}' yokluğu taşıyor",
+              getattr(f, alan) is None)
+
+
+
 # ── 5. Güven ve karma ────────────────────────────────────────────────────────
 
 def t_confidence_blending():
@@ -906,6 +963,7 @@ TESTS = [t_determinism, t_monotonicity, t_continuity,
          t_attribution_closes_at_submetric_level,
          t_leverage_is_deterministic_and_bounded,
          t_projection_never_invents_a_trend,
+         t_manual_surface_is_defensible,
          t_smoothing_anchor_uses_measurement, t_pillar_weights_come_from_params,
          t_confidence_blending, t_bounds,
          t_level_bands, t_no_engagement_inputs,

@@ -139,6 +139,7 @@ P: Dict[str, float] = {
     "p6.pismanlik.sifir": 0.50,
     "p6.pismanlik.yuz": 0.05,
     "p6.min_kapsam": 0.25,
+    "p6.tam_kapsam": 0.50,
 
     # ── Güven (C) ─────────────────────────────────────────────────────
     "c.hist.w": 0.28,
@@ -336,6 +337,12 @@ M: Dict[str, Meta] = {
     "p6.gece.yuz": Meta("Gece payı tam puan", "P6", "threshold", 0.0, 0.18),
     "p6.pismanlik.sifir": Meta("Pişmanlık sıfır eşiği", "P6", "threshold", 0.3, 0.75),
     "p6.pismanlik.yuz": Meta("Pişmanlık tam puan", "P6", "threshold", 0.0, 0.2),
+    "p6.tam_kapsam": Meta("Davranış tam kapsam eşiği", "P6", "threshold",
+                          0.30, 0.90,
+                          "KARAR: 0,50. Bileşen bu kapsamda TAM ağırlığına "
+                          "ulaşır; min_kapsam ile arasında ağırlığı doğrusal "
+                          "artar. Sert eşik ölçüldü: %24,9 → %25,1 geçişi ham "
+                          "skoru 1,07 puan sıçratıyordu (K3 ihlali)."),
     "p6.min_kapsam": Meta("Davranış min. kapsam", "P6", "gate", 0.1, 0.5,
                           "Altındaysa bileşen devre dışı"),
 
