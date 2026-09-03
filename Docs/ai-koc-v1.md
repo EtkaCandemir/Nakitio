@@ -103,7 +103,7 @@ Koç serbest metinle aksiyon uyduramaz; 5 parametreli aksiyondan birini seçer:
 
 | Aksiyon | Zorluk | Parametre |
 |---|---|---|
-| `abonelik_iptali` | 1 | aylık tasarruf |
+| `abonelik_iptali` (v3'te bağlandı — bkz. `coach_tools.detected_subscriptions`) | 1 | aylık tasarruf |
 | `kategori_limiti` | 2 | aylık tasarruf |
 | `acil_fon_katkisi` | 2 | aylık katkı, ay |
 | `plansiz_azalt` | 3 | hedef oran |

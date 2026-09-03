@@ -20,7 +20,8 @@ import sys
 
 from score_engine import (
     Features, compute_score, prior_score, level_of, LEVELS,
-    lin, sat, concave, without, MODEL_VERSION,
+    lin, sat, concave, without, attribute, attribute_subs,
+    sensitivity_at, project_risks, MODEL_VERSION,
 )
 from golden_profiles import PROFILES
 
@@ -550,6 +551,100 @@ def t_v3_submetrics_measure_new_facts():
 
 
 
+def t_attribution_closes_at_submetric_level():
+    """Alt metrik katkıları bileşen farkını TAM kapatmalı."""
+    # UI'daki "-1,4 puan" bu listeden gelir. Katkılar farkı kapatmıyorsa
+    # kullanıcıya toplamı tutmayan bir açıklama gösterilir — ve bu, sayı
+    # uydurmakla aynı sınıf hatadır (C1'in atıf katmanındaki karşılığı).
+    onceki = compute_score(base_user(ef_liquid=42_000, s_deliberate=6_000,
+                                     liquid_balance=30_000))
+    simdi = compute_score(base_user(ef_liquid=9_000, s_deliberate=1_500,
+                                    liquid_balance=8_000))
+    satirlar = attribute(onceki, simdi)
+    check("atıf: toplam fark tam kapanır",
+          abs(sum(r["delta"] for r in satirlar) - (simdi.score - onceki.score)) < 0.05)
+
+    alt = attribute_subs(onceki, simdi)
+    pm = {p.key: p for p in onceki.pillars}
+    for anahtar, rows in alt.items():
+        p_now = next(x for x in simdi.pillars if x.key == anahtar)
+        p_old = pm[anahtar]
+        bilesen_delta = (p_now.points - p_old.points) * simdi.confidence
+        check(f"atıf/{anahtar}: alt metrikler bileşen farkını kapatır",
+              abs(sum(r["delta"] for r in rows) - bilesen_delta) < 0.05,
+              f"alt toplam {sum(r['delta'] for r in rows):.2f} vs "
+              f"bileşen {bilesen_delta:.2f}")
+
+    # ÖLÇÜM değişimi, OLGU değişiminden ayrılabilmeli. Kullanıcıya "durumun
+    # kötüleşmedi, biz artık ölçebiliyoruz" diyebilmek buna bağlı.
+    kapali = compute_score(without(base_user(), "ef_liquid"))
+    acik = compute_score(base_user())
+    rows = attribute_subs(kapali, acik).get("savings", [])
+    guv = next((r for r in rows if r["key"] == "guvence"), None)
+    check("atıf: açılan alt metrik 'ölçüm değişimi' diye işaretlenir",
+          guv is not None and guv["olcum_degisimi"] is True)
+
+
+def t_leverage_is_deterministic_and_bounded():
+    """Kaldıraç hesabı saf, deterministik ve gerçekçi olmalı."""
+    r = compute_score(base_user())
+    a, b = sensitivity_at(r), sensitivity_at(r)
+    check("kaldıraç: deterministik", a == b)
+    check("kaldıraç: azami kazanca göre sıralı",
+          all(a[i]["azami_kazanc"] >= a[i + 1]["azami_kazanc"] - 1e-9
+              for i in range(len(a) - 1)))
+    check("kaldıraç: yalnız AÇIK alt metrikler listelenir",
+          len(a) == sum(1 for p in r.pillars if p.enabled
+                        for x in p.subs if x.value is not None))
+    # Tüm alt metrikler tavana çıkarsa ulaşılabilecek skor 100'ü aşamaz.
+    check("kaldıraç: toplam potansiyel skoru 100'ün üstüne çıkarmaz",
+          r.raw_score + sum(d["azami_kazanc"] for d in a) <= 100.5,
+          f"ham {r.raw_score:.1f} + potansiyel "
+          f"{sum(d['azami_kazanc'] for d in a):.1f}")
+    # Boşluğu olmayan metrik kazanç vaat etmemeli.
+    for d in a:
+        if d["bosluk"] < 0.05:
+            check(f"kaldıraç: tavandaki metrik ({d['key']}) kazanç vaat etmez",
+                  d["azami_kazanc"] < 0.05)
+
+
+def t_projection_never_invents_a_trend():
+    """Eğilim ÖLÇÜLMEMİŞSE projeksiyon yapılmaz."""
+    # `normalize`ın borç trendi kuralının karar katmanındaki karşılığı:
+    # "uydurulmuş bir sinyal, eksik sinyalden kötüdür". Tek dönemlik
+    # veriden gelecek kestirmek tam olarak budur.
+    check("projeksiyon: borç trendi ölçülmemişse borç riski üretilmez",
+          not any(r["key"] == "borc_servisi_esigi"
+                  for r in project_risks(without(base_user(), "debt_trend_3m"))))
+    check("projeksiyon: acil fon ölçülmemişse tükenme riski üretilmez",
+          not any(r["key"] == "acil_fon_tukenmesi"
+                  for r in project_risks(without(base_user(), "ef_liquid"))))
+    check("projeksiyon: açık yoksa tükenme riski üretilmez",
+          not any(r["key"] == "acil_fon_tukenmesi"
+                  for r in project_risks(base_user(e_total=15_000))))
+
+    # Ufuk PARAMETREdir — motor "bugün"ü bilmez (K1).
+    acikli = base_user(e_total=34_000, ef_liquid=22_000)
+    check("projeksiyon: ufuk dışındaki olay bildirilmez",
+          project_risks(acikli, horizon_months=1) == [])
+    uzun = project_risks(acikli, horizon_months=12)
+    check("projeksiyon: ufuk genişleyince olay görünür", len(uzun) >= 1)
+    check("projeksiyon: determinizm",
+          project_risks(acikli, 6) == project_risks(acikli, 6))
+    check("projeksiyon: en yakın olay başta",
+          all(uzun[i]["ay"] <= uzun[i + 1]["ay"] for i in range(len(uzun) - 1)))
+
+    # Projeksiyon ile GERÇEKLEŞMİŞ olay çakışmamalı: fon zaten kritikse
+    # "ileride kritik olacak" demek anlamsızdır.
+    from score_engine import detect_material_events
+    kritik = base_user(ef_liquid=500, e_total=34_000)
+    check("projeksiyon: olay zaten gerçekleştiyse ileriye atılmaz",
+          not (any("acil durum fonu" in e for e in detect_material_events(kritik))
+               and any(r["key"] == "acil_fon_tukenmesi"
+                       for r in project_risks(kritik))))
+
+
+
 # ── 5. Güven ve karma ────────────────────────────────────────────────────────
 
 def t_confidence_blending():
@@ -808,6 +903,9 @@ TESTS = [t_determinism, t_monotonicity, t_continuity,
          t_undefined_ratios_disable_submetrics,
          t_every_submetric_can_be_none, t_requires_covers_real_inputs,
          t_v3_submetrics_measure_new_facts,
+         t_attribution_closes_at_submetric_level,
+         t_leverage_is_deterministic_and_bounded,
+         t_projection_never_invents_a_trend,
          t_smoothing_anchor_uses_measurement, t_pillar_weights_come_from_params,
          t_confidence_blending, t_bounds,
          t_level_bands, t_no_engagement_inputs,

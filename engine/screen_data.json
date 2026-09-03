@@ -1,7 +1,7 @@
 {
   "meta": {
     "surum": "1.0.0",
-    "skor_modeli": "2.0.0",
+    "skor_modeli": "3.0.0",
     "veri_hatti": "1.0.0",
     "kategorizasyon": "1.2.0",
     "ekstre_alimi": "1.0.0",
@@ -101,7 +101,7 @@
               },
               {
                 "ad": "Net varlık",
-                "neden": "Gelir kaydı görünmüyor."
+                "neden": "Varlık hesapların görünmüyor."
               },
               {
                 "ad": "Enflasyona karşı koruma",
@@ -547,9 +547,18 @@
         "ufuk_ay": 3,
         "adimlar": [
           {
+            "aksiyon": "Son ödeme gününü maaşına yaklaştır",
+            "zorluk": 1,
+            "kumulatif_skor": 70,
+            "ek_etki": 1,
+            "parametreler": {
+              "hedef_gun": 5.0
+            }
+          },
+          {
             "aksiyon": "Kategori limiti koy",
             "zorluk": 2,
-            "kumulatif_skor": 70,
+            "kumulatif_skor": 71,
             "ek_etki": 1,
             "parametreler": {
               "aylik_tasarruf": 590.0
@@ -558,20 +567,11 @@
           {
             "aksiyon": "Acil durum fonuna düzenli katkı",
             "zorluk": 2,
-            "kumulatif_skor": 71,
+            "kumulatif_skor": 72,
             "ek_etki": 1,
             "parametreler": {
               "aylik_katki": 1730.0,
               "ay": 3
-            }
-          },
-          {
-            "aksiyon": "Plansız harcamayı azalt",
-            "zorluk": 3,
-            "kumulatif_skor": 72,
-            "ek_etki": 1,
-            "parametreler": {
-              "hedef_oran": 0.05
             }
           }
         ],
@@ -1281,12 +1281,12 @@
             }
           },
           {
-            "aksiyon": "Plansız harcamayı azalt",
-            "zorluk": 3,
+            "aksiyon": "Son ödeme gününü maaşına yaklaştır",
+            "zorluk": 1,
             "kumulatif_skor": 77,
             "ek_etki": 1,
             "parametreler": {
-              "hedef_oran": 0.05
+              "hedef_gun": 5.0
             }
           }
         ],

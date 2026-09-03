@@ -26,6 +26,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import metinler as MET
 from score_engine import (
+    project_risks, sensitivity_at,
     Features, ScoreResult, attribute, compute_score, simulate,
 )
 
@@ -437,6 +438,15 @@ class ActionSpec:
     apply: Callable[[Features, Dict[str, float]], Dict[str, Any]]
     default_params: Callable[[Features], Dict[str, float]]
 
+    #: Bu aksiyon bu kullanıcı için ANLAMLI mı. `None` = uygun,
+    #: aksi hâlde neden uygun olmadığını söyleyen cümle.
+    #:
+    #: Eskiden uygunluk yalnızca `gain <= 0` ile eleniyordu ve gerekçe
+    #: gösterilemiyordu. İkisi aynı şey değil: borçsuz kullanıcıya "borca
+    #: ek ödeme yap" önerisi kazanç getirmediği için değil, ANLAMSIZ
+    #: olduğu için elenmelidir — ve kullanıcı neden görmediğini sorabilir.
+    applicable: Callable[[Any], Optional[str]] = lambda ctx: None
+
 
 def _a_category_limit(f: Features, p: Dict[str, float]) -> Dict[str, Any]:
     save = p["aylik_tasarruf"]
@@ -489,27 +499,173 @@ def _a_cancel_subscription(f: Features, p: Dict[str, float]) -> Dict[str, Any]:
             "s_deliberate": f.s_deliberate + save}
 
 
+#: Aylık yinelenen harcamanın "abonelik" sayılması için en az kaç kez
+#: görülmesi gerektiği. `behavior_infer.RECURRING_MIN_SEEN` ile aynı eşik:
+#: iki farklı katmanın aynı olguyu farklı tanımlaması, kullanıcıya
+#: birbiriyle çelişen iki sayı göstermek demektir.
+ABONELIK_MIN_GORULME = 3
+#: Tutar sapma toleransı — abonelik bedeli sabittir.
+ABONELIK_TUTAR_TOL = 0.15
+
+#: İPTAL EDİLEBİLİRLİK EŞİĞİ. Yinelenen olmak, iptal edilebilir olmak
+#: DEĞİLDİR: kira, telefon faturası, aidat ve sigorta da her ay tekrarlar.
+#:
+#: Gerçek fixture'da ilk denemede tespit edilen tek "abonelik" TURKCELL
+#: FATURA çıktı ve plan kullanıcıya telefon faturasını iptal etmesini
+#: önerdi. Bu bir sıralama kusuru değil, GÜVENLİK sorunudur — koç
+#: yapılamayacak bir şeyi öneriyordu.
+#:
+#: Ölçüt taksonomideki zorunluluk ağırlığıdır: `abonelik` 0,10,
+#: `eglence` 0,00, `spor` 0,10 iptal edilebilir; `iletisim` 0,85,
+#: `kira` 1,00 edilemez. Ağırlığı BİLİNMEYEN kategoriler de elenir —
+#: bilmediğimiz bir şeyin iptal edilebilir olduğunu varsayamayız.
+ABONELIK_AZAMI_ZORUNLULUK = 0.35
+
+
+def detected_subscriptions(ctx: "CoachContext") -> List[Dict[str, Any]]:
+    """Ekstreden TESPİT EDİLMİŞ yinelenen ödemeler.
+
+    `ai-koc-v1.md` §8.6 bunu açıkça istiyordu: "abonelik_iptali gerçek
+    aboneliklere bağlanmalı". Eskiden aksiyon `e_total × %1` diye bir
+    varsayımla çalışıyordu — yani koç, kullanıcının hiç sahip olmadığı bir
+    aboneliği iptal etmesini önerebiliyordu ve tasarruf rakamı uydurmaydı.
+
+    Ölçüt aylık ritimdir (N4'ün ≥90 günlük amortisman serilerinden farklı):
+    aynı işyerinden en az `ABONELIK_MIN_GORULME` kez, tutar sapması
+    `ABONELIK_TUTAR_TOL` içinde.
+    """
+    led = ctx.ledger
+    if led is None or ctx.as_of is None:
+        return []
+    try:
+        from normalize import active_windows, windows
+        W = active_windows(led, windows(ctx.as_of, 6))
+    except Exception:
+        return []
+    if not W:
+        return []
+
+    gruplar: Dict[str, List[float]] = {}
+    etiket: Dict[str, str] = {}
+    kategori: Dict[str, str] = {}
+    for w in W:
+        for a, c, t in led.expenses_cash(w):
+            mid = getattr(t, "merchant_id", None) if t is not None else None
+            if not mid:
+                continue
+            gruplar.setdefault(mid, []).append(a)
+            etiket.setdefault(mid, (t.merchant_raw or t.description_raw or mid).strip())
+            kategori.setdefault(mid, c or "")
+
+    import statistics
+    out = []
+    for mid, tutarlar in gruplar.items():
+        if len(tutarlar) < ABONELIK_MIN_GORULME:
+            continue
+        med = statistics.median(tutarlar)
+        if med <= 0:
+            continue
+        if not all(abs(x - med) / med <= ABONELIK_TUTAR_TOL for x in tutarlar):
+            continue
+        out.append({"isyeri": etiket[mid], "kategori": kategori[mid],
+                    "aylik_tutar": round(med, 2), "gorulme": len(tutarlar)})
+    # Zorunlu olanlar ELENİR (bkz. ABONELIK_AZAMI_ZORUNLULUK), kalanlar
+    # tutara göre sıralanır: iptal edilebilirlerin en pahalısı önce.
+    from data_model import CATEGORIES
+    def _zorunluluk(d):
+        c = CATEGORIES.get(d["kategori"])
+        return None if c is None else c.essential_weight
+    out = [d for d in out
+           if (_zorunluluk(d) is not None
+               and _zorunluluk(d) <= ABONELIK_AZAMI_ZORUNLULUK)]
+    out.sort(key=lambda d: -d["aylik_tutar"])
+    return out
+
+def _a_lower_debt_cost(f: Features, p: Dict[str, float]) -> Dict[str, Any]:
+    """Borcu daha düşük faizli bir ürüne taşımak.
+
+    Anaparaya DOKUNMAZ — refinansman borcu azaltmaz, fiyatını düşürür.
+    Bunu karıştırmak kullanıcıya olmayan bir borç azalması vaat etmek olurdu.
+    """
+    hedef = p["hedef_oran"]
+    mevcut = f.debt_avg_rate
+    return {"debt_avg_rate": min(mevcut, hedef) if mevcut is not None else None}
+
+
+def _a_shift_due_date(f: Features, p: Dict[str, float]) -> Dict[str, Any]:
+    """Son ödeme gününü maaş gününe yaklaştırmak.
+
+    Tek bir telefon görüşmesi; para akışını değiştirmez, ZAMANLAMASINI
+    değiştirir. Bu yüzden `e_total` veya `liquid_balance` oynatılmaz.
+    """
+    return {"payment_carry_days": float(p["hedef_gun"])}
+
+
 ACTIONS: Dict[str, ActionSpec] = {a.key: a for a in [
     ActionSpec("kategori_limiti", "Kategori limiti koy", 2, _a_category_limit,
-               lambda f: {"aylik_tasarruf": round(max(200.0, f.e_total * 0.03), -1)}),
+               lambda f: {"aylik_tasarruf": round(max(200.0, f.e_total * 0.03), -1)},
+               applicable=lambda c: None if c.features.e_total > 0
+                                    else "Harcama kaydı görünmüyor."),
     ActionSpec("acil_fon_katkisi", "Acil durum fonuna düzenli katkı", 2,
                _a_emergency_fund,
                lambda f: {"aylik_katki": round(max(250.0, (f.i_net - f.e_total) * 0.20), -1),
-                          "ay": 3}),
+                          "ay": 3},
+               applicable=lambda c: None if c.features.i_net - c.features.e_total > 0
+                                    else "Gelirin giderini karşılamıyor; önce "
+                                         "açığı kapatmak gerekiyor."),
     ActionSpec("plansiz_azalt", "Plansız harcamayı azalt", 3, _a_reduce_impulse,
-               lambda f: {"hedef_oran": max(0.05, (f.imp_rate or 0.2) - 0.08)}),
+               lambda f: {"hedef_oran": max(0.05, (f.imp_rate or 0.2) - 0.08)},
+               applicable=lambda c: None if c.features.imp_rate is not None
+                                    else "Plansız harcama oranı henüz ölçülmedi."),
     ActionSpec("ek_borc_odemesi", "Borca ek ödeme yap", 3, _a_extra_debt_payment,
                lambda f: {"aylik_ek_odeme": round(max(200.0, f.i_net * 0.03), -1),
-                          "ay": 3}),
+                          "ay": 3},
+               applicable=lambda c: None if c.features.debt_principal > 0
+                                    else "Kapatılacak borcun görünmüyor."),
+    # TASARRUF TUTARI TESPİT EDİLMİŞ ABONELİKTEN GELİR, varsayımdan değil.
+    # Eskiden `e_total × %1` yazıyordu: koç, kullanıcının hiç sahip olmadığı
+    # bir aboneliği iptal etmesini önerebiliyor ve uydurma bir tutar
+    # söylüyordu (ai-koc-v1 §8.6).
     ActionSpec("abonelik_iptali", "Kullanılmayan aboneliği iptal et", 1,
                _a_cancel_subscription,
-               lambda f: {"aylik_tasarruf": round(max(100.0, f.e_total * 0.01), -1)}),
+               lambda f: {"aylik_tasarruf": 0.0},   # ctx'siz çağrıda nötr
+               applicable=lambda c: None if detected_subscriptions(c)
+                                    else "Ekstrende iptal edilebilir bir "
+                                         "yinelenen ödeme yok. (Kira, fatura "
+                                         "ve aidat da her ay tekrarlar ama "
+                                         "iptal edilemez.)"),
+    ActionSpec("borc_maliyetini_dusur", "Borcunu daha düşük faize taşı", 3,
+               _a_lower_debt_cost,
+               lambda f: {"hedef_oran": max(0.0, (f.debt_avg_rate or 0.0) - 0.20)},
+               applicable=lambda c: None if (c.features.debt_avg_rate or 0) > 0.25
+                                    else "Borcunun faizi zaten düşük ya da "
+                                         "faiz oranı girilmemiş."),
+    ActionSpec("odeme_tarihi_kaydir", "Son ödeme gününü maaşına yaklaştır", 1,
+               _a_shift_due_date,
+               lambda f: {"hedef_gun": 5.0},
+               applicable=lambda c: None if (c.features.payment_carry_days or 0) > 12
+                                    else "Ödeme günün zaten maaşına yakın."),
 ]}
 
 
 def _clean(changes: Dict[str, Any]) -> Dict[str, Any]:
     return {k: v for k, v in changes.items() if v is not None}
 
+
+def _params_for(ctx: "CoachContext", spec: ActionSpec) -> Dict[str, float]:
+    """Aksiyonun varsayılan parametreleri — ÖLÇÜLMÜŞ veriyle zenginleştirilmiş.
+
+    `default_params` yalnız `Features` görür. Bazı aksiyonların gerçekçi
+    parametresi ise ham veride durur: iptal edilecek aboneliğin BEDELİ
+    ekstrede yazılıdır, tahmin edilmemelidir.
+    """
+    p = dict(spec.default_params(ctx.features))
+    if spec.key == "abonelik_iptali":
+        abo = detected_subscriptions(ctx)
+        if abo:
+            p["aylik_tasarruf"] = abo[0]["aylik_tutar"]
+            p["_isyeri"] = abo[0]["isyeri"]
+    return p
 
 def simulate_action(ctx: CoachContext, action: str,
                     params: Optional[Dict[str, float]] = None) -> Dict[str, Any]:
@@ -520,12 +676,16 @@ def simulate_action(ctx: CoachContext, action: str,
     if action not in ACTIONS:
         return {"hata": "bilinmeyen aksiyon", "gecerli": sorted(ACTIONS)}
     spec = ACTIONS[action]
+    neden = spec.applicable(ctx)
+    if neden:
+        return {"aksiyon": spec.label, "uygun_degil": neden}
     f = ctx.features
-    p = dict(spec.default_params(f))
+    p = dict(_params_for(ctx, spec))
     p.update(params or {})
 
     base = simulate(f)                       # yumuşatmasız temel
-    after = simulate(f, **_clean(spec.apply(f, p)))
+    after = simulate(f, **_clean(spec.apply(
+        f, {k: v for k, v in p.items() if not k.startswith("_")})))
     delta = after.score - base.score
 
     n = ctx.numbers
@@ -533,6 +693,9 @@ def simulate_action(ctx: CoachContext, action: str,
     n.add(after.score, Kind.SCORE, f"{spec.label} sonrası skor", "simulate_action")
     n.add(abs(delta), Kind.SCORE, f"{spec.label} skor etkisi", "simulate_action")
     for k, v in p.items():
+        # `_` ile başlayanlar sunum verisidir (işyeri adı gibi), sayı değil.
+        if k.startswith("_"):
+            continue
         kind = Kind.CURRENCY if "tutar" in k or "katki" in k or "odeme" in k or "tasarruf" in k else Kind.COUNT
         if k == "hedef_oran":
             n.add(round(v * 100, 1), Kind.PERCENT, "hedef plansız harcama oranı", "simulate_action")
@@ -554,11 +717,18 @@ def build_action_plan(ctx: CoachContext, max_steps: int = 3) -> Dict[str, Any]:
     f = ctx.features
     base = simulate(f)
 
-    scored = []
+    scored, elenen = [], []
     for key, spec in ACTIONS.items():
-        p = spec.default_params(f)
+        neden = spec.applicable(ctx)
+        if neden:
+            # UYGUN OLMAYAN aksiyon "kazanç getirmedi" diye değil, GEREKÇEYLE
+            # elenir. İkisi aynı şey değil ve kullanıcı farkı sorabilir.
+            elenen.append({"aksiyon": spec.label, "neden": neden})
+            continue
+        p = _params_for(ctx, spec)
         try:
-            after = simulate(f, **_clean(spec.apply(f, p)))
+            after = simulate(f, **_clean(spec.apply(
+                f, {k: v for k, v in p.items() if not k.startswith("_")})))
         except Exception:
             continue
         gain = after.score - base.score
@@ -572,7 +742,8 @@ def build_action_plan(ctx: CoachContext, max_steps: int = 3) -> Dict[str, Any]:
         if len(steps) >= max_steps:
             break
         candidate = dict(cumulative)
-        candidate.update(_clean(spec.apply(f, p)))
+        candidate.update(_clean(spec.apply(f, {k: v for k, v in p.items()
+                                               if not k.startswith("_")})))
         after = simulate(f, **candidate)
         # Kümülatif skoru düşüren adım plana ALINMAZ. Aksiyonların etkisi
         # toplanabilir değildir; tek başına faydalı bir adım, önceki
@@ -614,6 +785,8 @@ def build_action_plan(ctx: CoachContext, max_steps: int = 3) -> Dict[str, Any]:
         n.add(abs(s["ek_etki"]), Kind.SCORE, f"{s['aksiyon']} ek etkisi",
               "build_action_plan")
         for k, v in s["parametreler"].items():
+            if k.startswith("_"):
+                continue
             if k == "hedef_oran":
                 n.add(round(v * 100, 1), Kind.PERCENT, "hedef plansız harcama oranı",
                       "build_action_plan")
@@ -625,12 +798,49 @@ def build_action_plan(ctx: CoachContext, max_steps: int = 3) -> Dict[str, Any]:
     return {
         "skor_simdi": anchor,
         "adimlar": steps,
+        "uygun_olmayanlar": elenen,
         "skor_plan_sonrasi": final,
         "toplam_etki": total,
         "ufuk_ay": 3,
         "uyari": "Bu bir projeksiyondur, taahhüt değildir. Sunumda kesinlik "
                  "ifadesi kullanılmamalı.",
     }
+
+
+def get_leverage(ctx: CoachContext, n: int = 5) -> Dict[str, Any]:
+    """"Nereye dokunursam en çok kazanırım" — alt metrik düzeyinde.
+
+    `sensitivity_at` deterministiktir; buradaki iş yalnız sayıları deftere
+    yazmak ve LLM'in okuyabileceği bir kabuğa koymaktır.
+    """
+    rows = sensitivity_at(ctx.score)[:n]
+    for r in rows:
+        ctx.numbers.add(r["azami_kazanc"], Kind.SCORE,
+                        f"{r['alt_metrik']} azami kazancı", "get_leverage")
+        ctx.numbers.add(r["deger"], Kind.SCORE, f"{r['alt_metrik']} puanı",
+                        "get_leverage")
+    return {"kaldiraclar": rows,
+            "uyari": "Azami kazanç, alt metriğin TAVANA çıkması hâlindedir; "
+                     "tek adımda ulaşılabilir bir hedef değildir."}
+
+
+def get_projected_risks(ctx: CoachContext, horizon_months: int = 6) -> Dict[str, Any]:
+    """Henüz gerçekleşmemiş ama ölçülen eğilimin işaret ettiği riskler.
+
+    Çıktı PROJEKSİYONDUR: `verify_response(..., projecting=True)` ile
+    doğrulanmalı, aksi hâlde çekince dili zorunluluğu (guard'ın
+    `missing_hedge` kuralı) atlanır.
+    """
+    rows = project_risks(ctx.features, horizon_months)
+    for r in rows:
+        ctx.numbers.add(r["ay"], Kind.MONTHS, f"{r['olay']} — tahmini süre",
+                        "get_projected_risks")
+        for v in r["sinyal"].values():
+            ctx.numbers.add(v, Kind.CURRENCY if v > 100 else Kind.PERCENT,
+                            f"{r['key']} sinyali", "get_projected_risks")
+    return {"projeksiyonlar": rows, "ufuk_ay": horizon_months,
+            "uyari": "Bu bir projeksiyondur; eğilim sürerse geçerlidir. "
+                     "Kesinlik dili kullanılamaz."}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -648,6 +858,8 @@ TOOLS: Dict[str, Callable[..., Dict[str, Any]]] = {
     "get_data_gaps": get_data_gaps,
     "simulate_action": simulate_action,
     "build_action_plan": build_action_plan,
+    "get_leverage": get_leverage,
+    "get_projected_risks": get_projected_risks,
 }
 
 TOOL_SCHEMA: List[Dict[str, Any]] = [
@@ -680,6 +892,15 @@ TOOL_SCHEMA: List[Dict[str, Any]] = [
     {"name": "build_action_plan", "description": "Etkiye göre sıralı, kümülatif hesaplanmış aksiyon planı.",
      "input_schema": {"type": "object", "properties": {
          "max_steps": {"type": "integer", "default": 3}}}},
+    {"name": "get_leverage", "description":
+     "Hangi alt metriğin marjinal getirisi en yüksek — kullanıcının bulunduğu noktada.",
+     "input_schema": {"type": "object", "properties": {
+         "n": {"type": "integer", "default": 5}}}},
+    {"name": "get_projected_risks", "description":
+     "Ölçülen eğilimin işaret ettiği, henüz gerçekleşmemiş riskler. PROJEKSİYONDUR; "
+     "çekince dili zorunludur.",
+     "input_schema": {"type": "object", "properties": {
+         "horizon_months": {"type": "integer", "default": 6}}}},
 ]
 
 

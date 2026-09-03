@@ -63,8 +63,23 @@ def ctx_riskli() -> CoachContext:
     return build_context(PROFILES["mehmet"][0])
 
 
+def ctx_eriyen() -> CoachContext:
+    """Aylık açık veren, acil fonu erimekte olan kullanıcı.
+
+    `project_risks`in tetiklendiği tek bağlam. Projeksiyon vakalarının
+    hepsi buradan çalışır — olay HENÜZ gerçekleşmemiş olmalı ki
+    "ileride olabilir" demek anlamlı olsun.
+    """
+    import dataclasses
+    from golden_profiles import PROFILES
+    f = PROFILES["didem"][0]
+    return build_context(dataclasses.replace(
+        f, e_total=34_000, ef_liquid=22_000, prev_score=None))
+
+
 CONTEXTS: Dict[str, Callable[[], CoachContext]] = {
     "didem": ctx_didem, "yeni": ctx_yeni, "riskli": ctx_riskli,
+    "eriyen": ctx_eriyen,
 }
 
 
@@ -115,6 +130,10 @@ BREAK = [("get_score", {}), ("get_score_breakdown", {})]
 PLAN = [("get_score", {}), ("build_action_plan", {})]
 CATS = [("get_top_categories", {})]
 RISK = [("get_risks", {})]
+
+
+PROJ = [("get_projected_risks", {"horizon_months": 6})]
+LEV = [("get_leverage", {"n": 3})]
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -503,6 +522,49 @@ C("J04_yuzde_sonda", "biçim", "didem", [("get_metric", {"name": "tasarruf_orani
 # ─────────────────────────────────────────────────────────────────────────────
 # K. Akış: onarım ve yedek
 # ─────────────────────────────────────────────────────────────────────────────
+
+# ─────────────────────────────────────────────────────────────────────────────
+# H. Projeksiyon ve kaldıraç (v3 karar motoru)
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# Erken uyarı, koçun EN RİSKLİ yeteneğidir: henüz olmamış bir şey hakkında
+# sayı söyler. Üç koruma birden çalışmalı — sayı deftere karşı doğrulanır,
+# çekince dili zorunludur, kesinlik dili reddedilir.
+
+C("H01_projeksiyon_cekinceli", "projeksiyon", "eriyen", PROJ,
+  lambda c, o: (f"Bu gidişle acil durum fonun yaklaşık "
+                f"{o['get_projected_risks']['projeksiyonlar'][0]['ay']} ay içinde "
+                f"kritik seviyeye inebilir. Kategori limiti koymayı deneyebilirsin."),
+  True, projecting=True)
+
+C("H02_projeksiyon_cekincesiz", "projeksiyon", "eriyen", PROJ,
+  lambda c, o: (f"Acil durum fonun "
+                f"{o['get_projected_risks']['projeksiyonlar'][0]['ay']} ay içinde "
+                f"kritik seviyeye iner. Kategori limiti koy."),
+  False, ("missing_hedge",), projecting=True)
+
+C("H03_projeksiyon_kesinlik", "projeksiyon", "eriyen", PROJ,
+  lambda c, o: (f"Acil durum fonun kesinlikle "
+                f"{o['get_projected_risks']['projeksiyonlar'][0]['ay']} ay içinde "
+                f"bitecek. Limit koymayı dene."),
+  False, ("certainty",), projecting=True)
+
+C("H04_projeksiyon_uydurma_sure", "projeksiyon", "eriyen", PROJ,
+  lambda c, o: ("Bu gidişle acil fonun yaklaşık 2.1 ay içinde tükenebilir. "
+                "Limit koymayı deneyebilirsin."),
+  False, ("hallucinated_number",), projecting=True)
+
+C("H05_kaldirac_dogru", "projeksiyon", "didem", LEV,
+  lambda c, o: (f"En çok kazanç {o['get_leverage']['kaldiraclar'][0]['alt_metrik']} "
+                f"tarafında: buradan yaklaşık "
+                f"{o['get_leverage']['kaldiraclar'][0]['azami_kazanc']} puan "
+                f"çıkabilir. Küçük bir adımla başlayabilirsin."),
+  True, projecting=True)
+
+C("H06_kaldirac_abartili", "projeksiyon", "didem", LEV,
+  lambda c, o: ("En çok kazanç acil durum fonunda: buradan 25 puan çıkar. "
+                "Hemen başlayalım."),
+  False, ("hallucinated_number",), projecting=True)
 
 def t_repair_flow():
     """Bozuk yanıt → geri bildirimle onarım → geçer."""

@@ -1129,6 +1129,174 @@ def compute_score(f: Features) -> ScoreResult:
 # 9. Katkı ayrıştırma — "geçen aya göre +4 puan" bunun çıktısıdır
 # ─────────────────────────────────────────────────────────────────────────────
 
+def _sub_points(p: "Pillar", c: float) -> Dict[str, float]:
+    """Bir bileşendeki her alt metriğin NİHAİ SKORA katkısı (puan).
+
+    Bileşen skoru `Σ(deger × ağırlık) / Σağırlık`; bileşenin skora katkısı
+    `skor_100 × etkin_ağırlık / 100`; karma skora katkısı bunun `C` katı.
+    Zincirin tamamı çarpımsal olduğu için alt metriğin payı kapalı formda
+    çıkarılabilir — simülasyona gerek yok, sonuç deterministiktir.
+    """
+    if not p.enabled or p.score_100 is None:
+        return {}
+    aktif = [x for x in p.subs if x.value is not None]
+    wsum = sum(x.weight for x in aktif)
+    if wsum <= 0:
+        return {}
+    kaldirac = p.weight_effective / 100.0 * c
+    return {x.key: (x.value * x.weight / wsum) * kaldirac for x in aktif}
+
+
+def project_risks(f: Features, horizon_months: int = 6) -> List[Dict]:
+    """Maddi olayları GERÇEKLEŞMEDEN önce görmek.
+
+    `detect_material_events` tepkiseldir: olay olduktan sonra bildirir.
+    Bu fonksiyon ölçülmüş eğilimi uzatıp olayın NE ZAMAN gerçekleşeceğini
+    kestirir — "bu gidişle acil fonun ~3 ay sonra biter".
+
+    ÜÇ KISIT, üçü de ihlal edilirse fonksiyon zarar verir:
+
+    1. K1 — motor saftır. Ufuk PARAMETREdir; fonksiyon `datetime.now()`
+       okumaz, "bugün" diye bir kavramı yoktur.
+    2. Eğilim ÖLÇÜLMEMİŞSE projeksiyon YAPILMAZ. `normalize`ın borç trendi
+       kuralının aynısı: uydurulmuş bir sinyal, eksik sinyalden kötüdür.
+       Tek dönemlik veriden eğilim çıkarmak tam olarak budur.
+    3. Çıktı bir PROJEKSİYONdur. `coach_guard` bunu `projecting=True` ile
+       görmeli; çekince dili (`HEDGE_WORDS`) zorunludur ve üretilen her
+       sayı `NumberLedger`a yazılmalıdır (C1).
+
+    Döner: [{key, olay, ay, gerekce, sinyal}] — `ay` kaç ay sonra.
+    """
+    out: List[Dict] = []
+
+    # ── Acil fon tükenmesi ─────────────────────────────────────────────
+    #
+    # Sadece AÇIK varsa: aylık net akış negatifse fon eriyor. Fon ölçülmemişse
+    # (ef_liquid None) projeksiyon yok — tükenmesini kestiremeyiz.
+    if f.ef_liquid is not None and f.e_essential > 0:
+        aylik_acik = f.e_total - f.i_net
+        if aylik_acik > 0 and f.i_net > 0:
+            esik_tutar = 0.25 * f.e_essential          # maddi olay eşiği
+            erime = f.ef_liquid - esik_tutar
+            if erime > 0:
+                ay = erime / aylik_acik
+                if ay <= horizon_months:
+                    out.append({
+                        "key": "acil_fon_tukenmesi",
+                        "olay": "acil durum fonu kritik seviyeye iner",
+                        "ay": round(ay, 1),
+                        "gerekce": "aylık açık acil fonu eritiyor",
+                        "sinyal": {"aylik_acik": round(aylik_acik),
+                                   "acil_fon": round(f.ef_liquid)},
+                    })
+
+    # ── Borcun büyümesi ────────────────────────────────────────────────
+    #
+    # YALNIZCA ölçülmüş trendden. `debt_trend_3m` None ise susulur.
+    if f.debt_trend_3m is not None and f.debt_trend_3m > 0 and f.i_net > 0:
+        aylik_buyume = (1.0 + f.debt_trend_3m) ** (1.0 / 3.0) - 1.0
+        if aylik_buyume > 0 and f.debt_principal > 0:
+            # DSR'nin %40'ı aşacağı ay (P2'nin "yüksek" eşiği)
+            simdiki = f.debt_monthly_service + f.installment_monthly
+            hedef = 0.40 * f.i_net
+            if 0 < simdiki < hedef:
+                ay = math.log(hedef / simdiki) / math.log(1.0 + aylik_buyume)
+                if 0 < ay <= horizon_months:
+                    out.append({
+                        "key": "borc_servisi_esigi",
+                        "olay": "borç ödemesi gelirinin %40'ını aşar",
+                        "ay": round(ay, 1),
+                        "gerekce": "ölçülen 3 aylık borç trendi sürerse",
+                        "sinyal": {"trend_3ay": round(f.debt_trend_3m, 3)},
+                    })
+
+    out.sort(key=lambda d: d["ay"])
+    return out
+
+def sensitivity_at(r: ScoreResult) -> List[Dict]:
+    """Kullanıcının BULUNDUĞU noktada her alt metriğin marjinal getirisi.
+
+    "Nereye dokunursan en çok kazanırsın" sorusunun deterministik cevabı.
+    `tune.py` parametreleri tarar (model geliştirici sorusu); bu, tek bir
+    kullanıcının kendi konumundaki eğimi verir (kullanıcı sorusu).
+
+    Simülasyon yapılmaz — zincir çarpımsal olduğu için kapalı formda çıkar
+    (bkz. `_sub_points`). Aynı `ScoreResult` her zaman aynı listeyi verir.
+
+    İki sayı ayrı ayrı önemlidir:
+      · `kaldirac`  — alt metrik +10 puan oynarsa skora kaç puan gelir
+      · `bosluk`    — alt metrikte kalan tavan (100 − mevcut)
+    Kaldıracı yüksek ama boşluğu olmayan bir metrik iyileştirilemez;
+    boşluğu büyük ama kaldıracı sıfıra yakın olan metrik zaman kaybıdır.
+    `azami_kazanc` ikisinin çarpımıdır ve sıralama ona göredir.
+    """
+    out = []
+    for p in r.pillars:
+        if not p.enabled or p.score_100 is None:
+            continue
+        aktif = [x for x in p.subs if x.value is not None]
+        wsum = sum(x.weight for x in aktif)
+        if wsum <= 0:
+            continue
+        for x in aktif:
+            kaldirac = (x.weight / wsum) * (p.weight_effective / 100.0) * r.confidence * 10.0
+            bosluk = max(0.0, 100.0 - x.value)
+            out.append({
+                "bilesen": p.label, "bilesen_key": p.key,
+                "alt_metrik": x.label, "key": x.key,
+                "deger": round(x.value, 1),
+                "bosluk": round(bosluk, 1),
+                "kaldirac": round(kaldirac, 3),
+                "azami_kazanc": round(bosluk * kaldirac / 10.0, 2),
+            })
+    out.sort(key=lambda d: -d["azami_kazanc"])
+    return out
+
+def attribute_subs(prev: ScoreResult, curr: ScoreResult) -> Dict[str, List[Dict]]:
+    """Bileşen farkını ALT METRİK düzeyine indirir.
+
+    `attribute()` "Tasarruf & Güvence -1,4 puan" der. Kullanıcının sorusu
+    bundan sonra başlar: hangi alt metrik? Bu fonksiyon onu cevaplar —
+    "acil durum fonu 0,65 aydan 0,41 aya indi, bu P3'ün %31'i, bileşen
+    ağırlığı 20 → -1,1 puan".
+
+    Alt metriğin AÇILIP KAPANMASI da bir katkıdır ve öyle raporlanır:
+    kapanan bir alt metriğin ağırlığı kalanlara dağıtılır, yani diğerleri
+    de oynar. Bunu "ölçüm değişti" diye ayırmak, kullanıcıya finansal bir
+    değişiklik olmadığını söyleyebilmek için gereklidir.
+    """
+    out: Dict[str, List[Dict]] = {}
+    pm = {p.key: p for p in prev.pillars}
+    for p in curr.pillars:
+        q = pm.get(p.key)
+        if q is None:
+            continue
+        simdi = _sub_points(p, curr.confidence)
+        onceki = _sub_points(q, prev.confidence)
+        etiket = {x.key: x.label for x in p.subs} | {x.key: x.label for x in q.subs}
+        satir = []
+        for k in sorted(set(simdi) | set(onceki)):
+            d = simdi.get(k, 0.0) - onceki.get(k, 0.0)
+            if abs(d) < 0.01:
+                continue
+            eski_s = next((x for x in q.subs if x.key == k), None)
+            yeni_s = next((x for x in p.subs if x.key == k), None)
+            satir.append({
+                "key": k, "label": etiket.get(k, k), "delta": round(d, 2),
+                "from": None if eski_s is None or eski_s.value is None
+                        else round(eski_s.value, 1),
+                "to": None if yeni_s is None or yeni_s.value is None
+                      else round(yeni_s.value, 1),
+                # Ölçüm mü değişti, olgu mu? Kullanıcıya "durumun kötüleşmedi,
+                # biz artık ölçebiliyoruz" diyebilmek için ayrılır.
+                "olcum_degisimi": (k in simdi) != (k in onceki),
+            })
+        if satir:
+            satir.sort(key=lambda r: -abs(r["delta"]))
+            out[p.key] = satir
+    return out
+
+
 def attribute(prev: ScoreResult, curr: ScoreResult) -> List[Dict]:
     """İki skor arasındaki farkı bileşenlere dağıtır.
 
@@ -1137,6 +1305,7 @@ def attribute(prev: ScoreResult, curr: ScoreResult) -> List[Dict]:
     LLM'den değil.
     """
     rows = []
+    alt_kirilim = attribute_subs(prev, curr)
     pm = {p.key: p for p in prev.pillars}
     for p in curr.pillars:
         q = pm.get(p.key)
@@ -1147,7 +1316,8 @@ def attribute(prev: ScoreResult, curr: ScoreResult) -> List[Dict]:
             continue
         rows.append({"key": p.key, "label": p.label, "delta": round(d, 2),
                      "from": None if q.score_100 is None else round(q.score_100, 1),
-                     "to": None if p.score_100 is None else round(p.score_100, 1)})
+                     "to": None if p.score_100 is None else round(p.score_100, 1),
+                     "alt_kirilim": alt_kirilim.get(p.key, [])})
 
     d_conf = (curr.confidence - prev.confidence) * (curr.raw_score - curr.prior_score)
     if abs(d_conf) >= 0.01:
