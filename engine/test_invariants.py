@@ -15,11 +15,12 @@ from __future__ import annotations
 import dataclasses
 import inspect
 import math
+import re
 import sys
 
 from score_engine import (
     Features, compute_score, prior_score, level_of, LEVELS,
-    lin, sat, concave, MODEL_VERSION,
+    lin, sat, concave, without, MODEL_VERSION,
 )
 from golden_profiles import PROFILES
 
@@ -392,6 +393,99 @@ def t_pillar_weights_come_from_params():
 
 
 
+#: `requires` bildirmeyen alt metrikler. Her biri SENTETİKtir: bir ölçümü
+#: değil, bir DURUMU temsil eder ve tanım gereği her zaman hesaplanabilir.
+#: Listeye ekleme yapmak, "bu alt metrik hiçbir veriye ihtiyaç duymuyor"
+#: iddiasında bulunmaktır — gerekçesiz eklenmemeli.
+SENTETIK_ALT_METRIKLER = {
+    "borcsuz",    # borç YOK: ölçüm değil, olgunun kendisi
+    "hedefsiz",   # 60 günden sonra hedef koymamış olmak: bulgu
+}
+
+
+def t_every_submetric_can_be_none():
+    """Her alt metrik, girdisi yokken DEVRE DIŞI kalabilmelidir."""
+    # K2 ("eksik veri ceza değildir") bir niyet beyanıydı; yapısal garanti
+    # değildi. Üç kez bozuldu ve üçünde de SESSİZCE bozuldu:
+    #   `liquid_balance` 0,0 → tampon 0 puan
+    #   `disc_share` 0,0     → isteğe bağlı pay 100 PUAN
+    #   `dsr` 1,0            → borç servisi en kötü varsayıldı
+    # Hiçbiri test kırmadı çünkü test edilecek bir sözleşme yoktu.
+    # `SubScore.requires` o sözleşmedir; bu test onu denetler.
+    tam = compute_score(base_user())
+    gorulen = set()
+
+    for pillar in tam.pillars:
+        for sub in pillar.subs:
+            gorulen.add(sub.key)
+            if not sub.requires:
+                check(f"bildirimsiz alt metrik gerekçeli mi: {sub.key}",
+                      sub.key in SENTETIK_ALT_METRIKLER,
+                      "requires boş ama sentetik listesinde değil")
+                continue
+
+            # Bildirilen alanlar yokken alt metrik GERÇEKTEN kapanmalı.
+            f = without(base_user(), *sub.requires)
+            r = compute_score(f)
+            pl = next((x for x in r.pillars if x.key == pillar.key), None)
+            if pl is None or not pl.subs:
+                continue                      # bileşen tamamen kapandı — kabul
+            hedef = next((x for x in pl.subs if x.key == sub.key), None)
+            if hedef is None:
+                continue                      # alt metrik hiç üretilmedi — kabul
+            check(f"{pillar.key}/{sub.key}: girdisi yokken devre dışı",
+                  hedef.value is None,
+                  f"requires={sub.requires} ama value={hedef.value}")
+            # Kapalı alt metriğin açıklaması SAYI İÇEREMEZ — ölçmediğin
+            # bir değeri göstermek olurdu. Ama NEDEN ölçülemediğini
+            # anlatabilir ve anlatmalıdır ("gelir kaydı yok"): sunum
+            # katmanının kullanıcıya "bunu neden göremiyorsun" diyebilmesi
+            # bu bildirimin varlık sebeplerinden biri.
+            check(f"{pillar.key}/{sub.key}: kapalıyken sayı göstermez",
+                  not re.search(r"\d", hedef.detail or ""),
+                  f"detail={hedef.detail!r}")
+
+    check("bütün alt metrikler tarandı", len(gorulen) >= 23, f"={len(gorulen)}")
+
+    # Bildirim GERÇEK olmalı: alanı boşaltmak skoru DÜŞÜRMEMELİ.
+    # (Ölçemediğin şey için puan kırmazsın — K2'nin sayısal hâli.)
+    taban = compute_score(base_user())
+    for pillar in tam.pillars:
+        for sub in pillar.subs:
+            if not sub.requires:
+                continue
+            eksik = compute_score(without(base_user(), *sub.requires))
+            check(f"{sub.key}: girdiyi kaldırmak güveni düşürür",
+                  eksik.confidence <= taban.confidence + 1e-9,
+                  f"C {taban.confidence:.3f} -> {eksik.confidence:.3f}")
+
+
+def t_requires_covers_real_inputs():
+    """Bildirim eksiksiz olmalı: bildirilmemiş bir alanı boşaltmak alt
+    metriği sessizce değiştirmemeli."""
+    # Ters yön kontrolü. Yukarıdaki test "bildirdiğin alan gerçekten
+    # gerekli mi" diye sorar; bu test "gerekli olan her alanı bildirdin mi"
+    # diye sorar. İkisi olmadan bildirim dekoratif kalır.
+    taban = compute_score(base_user())
+    izlenen = {"savings": "guvence", "cashflow": "tampon",
+               "discipline": "istege_bagli", "debt": "dsr"}
+    for pk, sk in izlenen.items():
+        p0 = next(x for x in taban.pillars if x.key == pk)
+        s0 = next(x for x in p0.subs if x.key == sk)
+        for alan in s0.requires:
+            r = compute_score(without(base_user(), alan))
+            p1 = next((x for x in r.pillars if x.key == pk), None)
+            if p1 is None or not p1.subs:
+                continue
+            s1 = next((x for x in p1.subs if x.key == sk), None)
+            if s1 is None:
+                continue
+            check(f"{pk}/{sk}: bildirilen '{alan}' gerçekten belirleyici",
+                  s1.value is None,
+                  f"'{alan}' boşaltıldı ama alt metrik hâlâ {s1.value}")
+
+
+
 # ── 5. Güven ve karma ────────────────────────────────────────────────────────
 
 def t_confidence_blending():
@@ -648,6 +742,7 @@ def t_math_helpers():
 TESTS = [t_determinism, t_monotonicity, t_continuity,
          t_missing_data_never_punishes, t_absent_balance_is_not_zero,
          t_undefined_ratios_disable_submetrics,
+         t_every_submetric_can_be_none, t_requires_covers_real_inputs,
          t_smoothing_anchor_uses_measurement, t_pillar_weights_come_from_params,
          t_confidence_blending, t_bounds,
          t_level_bands, t_no_engagement_inputs,

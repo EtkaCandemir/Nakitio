@@ -184,3 +184,53 @@ KATEGORI_TRIYAJ = {
     "aciklama": "Tanımadığımız harcamalar için zorunlu/isteğe bağlı ayrımını "
                 "tahmin ediyoruz. Cevapladıkça tahmin yerini ölçüme bırakır.",
 }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Ölçülemeyen alt metriğin GEREKÇESİ
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# Bir alt metrik kapandığında kullanıcıya "bu bileşen eksik" demek yetmez;
+# NEDEN eksik olduğunu ve NE YAPARSA açılacağını söylemek gerekir. Aksi
+# hâlde belirsizlik gizlenmiş olur (kural S2) ve kullanıcı düzeltemeyeceği
+# bir eksikliğe bakar.
+#
+# Anahtar `SubScore.requires` içindeki `Features` alan adıdır. Motor hangi
+# alanın eksik olduğunu bilir; cümleyi buradan alır.
+
+VERI_YOK_NEDEN: Dict[str, str] = {
+    "liquid_balance":       "Vadesiz hesap bakiyesi görünmüyor.",
+    "ef_liquid":            "Acil durum fonu olarak işaretli bir hesap yok.",
+    "i_net":                "Gelir kaydı görünmüyor.",
+    "i_cv":                 "Gelir oynaklığı için en az üç dönem gerekiyor.",
+    "i_primary_share":      "Gelir kaynakları ayrıştırılamadı.",
+    "e_total":              "Harcama kaydı görünmüyor.",
+    "card_balance":         "Kredi kartı bakiyesi görünmüyor.",
+    "card_limit":           "Kredi kartı limiti girilmemiş.",
+    "debt_trend_3m":        "Borç trendi için üç dönemlik geçmiş gerekiyor.",
+    "s_consistency_months": "Birikim sürekliliği için en az üç dönem gerekiyor.",
+    "real_return_gap":      "Birikimin getirisi hesaplanamadı.",
+    "budget_planned":       "Bütçe belirlenmemiş.",
+    "budget_overrun":       "Bütçe belirlenmemiş.",
+    "limit_categories":     "Kategori limiti konmamış.",
+    "cat_volatility":       "Kategori oynaklığı için daha fazla dönem gerekiyor.",
+    "goal_ontrack":         "Aktif hedef yok.",
+    "goal_consistency":     "Hedef katkı geçmişi henüz oluşmadı.",
+    "goal_required_monthly": "Hedefin aylık katkı planı belirlenmemiş.",
+    "imp_rate":             "Yeterli harcama etiketi yok.",
+    "emo_rate":             "Yeterli harcama etiketi yok.",
+    "night_conc":           "İşlem saatleri görünmüyor.",
+    "regret_rate":          "Harcama sonrası değerlendirme kaydı yok.",
+}
+
+
+def veri_yok_neden(alanlar) -> str:
+    """Eksik alanlardan tek bir gerekçe cümlesi.
+
+    Birden fazla alan eksikse İLK bilineni söylenir — kullanıcıya liste
+    değil, tek bir eyleme dönüştürülebilir cümle verilir.
+    """
+    for a in alanlar:
+        if a in VERI_YOK_NEDEN:
+            return VERI_YOK_NEDEN[a]
+    return ""

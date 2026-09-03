@@ -29,7 +29,44 @@ alt = None if veri_yok else formül(veri)     # 0.0 DEĞİL
 
 `weight_effective` toplamı her zaman tam 100 olmalı.
 
-**Test:** `t_missing_data_never_punishes`
+**Bu kural üç kez SESSİZCE bozuldu** — çünkü bir niyet beyanıydı, yapısal
+bir garanti değildi: `liquid_balance` 0,0 dönüp tamponu sıfırlıyordu,
+`disc_share` 0,0 dönüp isteğe bağlı paydan **100 puan** veriyordu, `dsr`
+1,0 dönüp borcu en kötü varsayıyordu. Hiçbiri test kırmadı, çünkü test
+edilecek bir sözleşme yoktu.
+
+Sözleşme artık `SubScore.requires`: her alt metrik hangi `Features`
+alanlarına ihtiyaç duyduğunu **bildirir**.
+
+```python
+SubScore("guvence", "Acil durum fonu", guvence, P["p3.guvence.w"],
+         detay, requires=("ef_liquid",))
+```
+
+Bildirim üç şey sağlar:
+
+1. `t_every_submetric_can_be_none` bildirilen alanları boşaltır ve alt
+   metriğin GERÇEKTEN `None` döndüğünü denetler. `t_requires_covers_real_inputs`
+   ters yönü sorar: bildirilen alan gerçekten belirleyici mi.
+2. Sunum katmanı "bu metriği neden göremiyorsun" diyebilir — gerekçe
+   cümleleri `metinler.VERI_YOK_NEDEN`dedir (bkz. S5).
+3. Yeni alt metrik eklemek güvenli olur: yalnız ekstreden ölçülebilen bir
+   metrik, manuel giriş kullanıcısında kendiliğinden kapanır. Ölçüldü —
+   manuel yüzeyde 23 alt metriğin 9'u kapanıyor, hiçbiri 0 puan almıyor,
+   güven 0,90 → 0,79 iniyor ve band genişliyor.
+
+`requires` boş bırakmak "her koşulda ölçülebilir" iddiasıdır ve yalnızca
+sentetik alt metrikler için doğrudur (`borcsuz`, `hedefsiz`). Test bunu da
+denetler: bildirimsiz her alt metrik gerekçeli listede olmalıdır.
+
+**Ayrım:** payı sıfır olan oran tanımsız DEĞİLDİR, sıfırdır. `s_deliberate`
+işlemlerden doğrudan ölçülür; "hiç birikim yapmadı" gelir bilinmese de
+bilinen bir olgudur. Bu ayrım olmadan geliri gizlemek olumsuz bir bulguyu
+siler — ölçüldü, +1 puan kazandırıyordu.
+
+**Test:** `t_missing_data_never_punishes`, `t_absent_balance_is_not_zero`,
+`t_undefined_ratios_disable_submetrics`, `t_every_submetric_can_be_none`,
+`t_requires_covers_real_inputs`
 
 ### K3 — Süreksizlik yasak
 

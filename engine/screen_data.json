@@ -75,6 +75,7 @@
                 "detay": ""
               }
             ],
+            "olculemeyenler": [],
             "uyarilar": []
           },
           {
@@ -87,6 +88,20 @@
                 "ad": "Kasıtlı tasarruf oranı",
                 "deger": 0.0,
                 "detay": "%0.0"
+              }
+            ],
+            "olculemeyenler": [
+              {
+                "ad": "Acil durum fonu",
+                "neden": "Acil durum fonu olarak işaretli bir hesap yok."
+              },
+              {
+                "ad": "Tasarruf sürekliliği",
+                "neden": "Birikim sürekliliği için en az üç dönem gerekiyor."
+              },
+              {
+                "ad": "Enflasyona karşı koruma",
+                "neden": "Birikimin getirisi hesaplanamadı."
               }
             ],
             "uyarilar": []
@@ -303,6 +318,12 @@
                 "detay": "ana kaynak %84"
               }
             ],
+            "olculemeyenler": [
+              {
+                "ad": "Gelir istikrarı (CV)",
+                "neden": "Gelir oynaklığı için en az üç dönem gerekiyor."
+              }
+            ],
             "uyarilar": []
           },
           {
@@ -327,6 +348,12 @@
                 "detay": "%6"
               }
             ],
+            "olculemeyenler": [
+              {
+                "ad": "Borç trendi (3 ay)",
+                "neden": "Borç trendi için üç dönemlik geçmiş gerekiyor."
+              }
+            ],
             "uyarilar": []
           },
           {
@@ -344,6 +371,16 @@
                 "ad": "Acil durum fonu",
                 "deger": 41.6,
                 "detay": "0.7 ay"
+              }
+            ],
+            "olculemeyenler": [
+              {
+                "ad": "Tasarruf sürekliliği",
+                "neden": "Birikim sürekliliği için en az üç dönem gerekiyor."
+              },
+              {
+                "ad": "Enflasyona karşı koruma",
+                "neden": "Birikimin getirisi hesaplanamadı."
               }
             ],
             "uyarilar": []
@@ -370,6 +407,12 @@
                 "detay": "%46"
               }
             ],
+            "olculemeyenler": [
+              {
+                "ad": "Kategori oynaklığı",
+                "neden": "Kategori oynaklığı için daha fazla dönem gerekiyor."
+              }
+            ],
             "uyarilar": []
           },
           {
@@ -394,6 +437,7 @@
                 "detay": ""
               }
             ],
+            "olculemeyenler": [],
             "uyarilar": []
           },
           {
@@ -423,6 +467,7 @@
                 "detay": "%14"
               }
             ],
+            "olculemeyenler": [],
             "uyarilar": []
           }
         ],
@@ -935,6 +980,7 @@
                 "detay": "ana kaynak %86"
               }
             ],
+            "olculemeyenler": [],
             "uyarilar": []
           },
           {
@@ -964,6 +1010,7 @@
                 "detay": "-18.1%"
               }
             ],
+            "olculemeyenler": [],
             "uyarilar": []
           },
           {
@@ -986,6 +1033,12 @@
                 "ad": "Tasarruf sürekliliği",
                 "deger": 100.0,
                 "detay": "6/6 ay"
+              }
+            ],
+            "olculemeyenler": [
+              {
+                "ad": "Enflasyona karşı koruma",
+                "neden": "Birikimin getirisi hesaplanamadı."
               }
             ],
             "uyarilar": []
@@ -1017,6 +1070,7 @@
                 "detay": "cv=0.21"
               }
             ],
+            "olculemeyenler": [],
             "uyarilar": []
           },
           {
@@ -1041,6 +1095,7 @@
                 "detay": ""
               }
             ],
+            "olculemeyenler": [],
             "uyarilar": []
           },
           {
@@ -1070,6 +1125,7 @@
                 "detay": "%14"
               }
             ],
+            "olculemeyenler": [],
             "uyarilar": []
           }
         ],

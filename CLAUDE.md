@@ -164,11 +164,11 @@ değişiklik modeli bozar. Ayrıntı: `Docs/CONVENTIONS.md`.
 
 | Süit | Kontrol | Ne garanti eder |
 |---|---|---|
-| `test_invariants.py` | **264** | Yapısal kurallar — determinizm, monotonluk, süreklilik, anti-gaming, adalet |
+| `test_invariants.py` | **338** | Yapısal kurallar — determinizm, monotonluk, süreklilik, anti-gaming, adalet |
 | `test_normalize.py` | **138** | N1–N9 normalizasyon kuralları |
 | `test_ingest.py` | **109** | Ekstre ayrıştırma, tekilleştirme, davranış çıkarımı |
 | `coach_eval.py` | **77** | Koç sayı sadakati, SPK sınırı, ton, akışlar |
-| | **588** | |
+| | **662** | |
 <!-- /OTOMATIK:test-sayilari -->
 
 **Golden vs invariant farkı:** golden testler "bu profil bu skoru alır"
@@ -217,6 +217,7 @@ Her biri gerçekten yaşandı, testle yakalandı ve düzeltildi. Yeniden
 | **Bayat `.pyc`** | `params.py`'de 0,10 yazarken 0,14 import ediliyor | Python önbellek geçerliliğini (mtime **saniye**, boyut) ile ölçer. Aynı boyutta ve aynı saniyede yapılan düzenleme önbelleği tazelemez. `docs_sync.py` her çalıştığında `__pycache__`'i siler |
 | **Bakiye yokluğu sıfır sayılıyor** | Bakiye tutmayan kaynakta `tampon`/`guvence` 0 puan; sağlıklı kullanıcı −7,3, riskli +3,4 (r=−0,93) | `liquid_balance`/`ef_liquid` **Optional**. `sum([])` yokluğu ölçülmüş sıfır gibi gösterir — ayrımı `normalize` yapar. Ölçüt hesabın VARLIĞI, bakiyenin büyüklüğü değil |
 | **Güven alt metrik körlüğü** | Girdi yüzeyinin %37'sini kaybeden kaynak yalnızca 0,09 güven kaybediyor | Kural 2 ÜÇ şey ister: bileşeni kapat, ağırlığı normalize et, **güveni düşür**. `c_pillar` artık açık bileşenin içindeki kapalı alt metriği de sayar |
+| **Sözleşmesiz kural** | "Eksik veri ceza değildir" üç kez sessizce bozuldu; hiçbiri test kırmadı | Kural niyet beyanı değil, BİLDİRİM olmalı. `SubScore.requires` her alt metriğin girdisini söyler; test onu boşaltıp gerçekten kapandığını denetler |
 | **Yazıldı ama bağlanmadı** | `confidence`ın ekstre kademesi ve `smoothing_anchor` üretim yolunda ölüydü | Mekanizma yazmak yetmez, `derive_features` onu ÜRETMELİ. Yeni bir `Features` alanı eklerken "gerçek hat bunu dolduruyor mu" sorusu testle sorulur |
 | **Paydası bilinmeyen oran** | Gelir yoksa `dsr=1,0`, gider yoksa `disc_share=0` → disiplinden **100 puan** | Oran ölçülemiyorsa `None`. Ama PAYI sıfırsa oran sıfırdır: `s_deliberate=0` gelirden bağımsız ölçülmüştür — aksi hâlde geliri gizlemek olumsuz bulguyu siler |
 | **Sabit sayı iki yerde** | Guard `score < 60` yazıyordu, oysa bu `LEVELS`teki bandın alt ucu | Kural değerden değil KAYNAĞINDAN türetilir. İki yerde yazılan sayı sessizce ayrışır |

@@ -20,6 +20,7 @@ Python 3.9+
 from __future__ import annotations
 
 import math
+import dataclasses
 from dataclasses import dataclass, field, asdict
 from typing import Optional, Dict, List, Tuple
 
@@ -282,6 +283,14 @@ class Features:
 # 2. Çıktı sözleşmesi
 # ─────────────────────────────────────────────────────────────────────────────
 
+#: `Features` alan adı → tip metni. `from __future__ import annotations`
+#: yüzünden anotasyonlar metin olarak durur; `_yokluk_degeri` bunu okur.
+_FEATURE_TIPLERI: Dict[str, str] = {
+    f.name: (f.type if isinstance(f.type, str) else str(f.type))
+    for f in dataclasses.fields(Features)
+}
+
+
 @dataclass
 class SubScore:
     key: str
@@ -289,6 +298,25 @@ class SubScore:
     value: Optional[float]        # 0-100, None = devre dışı
     weight: float                 # bileşen içi ağırlık
     detail: str = ""
+
+    #: Bu alt metriği ölçmek için GEREKEN `Features` alanları.
+    #:
+    #: Neden bildirim gerekiyor: "eksik veri ceza değildir" (K2) bir niyet
+    #: beyanıydı, yapısal bir garanti değil. Üç kez bozuldu ve üçünde de
+    #: sessizce bozuldu — `liquid_balance` 0,0 dönüyordu, `disc_share` 0,0
+    #: dönüp 100 puan veriyordu, `dsr` 1,0 dönüyordu. Hiçbiri test kırmadı,
+    #: çünkü test edilecek bir sözleşme yoktu.
+    #:
+    #: Bildirim şunu mümkün kılar:
+    #:   · `t_every_submetric_can_be_none` — bildirilen alanlar yokken alt
+    #:     metrik GERÇEKTEN None dönüyor mu, otomatik denetlenir
+    #:   · sunum katmanı "bu metriği neden göremiyorsun" diyebilir
+    #:   · yeni bir alt metrik eklemek güvenli hâle gelir: yalnız ekstreden
+    #:     ölçülebilen bir metrik, manuel kullanıcıda kendiliğinden kapanır
+    #:
+    #: Boş bırakmak "her koşulda ölçülebilir" demektir ve yalnızca sentetik
+    #: alt metrikler için doğrudur (`borcsuz`, `hedefsiz`).
+    requires: Tuple[str, ...] = ()
 
 
 @dataclass
@@ -303,6 +331,44 @@ class Pillar:
     subs: List[SubScore]
     modifiers: List[str] = field(default_factory=list)
     disabled_reason: str = ""
+
+
+
+def _yokluk_degeri(alan: str) -> object:
+    """Bir `Features` alanının "veri yok" karşılığı.
+
+    `Optional` alanlarda `None`. Değilse tipin nötr değeri (0, 0.0, False) —
+    çünkü o alanlarda yokluk zaten ayrı temsil edilemiyor ve alt metrik
+    kapısı sayısal eşikle kuruluyor (`e_total <= 0` gibi).
+
+    Bu ayrımın kendisi bir borçtur: `Optional` OLMAYAN bir alan, yokluğu
+    ölçülmüş sıfırdan ayıramaz. `liquid_balance` tam bu yüzden Optional
+    yapıldı. Yeni alan eklerken varsayılan tercih Optional olmalıdır.
+    """
+    t = _FEATURE_TIPLERI[alan]
+    if "Optional" in t:
+        return None
+    if "bool" in t:
+        return False
+    if "int" in t:
+        return 0
+    if "float" in t:
+        return 0.0
+    if "Dict" in t:
+        return {}
+    return None
+
+
+def without(f: "Features", *alanlar: str) -> "Features":
+    """`f`nin, adı verilen alanları ÖLÇÜLMEMİŞ olan kopyası.
+
+    Saf fonksiyon. Hem `t_every_submetric_can_be_none` hem karşı-olgusal
+    hesaplar kullanır: "bu veri olmasaydı skor ne olurdu".
+    """
+    d = dataclasses.asdict(f)
+    for a in alanlar:
+        d[a] = _yokluk_degeri(a)
+    return Features(**d)
 
 
 @dataclass
@@ -465,13 +531,17 @@ def pillar_cashflow(f: Features) -> Pillar:
 
     subs = [
         SubScore("marj", "Net nakit akışı marjı", marj, P["p1.marj.w"],
-                 "gelir kaydı yok" if f.i_net <= 0 else f"m={m:+.1%}"),
+                 "gelir kaydı yok" if f.i_net <= 0 else f"m={m:+.1%}",
+                 requires=("i_net", "e_total",)),
         SubScore("istikrar", "Gelir istikrarı (CV)", istikrar, P["p1.istikrar.w"],
-                 "" if f.i_cv is None else f"cv={f.i_cv:.2f}"),
+                 "" if f.i_cv is None else f"cv={f.i_cv:.2f}",
+                 requires=("i_cv",)),
         SubScore("tampon", "Kısa vadeli likidite", tampon, P["p1.tampon.w"],
-                 "" if rw is None else f"{rw:.0f} gün"),
+                 "" if rw is None else f"{rw:.0f} gün",
+                 requires=("liquid_balance",)),
         SubScore("cesitlilik", "Gelir çeşitliliği", cesitlilik, P["p1.cesitlilik.w"],
-                 "" if f.i_primary_share is None else f"ana kaynak %{f.i_primary_share*100:.0f}"),
+                 "" if f.i_primary_share is None else f"ana kaynak %{f.i_primary_share*100:.0f}",
+                 requires=("i_primary_share",)),
     ]
     return _assemble("cashflow", "Nakit Akışı", P["p1.weight"], subs)
 
@@ -513,13 +583,17 @@ def pillar_debt(f: Features) -> Pillar:
 
     subs = [
         SubScore("dsr", "Aylık borç servisi / gelir", dsr, P["p2.dsr.w"],
-                 "" if dsr_v is None else f"DSR=%{dsr_v*100:.1f}"),
+                 "" if dsr_v is None else f"DSR=%{dsr_v*100:.1f}",
+                 requires=("i_net",)),
         SubScore("kart", "Kart kullanım oranı", kart, P["p2.kart.w"],
-                 "" if cu is None else f"%{cu*100:.0f}"),
+                 "" if cu is None else f"%{cu*100:.0f}",
+                 requires=("card_balance", "card_limit",)),
         SubScore("taahhut", "Toplam taahhüt / yıllık gelir", taahhut, P["p2.taahhut.w"],
-                 "" if cr is None else f"%{cr*100:.0f}"),
+                 "" if cr is None else f"%{cr*100:.0f}",
+                 requires=("i_net",)),
         SubScore("trend", "Borç trendi (3 ay)", trend, P["p2.trend.w"],
-                 "" if f.debt_trend_3m is None else f"{f.debt_trend_3m:+.1%}"),
+                 "" if f.debt_trend_3m is None else f"{f.debt_trend_3m:+.1%}",
+                 requires=("debt_trend_3m",)),
     ]
 
     mods = []
@@ -557,13 +631,17 @@ def pillar_savings(f: Features) -> Pillar:
 
     subs = [
         SubScore("oran", "Kasıtlı tasarruf oranı", oran, P["p3.oran.w"],
-                 "" if sr is None else f"%{sr*100:.1f}"),
+                 "" if sr is None else f"%{sr*100:.1f}",
+                 requires=("i_net",)),
         SubScore("guvence", "Acil durum fonu", guvence, P["p3.guvence.w"],
-                 "" if efm is None else f"{efm:.1f} ay"),
+                 "" if efm is None else f"{efm:.1f} ay",
+                 requires=("ef_liquid",)),
         SubScore("sureklilik", "Tasarruf sürekliliği", sureklilik, P["p3.sureklilik.w"],
-                 "" if scm is None else f"{scm}/6 ay"),
+                 "" if scm is None else f"{scm}/6 ay",
+                 requires=("s_consistency_months",)),
         SubScore("reel", "Enflasyona karşı koruma", reel, P["p3.reel.w"],
-                 "" if f.real_return_gap is None else f"{f.real_return_gap:+.1%}"),
+                 "" if f.real_return_gap is None else f"{f.real_return_gap:+.1%}",
+                 requires=("real_return_gap",)),
     ]
     return _assemble("savings", "Tasarruf & Güvence", P["p3.weight"], subs)
 
@@ -592,13 +670,17 @@ def pillar_discipline(f: Features) -> Pillar:
 
     subs = [
         SubScore("butce", "Bütçe uyumu", butce, P["p4.butce.w"],
-                 "" if butce is None else f"aşım {f.budget_overrun:,.0f}/{f.budget_planned:,.0f}"),
+                 "" if butce is None else f"aşım {f.budget_overrun:,.0f}/{f.budget_planned:,.0f}",
+                 requires=("budget_planned", "budget_overrun",)),
         SubScore("limit", "Kategori limitlerine uyum", limit, P["p4.limit.w"],
-                 "" if limit is None else f"{f.limit_breached}/{f.limit_categories} aşıldı"),
+                 "" if limit is None else f"{f.limit_breached}/{f.limit_categories} aşıldı",
+                 requires=("limit_categories",)),
         SubScore("istege_bagli", "İsteğe bağlı harcama payı", istege_bagli,
-                 P["p4.istege_bagli.w"], "" if ds is None else f"%{ds*100:.0f}"),
+                 P["p4.istege_bagli.w"], "" if ds is None else f"%{ds*100:.0f}",
+                 requires=("e_total",)),
         SubScore("oynaklik", "Kategori oynaklığı", oynaklik, P["p4.oynaklik.w"],
-                 "" if f.cat_volatility is None else f"cv={f.cat_volatility:.2f}"),
+                 "" if f.cat_volatility is None else f"cv={f.cat_volatility:.2f}",
+                 requires=("cat_volatility",)),
     ]
     return _assemble("discipline", "Harcama Disiplini", P["p4.weight"], subs)
 
@@ -633,10 +715,13 @@ def pillar_goals(f: Features) -> Pillar:
 
     subs = [
         SubScore("ontrack", "Hedeflerin ilerleme durumu", ontrack, P["p5.ontrack.w"],
-                 "" if ontrack is None else f"%{f.goal_ontrack*100:.0f}"),
+                 "" if ontrack is None else f"%{f.goal_ontrack*100:.0f}",
+                 requires=("goal_ontrack",)),
         SubScore("tutarlilik", "Katkı sürekliliği", tutarlilik, P["p5.tutarlilik.w"],
-                 "" if tutarlilik is None else f"%{f.goal_consistency*100:.0f}"),
-        SubScore("gercekcilik", "Hedef gerçekçiliği", gercekcilik, P["p5.gercekcilik.w"], ""),
+                 "" if tutarlilik is None else f"%{f.goal_consistency*100:.0f}",
+                 requires=("goal_consistency",)),
+        SubScore("gercekcilik", "Hedef gerçekçiliği", gercekcilik, P["p5.gercekcilik.w"], "",
+                 requires=("goal_required_monthly",)),
     ]
     # Nominal ağırlık `P`den okunur. Literal `10.0` yazılıydı: değer bugün
     # eşit olduğu için sessizdi, ama `p5.weight` değiştirildiğinde bu dal
@@ -663,13 +748,17 @@ def pillar_behavior(f: Features) -> Pillar:
 
     subs = [
         SubScore("impuls", "Plansız harcama oranı", impuls, P["p6.impuls.w"],
-                 "" if f.imp_rate is None else f"%{f.imp_rate*100:.0f}"),
+                 "" if f.imp_rate is None else f"%{f.imp_rate*100:.0f}",
+                 requires=("imp_rate",)),
         SubScore("duygusal", "Duygusal harcama payı", duygusal, P["p6.duygusal.w"],
-                 "" if f.emo_rate is None else f"%{f.emo_rate*100:.0f}"),
+                 "" if f.emo_rate is None else f"%{f.emo_rate*100:.0f}",
+                 requires=("emo_rate",)),
         SubScore("gece", "Gece harcama yoğunlaşması", gece, P["p6.gece.w"],
-                 "" if f.night_conc is None else f"%{f.night_conc*100:.0f}"),
+                 "" if f.night_conc is None else f"%{f.night_conc*100:.0f}",
+                 requires=("night_conc",)),
         SubScore("pismanlik", "Harcama sonrası pişmanlık", pismanlik, P["p6.pismanlik.w"],
-                 "" if f.regret_rate is None else f"%{f.regret_rate*100:.0f}"),
+                 "" if f.regret_rate is None else f"%{f.regret_rate*100:.0f}",
+                 requires=("regret_rate",)),
     ]
     return _assemble("behavior", "Finansal Davranış", P["p6.weight"], subs)
 

@@ -24,6 +24,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
+import metinler as MET
 from score_engine import (
     Features, ScoreResult, attribute, compute_score, simulate,
 )
@@ -155,6 +156,15 @@ def get_score_breakdown(ctx: CoachContext) -> Dict[str, Any]:
             "alt_metrikler": [
                 {"ad": s.label, "deger": round(s.value, 1), "detay": s.detail}
                 for s in p.subs if s.value is not None
+            ],
+            # ÖLÇÜLEMEYENLER AYRICA BİLDİRİLİR. Eskiden yalnızca elenirlerdi;
+            # kullanıcı bileşenin neden düşük göründüğünü göremiyordu ve
+            # düzeltebileceği bir eksikliği fark edemiyordu. "Bu bileşen
+            # eksik" demek yetmez, NE YAPARSA açılacağı söylenmeli (S2).
+            # Gerekçe cümleleri `metinler.VERI_YOK_NEDEN`dedir (S5).
+            "olculemeyenler": [
+                {"ad": s.label, "neden": MET.veri_yok_neden(s.requires)}
+                for s in p.subs if s.value is None
             ],
             "uyarilar": p.modifiers,
         })
