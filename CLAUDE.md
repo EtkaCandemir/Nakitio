@@ -95,10 +95,10 @@ saf/deterministiktir.
 ```bash
 cd engine
 
-python3 test_invariants.py     # 191 yapısal kural
-python3 test_normalize.py      # 48 normalizasyon kontrolü
-python3 test_ingest.py         # 90 ekstre + çıkarım kontrolü
-python3 coach_eval.py          # 65 koç vakası + 8 akış testi
+python3 test_invariants.py     # 240 yapısal kural
+python3 test_normalize.py      # 124 normalizasyon kontrolü
+python3 test_ingest.py         # 109 ekstre + çıkarım kontrolü
+python3 coach_eval.py          # 69 koç vakası + akış testleri
 
 python3 golden_profiles.py     # 15 profilin skorları
 python3 fixture_didem.py       # ham işlem → skor, uçtan uca
@@ -164,11 +164,11 @@ değişiklik modeli bozar. Ayrıntı: `Docs/CONVENTIONS.md`.
 
 | Süit | Kontrol | Ne garanti eder |
 |---|---|---|
-| `test_invariants.py` | **191** | Yapısal kurallar — determinizm, monotonluk, süreklilik, anti-gaming, adalet |
-| `test_normalize.py` | **115** | N1–N9 normalizasyon kuralları |
+| `test_invariants.py` | **240** | Yapısal kurallar — determinizm, monotonluk, süreklilik, anti-gaming, adalet |
+| `test_normalize.py` | **124** | N1–N9 normalizasyon kuralları |
 | `test_ingest.py` | **109** | Ekstre ayrıştırma, tekilleştirme, davranış çıkarımı |
 | `coach_eval.py` | **77** | Koç sayı sadakati, SPK sınırı, ton, akışlar |
-| | **492** | |
+| | **550** | |
 <!-- /OTOMATIK:test-sayilari -->
 
 **Golden vs invariant farkı:** golden testler "bu profil bu skoru alır"
@@ -215,6 +215,8 @@ Her biri gerçekten yaşandı, testle yakalandı ve düzeltildi. Yeniden
 | **Seviye eşiğinde float** | Skor 39,6 → hiçbir banda düşmüyor → "Harika gidiyorsun" | Seviye HER ZAMAN gösterilen tam sayıdan türetilir |
 | **Marj sıfır noktasında uçurum** | m=0'da 12,2 puanlık sıçrama | Parçalı fonksiyonların iki dalı birleşme noktasında AYNI değeri vermeli |
 | **Bayat `.pyc`** | `params.py`'de 0,10 yazarken 0,14 import ediliyor | Python önbellek geçerliliğini (mtime **saniye**, boyut) ile ölçer. Aynı boyutta ve aynı saniyede yapılan düzenleme önbelleği tazelemez. `docs_sync.py` her çalıştığında `__pycache__`'i siler |
+| **Bakiye yokluğu sıfır sayılıyor** | Bakiye tutmayan kaynakta `tampon`/`guvence` 0 puan; sağlıklı kullanıcı −7,3, riskli +3,4 (r=−0,93) | `liquid_balance`/`ef_liquid` **Optional**. `sum([])` yokluğu ölçülmüş sıfır gibi gösterir — ayrımı `normalize` yapar. Ölçüt hesabın VARLIĞI, bakiyenin büyüklüğü değil |
+| **Güven alt metrik körlüğü** | Girdi yüzeyinin %37'sini kaybeden kaynak yalnızca 0,09 güven kaybediyor | Kural 2 ÜÇ şey ister: bileşeni kapat, ağırlığı normalize et, **güveni düşür**. `c_pillar` artık açık bileşenin içindeki kapalı alt metriği de sayar |
 | **Tek seferlik olay eğilim gibi** | "Giyim +%148" — oysa tek taksitli alışveriş | Farkındalık kartında yeni taksit planı olan kategoriler ve "Diğer" elenir; sıralama mutlak reel TL artışına göre |
 
 ---

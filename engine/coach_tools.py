@@ -190,7 +190,8 @@ def get_score_change(ctx: CoachContext) -> Dict[str, Any]:
 METRICS: Dict[str, Tuple[str, str, Callable[[Features], Optional[float]]]] = {
     "tasarruf_orani":     ("tasarruf oranı", Kind.PERCENT, lambda f: f.s_rate * 100),
     "nakit_akisi_marji":  ("nakit akışı marjı", Kind.PERCENT, lambda f: f.cf_margin * 100),
-    "acil_fon_ay":        ("acil durum fonu süresi", Kind.MONTHS, lambda f: round(f.ef_months, 1)),
+    "acil_fon_ay":        ("acil durum fonu süresi", Kind.MONTHS,
+                           lambda f: None if f.ef_months is None else round(f.ef_months, 1)),
     "acil_fon_tutar":     ("acil durum fonu", Kind.CURRENCY, lambda f: f.ef_liquid),
     "gelir":              ("aylık net gelir", Kind.CURRENCY, lambda f: f.i_net),
     "gider":              ("aylık gider", Kind.CURRENCY, lambda f: f.e_total),
@@ -308,13 +309,16 @@ def get_risks(ctx: CoachContext) -> Dict[str, Any]:
     if f.kmh_active:
         add("kmh", "yuksek", "kredili mevduat kullanımı aktif")
 
-    m = round(f.ef_months, 1)
-    if m < 1:
-        add("acil_fon", "yuksek", "acil durum fonu 1 aydan az",
-            m, Kind.MONTHS, "acil durum fonu süresi")
-    elif m < 3:
-        add("acil_fon", "orta", "acil durum fonu 3 ayın altında",
-            m, Kind.MONTHS, "acil durum fonu süresi")
+    # Acil fon verisi yoksa risk BİLDİRİLMEZ. Ölçülmemiş bir şeyi "1 aydan az"
+    # diye rapor etmek, koçun sayı üretmesiyle aynı sınıf hatadır.
+    if f.ef_months is not None:
+        m = round(f.ef_months, 1)
+        if m < 1:
+            add("acil_fon", "yuksek", "acil durum fonu 1 aydan az",
+                m, Kind.MONTHS, "acil durum fonu süresi")
+        elif m < 3:
+            add("acil_fon", "orta", "acil durum fonu 3 ayın altında",
+                m, Kind.MONTHS, "acil durum fonu süresi")
 
     dsr = round(f.dsr * 100, 1)
     if f.dsr > 0.40:
@@ -430,8 +434,10 @@ def _a_category_limit(f: Features, p: Dict[str, float]) -> Dict[str, Any]:
 def _a_emergency_fund(f: Features, p: Dict[str, float]) -> Dict[str, Any]:
     m = p["aylik_katki"]
     months = p.get("ay", 3)
+    # Acil fon bilinmiyorsa simülasyon onu SIFIRDAN başlatmaz; alan None
+    # kalır ve güvence alt metriği kapalı kalmaya devam eder.
     return {"s_deliberate": f.s_deliberate + m,
-            "ef_liquid": f.ef_liquid + m * months,
+            "ef_liquid": None if f.ef_liquid is None else f.ef_liquid + m * months,
             "s_consistency_months": min(6, f.s_consistency_months + 1)}
 
 

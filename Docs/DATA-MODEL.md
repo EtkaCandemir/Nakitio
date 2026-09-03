@@ -54,7 +54,7 @@ arındırılmış, amortize edilmiş, iç transferlerden temizlenmiş değerler.
 |---|---|---|
 | `e_total` | `float` | Amortize toplam gider, **nakit görünüm**, 3 pencere medyanı |
 | `e_essential` | `float` | `Σ tutar × essential_weight` — kesirli ağırlıkla |
-| `liquid_balance` | `float` | Vadesiz + nakit hesap bakiyeleri |
+| `liquid_balance` | `float?` | Vadesiz + nakit hesap bakiyeleri. **`None` = likit hesap yok, ölçülemedi** — `tampon` alt metriği devre dışı kalır. `0.0` = hesap var, bakiyesi sıfır (ölçüldü) |
 
 Transfer, kart ödemesi ve iade **dahil değildir**.
 
@@ -63,7 +63,7 @@ Transfer, kart ödemesi ve iade **dahil değildir**.
 | Alan | Tip | Anlam |
 |---|---|---|
 | `s_deliberate` | `float` | **Kasıtlı** birikim — net transfer, değerleme hariç |
-| `ef_liquid` | `float` | Acil durum fonu (is_emergency_fund hesapları) |
+| `ef_liquid` | `float?` | Acil durum fonu (`is_emergency_fund` hesapları). **`None` = böyle hesap yok** — `guvence` alt metriği devre dışı kalır |
 | `s_consistency_months` | `int` | Son 6 pencerenin kaçında pozitif katkı, 6'lık ölçeğe yansıtılmış |
 | `real_return_gap` | `float?` | Yıllık (birikim getirisi − TÜFE). Portföy geçmişi gerektirir |
 
@@ -156,7 +156,8 @@ düşülür (çapa = `prev_score`).
 | `dsr` | `(debt_monthly_service + installment_monthly) / i_net` |
 | `commit_ratio` | `(debt_principal + installment_remaining) / (i_net × 12)` |
 | `card_utilization` | `card_balance / card_limit`; limit yoksa `None` |
-| `runway_days` | `liquid_balance / (e_total / 30)` |
+| `ef_months` | `ef_liquid / e_essential` (paydası 0 ise `e_total`); acil fon yoksa `None` |
+| `runway_days` | `liquid_balance / (e_total / 30)`; bakiye yoksa `None` |
 | `disc_share` | `(e_total − e_essential) / e_total` |
 
 ---

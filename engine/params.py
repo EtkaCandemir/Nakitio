@@ -273,7 +273,7 @@ M: Dict[str, Meta] = {
     "c.cover.w": Meta("Kaynak kapsamı ağırlığı", "Güven", "weight", 0.1, 0.45),
     "c.compl.w": Meta("Kategorizasyon ağırlığı", "Güven", "weight", 0.05, 0.4),
     "c.verif.w": Meta("Gelir doğrulama ağırlığı", "Güven", "weight", 0.0, 0.3),
-    "c.pillar.w": Meta("Aktif bileşen ağırlığı", "Güven", "weight", 0.05, 0.35),
+    "c.pillar.w": Meta("Bileşen + alt metrik kapsamı", "Güven", "weight", 0.05, 0.35),
     "c.hist_tam_gun": Meta("Tam geçmiş (gün)", "Güven", "threshold", 45, 180),
     "c.rampa_gun": Meta("İlk rampa (gün)", "Güven", "gate", 7, 45),
     "c.statement_tavan": Meta("Ekstre kaynağı tavanı", "Güven", "threshold", 0.6, 1.0,

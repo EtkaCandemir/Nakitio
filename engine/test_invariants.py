@@ -21,6 +21,7 @@ from score_engine import (
     Features, compute_score, prior_score, level_of, LEVELS,
     lin, sat, concave, MODEL_VERSION,
 )
+from golden_profiles import PROFILES
 
 FAILS = []
 PASSES = 0
@@ -167,6 +168,108 @@ def t_missing_data_never_punishes():
     d = [p for p in nobudget.pillars if p.key == "discipline"][0]
     check("eksik veri: bütçesiz kullanıcı disiplinden 0 almaz",
           d.enabled and d.score_100 > 0)
+
+
+def t_absent_balance_is_not_zero():
+    """Bakiye YOKLUĞU ile bakiyenin SIFIR olması ayrı şeylerdir."""
+    # Bu test bir hatanın anıtıdır. `liquid_balance` ve `ef_liquid` başta
+    # `float = 0.0` idi; motor "bakiyeyi bilmiyorum" ile "bakiyesi sıfır"
+    # arasında ayrım yapamıyordu. Bakiye tutmayan bir veri kaynağı (manuel
+    # giriş) bağlanınca `tampon` ve `guvence` alt metrikleri 0 puan alıyor,
+    # yani EKSİK VERİ CEZAYA dönüşüyordu. 15 golden profilde ölçüldü:
+    # sağlıklı kullanıcılar -7,3 puan kaybederken riskliler +3,4 puan
+    # kazanıyordu — skor ortalamaya sıkışıyor, ayırt etme gücünü
+    # kaybediyordu (korelasyon r = -0,93).
+    var  = base_user()
+    sifir = base_user(liquid_balance=0.0, ef_liquid=0.0)
+    yok   = base_user(liquid_balance=None, ef_liquid=None)
+
+    r_var, r_sifir, r_yok = map(compute_score, (var, sifir, yok))
+
+    # ── 1. Türetilmişler yokluğu taşımalı ────────────────────────────────
+    check("bakiye yok: runway_days None döner", yok.runway_days is None)
+    check("bakiye yok: ef_months None döner", yok.ef_months is None)
+    check("bakiye sıfır: runway_days SAYI döner (0 gün ölçülmüştür)",
+          sifir.runway_days == 0.0)
+    check("bakiye sıfır: ef_months SAYI döner", sifir.ef_months == 0.0)
+
+    def sub(res, pillar_key, sub_key):
+        pl = [p for p in res.pillars if p.key == pillar_key][0]
+        return pl, [x for x in pl.subs if x.key == sub_key][0]
+
+    # ── 2. Alt metrik DEVRE DIŞI kalmalı, 0 puan almamalı ────────────────
+    p1_yok, tampon_yok = sub(r_yok, "cashflow", "tampon")
+    p3_yok, guvence_yok = sub(r_yok, "savings", "guvence")
+    check("bakiye yok: tampon alt metriği devre dışı", tampon_yok.value is None)
+    check("bakiye yok: güvence alt metriği devre dışı", guvence_yok.value is None)
+
+    _, tampon_sifir = sub(r_sifir, "cashflow", "tampon")
+    _, guvence_sifir = sub(r_sifir, "savings", "guvence")
+    check("bakiye sıfır: tampon ÖLÇÜLÜR (0 puan)", tampon_sifir.value == 0.0)
+    check("bakiye sıfır: güvence ÖLÇÜLÜR (0 puan)", guvence_sifir.value == 0.0)
+
+    # ── 3. Bileşen ayakta kalmalı, ağırlık yeniden dağıtılmalı ───────────
+    check("bakiye yok: nakit akışı bileşeni kapanmaz",
+          p1_yok.enabled and p1_yok.score_100 is not None and p1_yok.score_100 > 0)
+    check("bakiye yok: tasarruf bileşeni kapanmaz",
+          p3_yok.enabled and p3_yok.score_100 is not None and p3_yok.score_100 > 0)
+    check("bakiye yok: ağırlıklar 100'e normalize kalır",
+          abs(sum(p.weight_effective for p in r_yok.pillars) - 100.0) < 1e-9)
+
+    # ── 4. Uydurma metin olmamalı ────────────────────────────────────────
+    check("bakiye yok: tampon açıklaması '0 gün' uydurmaz",
+          tampon_yok.detail == "", f"detail={tampon_yok.detail!r}")
+    check("bakiye yok: güvence açıklaması '0,0 ay' uydurmaz",
+          guvence_yok.detail == "", f"detail={guvence_yok.detail!r}")
+
+    # ── 5. Yokluk, ölçülmüş sıfırdan DAHA KÖTÜ olamaz ────────────────────
+    # 2. kuralın çekirdeği: ölçemediğin şey için puan kırma.
+    check("bakiye yok >= bakiye sıfır (eksik veri ceza değildir)",
+          r_yok.score >= r_sifir.score,
+          f"yok={r_yok.score} < sifir={r_sifir.score}")
+
+    # ── 6. Ama güven DÜŞMELİ ─────────────────────────────────────────────
+    # Kural 2 üç şey ister: bileşeni kapat, ağırlığı normalize et, GÜVENİ
+    # DÜŞÜR. İlk sürümde üçüncüsü yoktu: `c_pillar` yalnız kapalı BİLEŞENİ
+    # sayıyor, açık bir bileşenin içinde kaybolan alt metriği görmüyordu.
+    # Sonuç: girdi yüzeyinin %37'sini kaybeden bir kaynak yalnızca 0,09
+    # güven kaybediyordu — motor kör olduğunu bilmiyordu.
+    check("bakiye yok: güven düşer", r_yok.confidence < r_var.confidence,
+          f"C {r_var.confidence:.3f} -> {r_yok.confidence:.3f}")
+    check("bakiye yok: band genişler",
+          (r_yok.band[1] - r_yok.band[0]) >= (r_var.band[1] - r_var.band[0]))
+
+    # ── 7. Ölçülmemiş şey maddi olay olarak bildirilemez ─────────────────
+    check("bakiye yok: 'acil durum fonu kritik' olayı üretilmez",
+          not any("acil durum fonu" in e for e in r_yok.material_events),
+          str(r_yok.material_events))
+    check("bakiye sıfır: 'acil durum fonu kritik' olayı ÜRETİLİR",
+          any("acil durum fonu" in e for e in r_sifir.material_events),
+          str(r_sifir.material_events))
+
+    # ── 8. Sistematik sıkışma olmamalı ───────────────────────────────────
+    # Asıl hata buydu: sapma gürültü değil, ortalamaya doğru sistematik
+    # çekimdi. Bakiyeyi kaldırınca sağlıklı profiller düşüyor, riskliler
+    # yükseliyordu. Korelasyon -0,93'ten -0,44'e indi; eşik ona göre.
+    import statistics as _st
+    xs, ys = [], []
+    for _k, (_f, _n, _e) in PROFILES.items():
+        t = compute_score(_f)
+        u = compute_score(dataclasses.replace(_f, liquid_balance=None, ef_liquid=None))
+        xs.append(t.score); ys.append(u.score - t.score)
+        check(f"golden/{_k}: bakiye yokluğu ölçülmüş sıfırdan kötü değil",
+              u.score >= compute_score(dataclasses.replace(
+                  _f, liquid_balance=0.0, ef_liquid=0.0)).score)
+        check(f"golden/{_k}: bakiye yokluğu güveni düşürür",
+              u.confidence < t.confidence)
+    mx, my = _st.fmean(xs), _st.fmean(ys)
+    cov = sum((a - mx) * (b - my) for a, b in zip(xs, ys))
+    sx = math.sqrt(sum((a - mx) ** 2 for a in xs))
+    sy = math.sqrt(sum((b - my) ** 2 for b in ys))
+    r = cov / (sx * sy) if sx and sy else 0.0
+    check("bakiye yokluğu skoru ortalamaya SİSTEMATİK olarak sıkıştırmaz",
+          r > -0.60, f"korelasyon={r:+.2f} (düzeltme öncesi -0,93)")
+
 
 
 # ── 5. Güven ve karma ────────────────────────────────────────────────────────
@@ -423,7 +526,8 @@ def t_math_helpers():
 
 
 TESTS = [t_determinism, t_monotonicity, t_continuity,
-         t_missing_data_never_punishes, t_confidence_blending, t_bounds,
+         t_missing_data_never_punishes, t_absent_balance_is_not_zero,
+         t_confidence_blending, t_bounds,
          t_level_bands, t_no_engagement_inputs,
          t_self_report_cannot_raise_pillars, t_asymmetric_smoothing,
          t_confidence_change_is_not_smoothed,

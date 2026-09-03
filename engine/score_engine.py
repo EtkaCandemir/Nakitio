@@ -98,11 +98,23 @@ class Features:
     # ── Gider ─────────────────────────────────────────────────────────────
     e_total: float = 0.0                  # amortize toplam gider (transfer hariç)
     e_essential: float = 0.0              # zorunlu gider (kira/fatura/ulaşım/sağlık/kredi)
-    liquid_balance: float = 0.0           # anında erişilebilir bakiye (vadesiz + nakit)
+    #: Anında erişilebilir bakiye (vadesiz + nakit).
+    #:
+    #: `Optional` OLMASI ZORUNLUDUR. İlk sürümde `float = 0.0` yazılmıştı ve
+    #: motor "bakiyeyi bilmiyorum" ile "bakiyesi sıfır" arasında ayrım
+    #: yapamıyordu. Bakiye tutmayan bir veri kaynağı (manuel giriş) bağlanınca
+    #: `tampon` alt metriği 0 puan alıyor, yani EKSİK VERİ CEZAYA dönüşüyordu
+    #: — 2. kuralın doğrudan ihlali. Ölçüldü: 15 golden profilde sapmanın
+    #: %54'ü tek başına bu alandan geliyordu, sağlıklı kullanıcılar -7,3 puan
+    #: kaybederken riskliler +3,4 puan kazanıyordu (r = -0,93).
+    liquid_balance: Optional[float] = None
 
     # ── Tasarruf & güvence ────────────────────────────────────────────────
     s_deliberate: float = 0.0             # KASITLI birikim (net transfer, değerleme hariç)
-    ef_liquid: float = 0.0                # acil durum fonu likit tutarı
+    #: Acil durum fonu likit tutarı. `liquid_balance` ile aynı gerekçeyle
+    #: `Optional` — yokluğu `guvence` alt metriğini devre dışı bırakır, 0 puan
+    #: vermez.
+    ef_liquid: Optional[float] = None
     s_consistency_months: int = 0         # son 6 ayın kaçında s_deliberate > 0
     real_return_gap: Optional[float] = None   # yıllık (birikim getirisi − TÜFE)
 
@@ -181,7 +193,10 @@ class Features:
         return self.s_deliberate / self.i_net
 
     @property
-    def ef_months(self) -> float:
+    def ef_months(self) -> Optional[float]:
+        """Acil fonun kaç aylık gideri karşıladığı. None = ölçülemedi."""
+        if self.ef_liquid is None:
+            return None
         base = self.e_essential if self.e_essential > 0 else self.e_total
         if base <= 0:
             return 0.0
@@ -208,7 +223,10 @@ class Features:
         return self.card_balance / self.card_limit
 
     @property
-    def runway_days(self) -> float:
+    def runway_days(self) -> Optional[float]:
+        """Mevcut bakiyenin kaç gün yettiği. None = bakiye verisi yok."""
+        if self.liquid_balance is None:
+            return None
         if self.e_total <= 0:
             return 90.0
         return self.liquid_balance / (self.e_total / 30.0)
@@ -386,7 +404,10 @@ def pillar_cashflow(f: Features) -> Pillar:
         marj = max(0.0, P["p1.breakeven"] * (1.0 + m / P["p1.marj.neg_sifir"]))
 
     istikrar = None if f.i_cv is None else lin(f.i_cv, P["p1.istikrar.sifir"], P["p1.istikrar.yuz"])
-    tampon = concave(f.runway_days, P["p1.tampon.tam_gun"], P["p1.tampon.us"])
+    # Bakiye verisi yoksa tampon ÖLÇÜLEMEZ. Eskiden `runway_days` 0 döndüğü
+    # için 0 puan veriliyordu; bu "parası yok" demekti, oysa "bilmiyoruz"du.
+    rw = f.runway_days
+    tampon = None if rw is None else concave(rw, P["p1.tampon.tam_gun"], P["p1.tampon.us"])
 
     cesitlilik = None
     if f.i_primary_share is not None:
@@ -400,7 +421,7 @@ def pillar_cashflow(f: Features) -> Pillar:
         SubScore("istikrar", "Gelir istikrarı (CV)", istikrar, P["p1.istikrar.w"],
                  "" if f.i_cv is None else f"cv={f.i_cv:.2f}"),
         SubScore("tampon", "Kısa vadeli likidite", tampon, P["p1.tampon.w"],
-                 f"{f.runway_days:.0f} gün"),
+                 "" if rw is None else f"{rw:.0f} gün"),
         SubScore("cesitlilik", "Gelir çeşitliliği", cesitlilik, P["p1.cesitlilik.w"],
                  "" if f.i_primary_share is None else f"ana kaynak %{f.i_primary_share*100:.0f}"),
     ]
@@ -467,7 +488,9 @@ def pillar_debt(f: Features) -> Pillar:
 
 def pillar_savings(f: Features) -> Pillar:
     oran = sat(f.s_rate, P["p3.oran.k"]) if f.s_rate > 0 else 0.0   # %10 -> 63, %20 -> 86
-    guvence = concave(f.ef_months, P["p3.guvence.tam_ay"], P["p3.guvence.us"])              # 1 ay -> 46, 3 ay -> 76
+    # Acil fon verisi yoksa güvence ÖLÇÜLEMEZ (bkz. `tampon`, aynı hata).
+    efm = f.ef_months
+    guvence = None if efm is None else concave(efm, P["p3.guvence.tam_ay"], P["p3.guvence.us"])   # 1 ay -> 46, 3 ay -> 76
     sureklilik = 100.0 * clamp(f.s_consistency_months / 6.0)
 
     reel = None
@@ -478,7 +501,8 @@ def pillar_savings(f: Features) -> Pillar:
 
     subs = [
         SubScore("oran", "Kasıtlı tasarruf oranı", oran, P["p3.oran.w"], f"%{f.s_rate*100:.1f}"),
-        SubScore("guvence", "Acil durum fonu", guvence, P["p3.guvence.w"], f"{f.ef_months:.1f} ay"),
+        SubScore("guvence", "Acil durum fonu", guvence, P["p3.guvence.w"],
+                 "" if efm is None else f"{efm:.1f} ay"),
         SubScore("sureklilik", "Tasarruf sürekliliği", sureklilik, P["p3.sureklilik.w"],
                  f"{f.s_consistency_months}/6 ay"),
         SubScore("reel", "Enflasyona karşı koruma", reel, P["p3.reel.w"],
@@ -638,10 +662,28 @@ def confidence(f: Features, pillars: List[Pillar]) -> Tuple[float, Dict[str, flo
     else:
         c_verif = P["c.verif_varsayilan"]   # beyan yok / doğrulanamıyor -> nötr-düşük
 
-    # Aktif bileşen oranı: veri eksikliğinden kapanan bileşenler güveni düşürür.
+    # Bileşen kapsamı: kapanan bileşenler VE açık bir bileşenin içinde verisi
+    # olmayan ALT METRİKLER güveni düşürür.
+    #
+    # İlk sürümde yalnızca `p.enabled` sayılıyordu. Bir bileşen dört alt
+    # metriğinin üçünü kaybetse bile "tam kapsamlı" görünüyordu. Sonuç:
+    # bakiye tutmayan bir veri kaynağı P1'in tamponunu ve P3'ün güvencesini
+    # kaybediyor, ama güven 0,88'de kalıyordu — motor kör olduğunu bilmiyordu.
+    # Ölçüldü: girdi yüzeyinin %37'sini kaybeden bir kaynak yalnızca 0,09
+    # güven kaybediyordu.
+    #
+    # 2. kural üç şey ister: bileşeni devre dışı bırak, ağırlıkları yeniden
+    # normalize et, GÜVENİ DÜŞÜR. İlk ikisi `_assemble`da yapılıyordu;
+    # üçüncüsü burada eksikti.
     total_w = sum(p.weight_nominal for p in pillars)
-    active_w = sum(p.weight_nominal for p in pillars if p.enabled)
-    c_pillar = active_w / total_w if total_w else 0.0
+    covered_w = 0.0
+    for p_ in pillars:
+        if not p_.enabled:
+            continue
+        sub_w = sum(x.weight for x in p_.subs)
+        act_w = sum(x.weight for x in p_.subs if x.value is not None)
+        covered_w += p_.weight_nominal * ((act_w / sub_w) if sub_w > 0 else 1.0)
+    c_pillar = covered_w / total_w if total_w else 0.0
 
     c = (P["c.hist.w"] * c_hist + P["c.cover.w"] * c_cover
          + P["c.compl.w"] * c_compl + P["c.verif.w"] * c_verif
@@ -726,7 +768,10 @@ def detect_material_events(f: Features) -> List[str]:
         ev.append("gelirde %40+ düşüş")
     if f.i_net <= 0 and f.e_total > 0 and f.days_of_data >= 30:
         ev.append("gelir kaydı yok")
-    if f.ef_months < 0.25 and f.e_essential > 0:
+    # Maddi olay ÖLÇÜLMÜŞ bir olgudur. Acil fon verisi yokken "kritik" demek
+    # kullanıcıya olmayan bir bulguyu bildirmek olur — üstelik bu olay
+    # yumuşatmanın aşağı sınırını kaldırdığı için skoru serbest bırakır.
+    if f.ef_months is not None and f.ef_months < 0.25 and f.e_essential > 0:
         ev.append("acil durum fonu kritik seviyede")
     return ev
 

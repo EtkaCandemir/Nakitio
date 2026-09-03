@@ -341,9 +341,9 @@ gösterilen "Temmuz 2026" etiketi ayrı bir **sunum** meselesidir.
 | `i_primary_share` | W0–W2 | — | en büyük kaynağın payı |
 | `e_total` | W0–W2 | **nakit** | gider toplamlarının medyanı |
 | `e_essential` | W0–W2 | **nakit** | `Σ tutar × essential_weight` medyanı |
-| `liquid_balance` | anlık | — | vadesiz + nakit hesap bakiyeleri |
+| `liquid_balance` | anlık | — | vadesiz + nakit hesap bakiyeleri; **böyle hesap yoksa `None`** (`sum([])` sıfır döndüğü için ayrım burada yapılır) |
 | `s_deliberate` | W0–W2 | — | birikim hesaplarına **net katkı** medyanı |
-| `ef_liquid` | anlık | — | `is_emergency_fund` hesapların bakiyesi |
+| `ef_liquid` | anlık | — | `is_emergency_fund` hesapların bakiyesi; **böyle hesap yoksa `None`** |
 | `s_consistency_months` | aktif pencereler | — | pozitif ay sayısı, 6'lık ölçeğe yansıtılır |
 | `debt_principal` | anlık | — | krediler + döner kart borcu (**taksit hariç**) |
 | `debt_monthly_service` | anlık | — | `Liability.monthly_payment` toplamı |

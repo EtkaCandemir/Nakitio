@@ -60,22 +60,13 @@
         "bilesenler": [
           {
             "bilesen": "Nakit Akışı",
-            "puan": 31.2,
-            "azami": 31.2,
-            "yuzde": 100.0,
-            "alt_metrikler": [
-              {
-                "ad": "Kısa vadeli likidite",
-                "deger": 100.0,
-                "detay": "90 gün"
-              }
-            ],
-            "uyarilar": []
+            "durum": "devre dışı",
+            "neden": "hiçbir alt metrik hesaplanamadı"
           },
           {
             "bilesen": "Borç Yükü",
-            "puan": 25.0,
-            "azami": 25.0,
+            "puan": 36.4,
+            "azami": 36.4,
             "yuzde": 100.0,
             "alt_metrikler": [
               {
@@ -89,18 +80,13 @@
           {
             "bilesen": "Tasarruf & Güvence",
             "puan": 0.0,
-            "azami": 25.0,
+            "azami": 36.4,
             "yuzde": 0.0,
             "alt_metrikler": [
               {
                 "ad": "Kasıtlı tasarruf oranı",
                 "deger": 0.0,
                 "detay": "%0.0"
-              },
-              {
-                "ad": "Acil durum fonu",
-                "deger": 0.0,
-                "detay": "0.0 ay"
               },
               {
                 "ad": "Tasarruf sürekliliği",
@@ -112,8 +98,8 @@
           },
           {
             "bilesen": "Harcama Disiplini",
-            "puan": 18.8,
-            "azami": 18.8,
+            "puan": 27.3,
+            "azami": 27.3,
             "yuzde": 100.0,
             "alt_metrikler": [
               {
@@ -143,7 +129,7 @@
           "skor": 46,
           "tasarruf_orani": "%0,0",
           "korunan_tutar": "₺0",
-          "guvence_suresi_ay": 0.0
+          "guvence_suresi_ay": null
         },
         "gelir_gider": {
           "gelir": "₺0",
@@ -156,12 +142,6 @@
         "kategoriler": null,
         "davranis": null,
         "riskler": [
-          {
-            "alan": "acil_fon",
-            "seviye": "yuksek",
-            "aciklama": "acil durum fonu 1 aydan az",
-            "deger": 0.0
-          },
           {
             "alan": "borc",
             "seviye": "yuksek",
@@ -213,7 +193,7 @@
           "seviye": "Gelişiyor",
           "mesaj": "İyi bir başlangıç var, düzenli devam etmek önemli.",
           "degisim": null,
-          "guven": 0.6,
+          "guven": 0.58,
           "guven_etiketi": "Orta",
           "alt_not": "Veri arttıkça bu aralık daralacak.",
           "bant_aciklama": "Skorunu tek sayı yerine aralık olarak gösteriyoruz, çünkü elimizdeki veri henüz kesin bir sonuç için yeterli değil.",
@@ -318,7 +298,7 @@
         ],
         "seviye": "Gelişiyor",
         "asama": "Geçiş Skoru",
-        "guven": 0.6,
+        "guven": 0.58,
         "veri_yeterliligi": "Orta",
         "hesaplama_notu": "30 günlük veriye göre hesaplandı",
         "bilesenler": [
@@ -526,8 +506,8 @@
           {
             "aksiyon": "Kategori limiti koy",
             "zorluk": 2,
-            "kumulatif_skor": 71,
-            "ek_etki": 2,
+            "kumulatif_skor": 70,
+            "ek_etki": 1,
             "parametreler": {
               "aylik_tasarruf": 590.0
             }
@@ -536,19 +516,19 @@
             "aksiyon": "Acil durum fonuna düzenli katkı",
             "zorluk": 2,
             "kumulatif_skor": 72,
-            "ek_etki": 1,
+            "ek_etki": 2,
             "parametreler": {
               "aylik_katki": 1730.0,
               "ay": 3
             }
           },
           {
-            "aksiyon": "Kullanılmayan aboneliği iptal et",
-            "zorluk": 1,
+            "aksiyon": "Plansız harcamayı azalt",
+            "zorluk": 3,
             "kumulatif_skor": 72,
             "ek_etki": 0,
             "parametreler": {
-              "aylik_tasarruf": 200.0
+              "hedef_oran": 0.05
             }
           }
         ],
@@ -833,16 +813,16 @@
         "skor_karti": {
           "baslik": "Finansal Sağlık Skoru",
           "bant_olarak_sun": false,
-          "skor": 74,
+          "skor": 73,
           "band": [
-            72,
-            76
+            71,
+            75
           ],
-          "goster": "74",
+          "goster": "73",
           "seviye_goster": true,
           "seviye": "Gelişiyor",
           "mesaj": "İyi bir başlangıç var, düzenli devam etmek önemli.",
-          "degisim": 3,
+          "degisim": 2,
           "guven": 0.9,
           "guven_etiketi": "Yüksek",
           "alt_not": null,
@@ -943,10 +923,10 @@
         }
       },
       "skor_raporu": {
-        "skor": 74,
+        "skor": 73,
         "band": [
-          72,
-          76
+          71,
+          75
         ],
         "seviye": "Gelişiyor",
         "asama": "Finansal Sağlık Skoru",
@@ -1124,7 +1104,7 @@
       },
       "analiz": {
         "genel_bakis": {
-          "skor": 74,
+          "skor": 73,
           "tasarruf_orani": "%19,0",
           "korunan_tutar": "₺8.426",
           "guvence_suresi_ay": 0.6
@@ -1202,18 +1182,28 @@
         }
       },
       "plan": {
-        "skor_simdi": 74,
-        "skor_plan_sonrasi": 78,
+        "skor_simdi": 73,
+        "skor_plan_sonrasi": 77,
         "toplam_etki": 4,
         "ufuk_ay": 3,
         "adimlar": [
           {
             "aksiyon": "Kategori limiti koy",
             "zorluk": 2,
-            "kumulatif_skor": 76,
+            "kumulatif_skor": 75,
             "ek_etki": 2,
             "parametreler": {
               "aylik_tasarruf": 580.0
+            }
+          },
+          {
+            "aksiyon": "Acil durum fonuna düzenli katkı",
+            "zorluk": 2,
+            "kumulatif_skor": 76,
+            "ek_etki": 1,
+            "parametreler": {
+              "aylik_katki": 1690.0,
+              "ay": 3
             }
           },
           {
@@ -1223,16 +1213,6 @@
             "ek_etki": 1,
             "parametreler": {
               "hedef_oran": 0.05
-            }
-          },
-          {
-            "aksiyon": "Acil durum fonuna düzenli katkı",
-            "zorluk": 2,
-            "kumulatif_skor": 78,
-            "ek_etki": 1,
-            "parametreler": {
-              "aylik_katki": 1690.0,
-              "ay": 3
             }
           }
         ],

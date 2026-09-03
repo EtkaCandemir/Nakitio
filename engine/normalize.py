@@ -1246,8 +1246,18 @@ def derive_features(ledger: Ledger) -> Features:
     e_essential = _median(ess_w[:3])
 
     # ── Bakiyeler ──────────────────────────────────────────────────────
-    liquid = sum(a.balance for a in raw.accounts if a.type in LIQUID_TYPES)
-    ef = sum(a.balance for a in raw.accounts if a.is_emergency_fund)
+    #
+    # HİÇ hesap yoksa `sum()` 0,0 döner ve bu, "bakiyesi sıfır" ile
+    # karıştırılır. Motor bu ikisini artık ayırt ediyor (`liquid_balance`
+    # Optional), o yüzden ayrımı BURADA yapmak zorundayız — yoksa
+    # Optional alan gerçek hatta hiç None almaz ve düzeltme ölü kalır.
+    #
+    # Ölçüt hesabın VARLIĞIDIR, bakiyenin büyüklüğü değil: vadesiz hesabı
+    # olan ama bakiyesi sıfıra inmiş kullanıcı ölçülmüştür ve 0,0 alır.
+    _likit = [a.balance for a in raw.accounts if a.type in LIQUID_TYPES]
+    _ef = [a.balance for a in raw.accounts if a.is_emergency_fund]
+    liquid = sum(_likit) if _likit else None
+    ef = sum(_ef) if _ef else None
 
     # ── Tasarruf ───────────────────────────────────────────────────────
     sav_w = [ledger.savings_flow(w) for w in W]

@@ -19,6 +19,9 @@ from data_model import (
     CPISeries,
     Goal, IncomeDeclaration, Liability, RawData, Transaction, TxnKind,
 )
+import dataclasses
+
+from score_engine import compute_score
 from normalize import (
     Ledger, build_features, normalize, real_value, windows,
     _merchant_key, active_windows, select_category_triage,
@@ -878,6 +881,55 @@ def t_end_to_end_sanity():
           feats.categorized_ratio < 1.0, f"%{feats.categorized_ratio*100:.0f}")
 
 
+def t_bakiye_yoklugu_none_gecer():
+    """Hesap YOKSA bakiye None, hesap VARSA sıfır bakiye 0,0 geçmeli."""
+    # Motor artık "bakiyeyi bilmiyorum" ile "bakiyesi sıfır"ı ayırt ediyor
+    # (`liquid_balance: Optional`). Ama ayrımı BURADA yapmazsak Optional alan
+    # gerçek hatta hiç None almaz ve düzeltme ölü kalır: `sum([])` sessizce
+    # 0,0 döner ve yokluğu ölçülmüş sıfır gibi gösterir.
+    #
+    # Ölçüt hesabın VARLIĞIDIR, bakiyenin büyüklüğü değil.
+    txns = [T("ch", d, -900, "MIGROS TIC", "POS") for d in (5, 12, 20, 34, 48, 62)] + \
+           [T("ch", d, 30_000, "ACME", "MAAS ODEMESI") for d in (3, 33, 63)]
+
+    # (a) Yalnız kart ekstresi yüklenmiş — likit hesap yok, acil fon yok.
+    kart_txns = [T("cc", d, -900, "MIGROS TIC", "POS")
+                 for d in (5, 12, 20, 34, 48, 62)]
+    f_yok, _ = build_features(RD([_cc()], kart_txns), AS_OF)
+    check("bakiye: likit hesap yoksa liquid_balance None",
+          f_yok.liquid_balance is None, f"={f_yok.liquid_balance!r}")
+    check("bakiye: acil fon hesabı yoksa ef_liquid None",
+          f_yok.ef_liquid is None, f"={f_yok.ef_liquid!r}")
+    check("bakiye: yokluk türetilmişlere taşınır",
+          f_yok.runway_days is None and f_yok.ef_months is None)
+
+    # (b) Likit hesap var ama bakiyesi sıfıra inmiş — ÖLÇÜLMÜŞTÜR.
+    bos = Account("ch", AccountType.CHECKING, balance=0.0, is_linked=True)
+    f_sifir, _ = build_features(RD([bos], txns), AS_OF)
+    check("bakiye: hesap var, bakiye 0 ise liquid_balance 0,0 (None değil)",
+          f_sifir.liquid_balance == 0.0, f"={f_sifir.liquid_balance!r}")
+    check("bakiye: ölçülmüş sıfır türetilmişlerde de sayıdır",
+          f_sifir.runway_days == 0.0)
+
+    # (c) Normal durum bozulmadı. SAVINGS likit DEĞİLDİR (LIQUID_TYPES).
+    f_var, _ = build_features(RD([CH, SAV], txns), AS_OF)
+    check("bakiye: likit toplam yalnız vadesiz/nakitten gelir",
+          f_var.liquid_balance == CH.balance, f"={f_var.liquid_balance}")
+    check("bakiye: acil fon işaretli hesap ef_liquid'e gider",
+          f_var.ef_liquid == SAV.balance, f"={f_var.ef_liquid}")
+
+    # (d) Aynı kullanıcıdan bakiyeyi ÇEKİNCE güven düşmeli, skor çökmemeli.
+    # (Yalnız bakiye değişkeni izole edilir; hesap kompozisyonu sabit kalır.)
+    r_var = compute_score(f_var)
+    r_yok = compute_score(dataclasses.replace(f_var, liquid_balance=None,
+                                              ef_liquid=None))
+    check("bakiye: bakiye çekilince nakit akışı bileşeni kapanmaz",
+          [p for p in r_yok.pillars if p.key == "cashflow"][0].enabled)
+    check("bakiye: bakiye çekilince güven düşer",
+          r_yok.confidence < r_var.confidence,
+          f"C {r_var.confidence:.3f} -> {r_yok.confidence:.3f}")
+
+
 TESTS = [t_n1_internal_transfer, t_n1_no_false_match,
          t_n2_linked_card_no_double_count, t_n2_unlinked_card_is_proxy,
          t_n3_installments, t_n3_followups_not_double_counted,
@@ -896,6 +948,7 @@ TESTS = [t_n1_internal_transfer, t_n1_no_false_match,
          t_category_version_fingerprint,
          t_kategori_telemetrisi_tutar_agirlikli,
          t_short_history_not_penalized,
+         t_bakiye_yoklugu_none_gecer,
          t_end_to_end_determinism, t_end_to_end_sanity]
 
 

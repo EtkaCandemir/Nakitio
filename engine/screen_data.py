@@ -165,7 +165,7 @@ def screen_home(ctx: CoachContext, ledger: Optional[Ledger],
         "korunan": tl(f.i_net - f.e_total), "korunan_ham": round(f.i_net - f.e_total),
         "tasarruf_orani": pct(f.s_rate * 100, 1),
         "tasarruf_orani_ham": round(f.s_rate * 100, 1),
-        "acil_fon_ay": round(f.ef_months, 1),
+        "acil_fon_ay": None if f.ef_months is None else round(f.ef_months, 1),
     } if f.i_net > 0 else None
 
     return {
@@ -281,6 +281,11 @@ def guvence_kademe(ctx: CoachContext) -> Optional[Dict[str, Any]]:
     k1_ay = _P["p3.guvence.tam_ay"]
     k2_ay = GUVENCE_ILERI_AY
     mevcut = f.ef_months
+    # Acil fon ölçülmediyse güvence kartı GÖSTERİLMEZ. İlerleme yüzdesi,
+    # kalan tutar ve "kaç ayda ulaşırsın" — hepsi olmayan bir bakiyeden
+    # türerdi ve kullanıcıya uydurma bir ilerleme gösterirdi.
+    if mevcut is None:
+        return None
 
     def kademe(no, ay, ad, alt, skora_dahil):
         hedef = aylik * ay
@@ -377,7 +382,7 @@ def screen_analysis(ctx: CoachContext, ledger: Optional[Ledger]) -> Dict[str, An
             "skor": ctx.score.score,
             "tasarruf_orani": pct(f.s_rate * 100, 1),
             "korunan_tutar": tl(f.i_net - f.e_total),
-            "guvence_suresi_ay": round(f.ef_months, 1),
+            "guvence_suresi_ay": None if f.ef_months is None else round(f.ef_months, 1),
         },
         "gelir_gider": {
             "gelir": tl(f.i_net), "gider": tl(f.e_total),
@@ -579,7 +584,8 @@ def state_olgun() -> Dict[str, Any]:
     f = dataclasses.replace(f, data_source="statement", accounts_linked=0,
                             statement_coverage=5 / 6)
     prev = dataclasses.replace(f, s_deliberate=f.s_deliberate * 0.7,
-                               ef_liquid=f.ef_liquid * 0.6, prev_score=None)
+                               ef_liquid=None if f.ef_liquid is None else f.ef_liquid * 0.6,
+                               prev_score=None)
     return _bundle(f, led, DEMO_TODAY, prev=prev)
 
 

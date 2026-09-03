@@ -139,7 +139,7 @@ C = clamp(C, 0, 1)
 | `c_kapsam` | **kaynağa göre** — aşağıda |
 | `c_bütünlük` | `categorized_ratio` |
 | `c_doğrulama` | `1 − |beyan − gözlem| / beyan`; beyan yoksa 0,40 |
-| `c_bileşen` | aktif bileşen ağırlığı / toplam ağırlık |
+| `c_bileşen` | Σ(bileşen ağırlığı × alt metrik kapsamı) / toplam ağırlık — kapalı bileşen 0 sayılır, AÇIK bileşenin içinde verisi olmayan alt metrik de kapsamı düşürür |
 
 ### `c_kapsam` kademeleri — bu bir TAVAN, taban değil
 

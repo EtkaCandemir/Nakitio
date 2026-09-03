@@ -47,7 +47,7 @@ def ctx_didem() -> CoachContext:
     feats, ledger = build_features(build_raw(), AS_OF)
     prev = Features(**{**feats.__dict__, "prev_score": None})
     prev.s_deliberate = feats.s_deliberate * 0.7
-    prev.ef_liquid = feats.ef_liquid * 0.6
+    prev.ef_liquid = None if feats.ef_liquid is None else feats.ef_liquid * 0.6
     return build_context(feats, prev_features=prev, ledger=ledger, as_of=AS_OF)
 
 

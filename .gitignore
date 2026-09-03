@@ -14,3 +14,8 @@ venv/
 # Geçici
 *.log
 .pytest_cache/
+
+# Android derleme çıktısı — Ahmet'in Flutter tarafından gelen APK'lar
+# (release build, ~77 MB; depoda binary tutulmaz)
+*.apk
+*.aab

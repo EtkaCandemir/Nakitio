@@ -68,8 +68,12 @@ Acil fon örneği (`F=3`, `p=0.6`):
 
 ```
 m           = (i_net − e_total) / i_net          ← 3 pencerelik medyan
-runway_gün  = liquid_balance / (e_total / 30)
+runway_gün  = liquid_balance / (e_total / 30)      ← bakiye None ise tampon KAPALI
 ```
+
+`liquid_balance` `None` olduğunda `tampon` alt metriği hesaplanmaz; ağırlığı
+`marj`, `istikrar` ve `cesitlilik` arasında yeniden dağıtılır ve güven düşer.
+Sıfır puan **verilmez** — ölçemediğimiz şey için puan kırmayız.
 
 **Başabaş noktası 20 puandır, 0 değil.** İki dal `m = 0`'da AYNI değeri
 vermek zorundadır — ilk sürümde vermiyordu ve 12,2 puanlık uçurum vardı.
@@ -483,7 +487,7 @@ isteğe bağlıdır. İkili bayrak gri bölgede sistematik hata üretir ve hem
 | `c.cover.w` | **0,22** | 0,1–0,45 | weight | Kaynak kapsamı ağırlığı |
 | `c.compl.w` | **0,2** | 0,05–0,4 | weight | Kategorizasyon ağırlığı |
 | `c.verif.w` | **0,12** | 0–0,3 | weight | Gelir doğrulama ağırlığı |
-| `c.pillar.w` | **0,18** | 0,05–0,35 | weight | Aktif bileşen ağırlığı |
+| `c.pillar.w` | **0,18** | 0,05–0,35 | weight | Bileşen + alt metrik kapsamı |
 | `c.hist_tam_gun` | **90** | 45–180 | threshold | Tam geçmiş (gün) |
 | `c.rampa_gun` | **21** | 7–45 | gate | İlk rampa (gün) |
 | `c.statement_tavan` | **0,85** | 0,6–1 | threshold | Ekstre kaynağı tavanı — Ekstre yüklemenin ulaşabileceği en yüksek kapsam |

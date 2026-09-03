@@ -4,7 +4,7 @@
 **Referans implementasyon:** `engine/score_engine.py`
 **Parametre tablosu:** `engine/params.py` · **Duyarlılık analizi:** `engine/tune.py`
 **Metinler:** `engine/metinler.py`
-**Golden test:** `engine/golden_profiles.py` (15 profil) · **Değişmez kural testleri:** `engine/test_invariants.py` (191 kontrol)
+**Golden test:** `engine/golden_profiles.py` (15 profil) · **Değişmez kural testleri:** `engine/test_invariants.py` (240 kontrol)
 **Yerini aldığı doküman:** `Docs/finansal skor yapısı.docx` (v1)
 
 > Bu doküman ile `engine/score_engine.py` çeliştiğinde **kod esas alınır.**
@@ -189,17 +189,17 @@ v1'in üç ayrı formülü kaldırıldı. Aynı formül, farklı `C` değerlerin
 
 | gün | C | ham | öncül | karma | skor | aşama |
 |---|---|---|---|---|---|---|
-| 10 | 0,23 | 60,0 | 39,0 | 43,9 | **44** | Farkındalık Başlangıç |
-| 15 | 0,38 | 58,9 | 39,0 | 46,5 | **47** | Geçiş |
-| 20 | 0,52 | 58,9 | 39,0 | 49,5 | **49** | Geçiş |
-| 25 | 0,57 | 58,9 | 39,0 | 50,4 | **50** | Geçiş |
-| 28 | 0,59 | 58,9 | 39,0 | 50,7 | **51** | Geçiş |
-| **30** | 0,59 | 58,9 | 39,0 | 50,8 | **51** | Geçiş |
-| **31** | 0,60 | 58,9 | 39,0 | 50,9 | **51** | Geçiş |
-| 35 | 0,62 | 58,9 | 39,0 | 51,3 | **51** | Geçiş |
-| 40 | 0,64 | 58,9 | 39,0 | 51,7 | **52** | Geçiş |
-| 60 | 0,72 | 58,9 | 39,0 | 53,4 | **53** | Finansal Sağlık |
-| 90 | 0,85 | 58,9 | 39,0 | 56,0 | **56** | Finansal Sağlık |
+| 10 | 0,22 | 60,0 | 39,0 | 43,5 | **44** | Farkındalık Başlangıç |
+| 15 | 0,35 | 58,9 | 39,0 | 45,9 | **46** | Geçiş |
+| 20 | 0,48 | 58,9 | 39,0 | 48,7 | **49** | Geçiş |
+| 25 | 0,53 | 58,9 | 39,0 | 49,6 | **50** | Geçiş |
+| 28 | 0,54 | 58,9 | 39,0 | 49,8 | **50** | Geçiş |
+| **30** | 0,55 | 58,9 | 39,0 | 50,0 | **50** | Geçiş |
+| **31** | 0,56 | 58,9 | 39,0 | 50,1 | **50** | Geçiş |
+| 35 | 0,57 | 58,9 | 39,0 | 50,4 | **50** | Geçiş |
+| 40 | 0,60 | 58,9 | 39,0 | 50,9 | **51** | Geçiş |
+| 60 | 0,68 | 58,9 | 39,0 | 52,6 | **53** | Finansal Sağlık |
+| 90 | 0,81 | 58,9 | 39,0 | 55,2 | **55** | Finansal Sağlık |
 <!-- /OTOMATIK:sm-sureklilik -->
 
 Karşılaştırma: v1'de aynı kullanıcı gün 30'da 87,5 alıp gün 31'de ~55'e
@@ -392,7 +392,7 @@ C × = 0,60  eğer bütünlük şüphesi varsa
 | `c_kapsam` | **kaynağa göre tavan** — aşağıdaki tablo |
 | `c_bütünlük` | kategorize edilmiş TL / toplam TL |
 | `c_doğrulama` | `1 − |beyan − gözlem| / beyan`; beyan yoksa 0,40 |
-| `c_bileşen` | aktif bileşen ağırlığı / toplam ağırlık |
+| `c_bileşen` | Σ(bileşen ağırlığı × alt metrik kapsamı) / toplam ağırlık — kapalı bileşen 0 sayılır, AÇIK bileşenin içinde verisi olmayan alt metrik de kapsamı düşürür |
 
 ### `c_kapsam` üç kademelidir ve kademe bir TAVANDIR
 
@@ -426,7 +426,7 @@ yarı_genişlik = max(2, 12 × (1 − C))
 <!-- OTOMATIK:sm-belirsizlik-bandi -->
 *`golden_profiles.py`'den üretildi.*
 
-`C = 0,25` → ±9 puan (`can`: **40**, band `31–49`)
+`C = 0,22` → ±9,5 puan (`can`: **39**, band `30–49`)
 
 `C = 0,91` → ±2 puan (`didem`: **73**, band `71–75`)
 <!-- /OTOMATIK:sm-belirsizlik-bandi -->
@@ -529,15 +529,15 @@ alınamaz, ama kriz gizlenmez.
 | Profil | Skor | Band | Ham | Öncül | C | Seviye |
 |---|---|---|---|---|---|---|
 | **didem** — Mockup kullanıcısı — maaşlı, dengeli, orta borç | **73** | 71–75 | 75,0 | 46,0 | 0,91 | Gelişiyor |
-| **mehmet** — Kart sarmalı — asgari ödeme, gecikme, KMH | **33** | 31–35 | 27,1 | 28,0 | 0,89 | Riskli |
+| **mehmet** — Kart sarmalı — asgari ödeme, gecikme, KMH | **33** | 31–35 | 27,1 | 28,0 | 0,87 | Riskli |
 | **zeynep** — Serbest çalışan — yüksek gelir oynaklığı, borçsuz, iyi birikim | **82** | 80–84 | 82,6 | 74,0 | 0,97 | Dengeli |
-| **can** — 12 günlük yeni kullanıcı — veri yok denecek kadar az | **40** | 31–49 | 48,2 | 37,0 | 0,25 | Dikkat |
+| **can** — 12 günlük yeni kullanıcı — veri yok denecek kadar az | **39** | 30–49 | 48,2 | 37,0 | 0,22 | Riskli |
 | **elif** — Güçlü — yüksek tasarruf, 6+ ay güvence, borçsuz | **90** | 88–92 | 94,4 | 74,0 | 0,99 | Güçlü |
 | **burak** — Taksit yüklü — nakit akışı iyi görünüyor, taahhüt ağır | **61** | 59–63 | 59,1 | 46,0 | 0,98 | Gelişiyor |
 | **deniz** — Öğrenci — düşük gelir, yüksek disiplin, borçsuz | **78** | 76–80 | 83,7 | 74,0 | 0,84 | Dengeli |
 | **selin** — Yüksek gelir, sıfır tampon — gizli risk | **40** | 38–42 | 32,3 | 37,0 | 0,99 | Dikkat |
 | **ahmet** — Emekli — düşük gelir, borçsuz, enflasyona yeniliyor | **83** | 81–85 | 86,3 | 74,0 | 0,83 | Dengeli |
-| **merve** — Gün 25 — geçiş dönemi, kısmi veri | **51** | 46–56 | 58,9 | 39,0 | 0,59 | Dikkat |
+| **merve** — Gün 25 — geçiş dönemi, kısmi veri | **50** | 45–55 | 58,9 | 39,0 | 0,55 | Dikkat |
 <!-- /OTOMATIK:sm-golden-senaryo -->
 
 Üç profil doğrudan modelin iddialarını sınar:
@@ -559,7 +559,7 @@ alınamaz, ama kriz gizlenmez.
 
 ```
 Finansal Sağlık Skoru: 73/100  (Gelişiyor)
-  ham=75.0  öncül=46.0  karma=72.4  güven C=0.91  band=71-75
+  ham=75.0  öncül=46.0  karma=72.3  güven C=0.91  band=71-75
   [ 79.2] Nakit Akışı              19.80 / 25.0 puan
         · Net nakit akışı marjı         89.9  ×0.60   m=+24.9%
         · Gelir istikrarı (CV)          92.5  ×0.13   cv=0.08
@@ -628,10 +628,10 @@ Yukarıdaki tablo **davranışı** anlatır; aşağıdaki blok o davranışın
 
 | Durum | Skor | Band | C | Seviye | Devre dışı |
 |---|---|---|---|---|---|
-| Sıfır gelir (işsiz) | **55** | 52–58 | 0,75 | Dikkat | — |
-| Gider > gelir (negatif marj) | **35** | 32–37 | 0,76 | Riskli | — |
-| Hiç borç verisi yok | **68** | 65–71 | 0,74 | Gelişiyor | Borç Yükü |
-| Veri bütünlüğü şüphesi | **83** | 77–90 | 0,47 | Dengeli | — |
+| Sıfır gelir (işsiz) | **55** | 51–58 | 0,71 | Dikkat | — |
+| Gider > gelir (negatif marj) | **34** | 31–38 | 0,71 | Riskli | — |
+| Hiç borç verisi yok | **67** | 64–71 | 0,71 | Gelişiyor | Borç Yükü |
+| Veri bütünlüğü şüphesi | **83** | 76–90 | 0,45 | Dengeli | — |
 <!-- /OTOMATIK:sm-sinir-durumlari -->
 
 ---
@@ -708,10 +708,10 @@ Mevcut durum: 72/100  (Gelişiyor)
 Katkı ayrıştırma (mevcut → plan sonu) — toplam gösterilen farkı **tam olarak** kapatır, artık kalemi yuvarlamadır:
 
 ```
-   +2.74  Tasarruf & Güvence   60.9 → 76.0
+   +2.73  Tasarruf & Güvence   60.9 → 76.0
    +1.35  Finansal Davranış   61.6 → 76.4
-   +1.03  Harcama Disiplini   82.1 → 89.6
-   +0.61  Yumuşatma / yuvarlama
+   +1.02  Harcama Disiplini   82.1 → 89.6
+   +0.63  Yumuşatma / yuvarlama
    +0.27  Nakit Akışı   79.2 → 80.4
 ```
 <!-- /OTOMATIK:sm-simulasyon -->
@@ -789,7 +789,7 @@ Parametre kararları `engine/tune.py` duyarlılık analiziyle ölçülerek veril
 | `engine/params.py` | 96 ayarlanabilir parametre, açıklama ve tarama aralığı |
 | `engine/tune.py` | Duyarlılık analizi · `--param` eğrisi · `--set` denemesi |
 | `engine/metinler.py` | Kullanıcıya gösterilen tüm metinler |
-| `engine/test_invariants.py` | 191 yapısal kontrol: determinizm, monotonluk, süreklilik, eksik veri, güven, sınırlar, seviye bantları, anti-gaming, adalet |
+| `engine/test_invariants.py` | 240 yapısal kontrol: determinizm, monotonluk, süreklilik, eksik veri, güven, sınırlar, seviye bantları, anti-gaming, adalet |
 
 ```bash
 cd engine && python3 test_invariants.py && python3 golden_profiles.py

@@ -318,7 +318,9 @@ def main() -> None:
         ("isteğe bağlı pay", f"%{feats.disc_share*100:.0f}"),
         ("nakit akışı marjı", f"%{feats.cf_margin*100:.1f}"),
         ("kasıtlı tasarruf", f"{feats.s_deliberate:,.0f} TL  (oran %{feats.s_rate*100:.1f})"),
-        ("acil durum fonu", f"{feats.ef_liquid:,.0f} TL  ({feats.ef_months:.2f} ay)"),
+        ("acil durum fonu",
+         "veri yok" if feats.ef_liquid is None
+         else f"{feats.ef_liquid:,.0f} TL  ({feats.ef_months:.2f} ay)"),
         ("tasarruf sürekliliği", f"{feats.s_consistency_months}/6 ay"),
         ("borç anaparası", f"{feats.debt_principal:,.0f} TL"),
         ("DSR", f"%{feats.dsr*100:.1f}"),
